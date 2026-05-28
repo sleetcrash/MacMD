@@ -46,6 +46,9 @@ if [[ "$BUILT_VERSION" != "$VERSION" ]]; then
     exit 1
 fi
 
+echo "Verifying code signature..."
+codesign --verify --deep --strict "$BUILT_APP"
+
 mkdir -p "$DIST"
 rm -f "$DIST/$ZIP_NAME" "$DIST/$ZIP_NAME.sha256" \
       "$DIST/$DMG_NAME" "$DIST/$DMG_NAME.sha256"
