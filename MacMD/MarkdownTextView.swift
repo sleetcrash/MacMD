@@ -120,10 +120,11 @@ struct MarkdownTextView: NSViewRepresentable {
             ts.endEditing()
             highlighter.isSuppressed = false
             highlighter.rehighlightAll(ts)
+
             let newLength = (ts.string as NSString).length
-            let clampedLocation = min(oldSelection.location, newLength)
-            let clampedLength = min(oldSelection.length, newLength - clampedLocation)
-            textView.setSelectedRange(NSRange(location: clampedLocation, length: clampedLength))
+            let location = min(oldSelection.location, newLength)
+            let length = min(oldSelection.length, newLength - location)
+            textView.setSelectedRange(NSRange(location: location, length: length))
             isUpdatingFromBinding = false
         }
 
