@@ -108,7 +108,7 @@ private enum MarkdownRules {
         Rule(regex: r("^[ \\t]*[-*+][ \\t]+", options: [.anchorsMatchLines])) { ts, m in
             ts.addAttribute(.foregroundColor, value: Theme.accentColor, range: m.range)
         },
-        Rule(regex: r("^[ \\t]*\\d+\\.[ \\t]+", options: [.anchorsMatchLines])) { ts, m in
+        Rule(regex: r("^[ \\t]*\\d+[.)][ \\t]+", options: [.anchorsMatchLines])) { ts, m in
             ts.addAttribute(.foregroundColor, value: Theme.accentColor, range: m.range)
         },
         Rule(regex: r("^[ \\t]*>.*$", options: [.anchorsMatchLines])) { ts, m in

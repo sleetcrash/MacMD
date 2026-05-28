@@ -253,6 +253,11 @@ final class MarkdownHighlighterTests: XCTestCase {
         XCTAssertEqual(color(at: afterIndex, in: storage), Theme.textColor)
     }
 
+    func testOrderedListMarkerWithParen() {
+        let storage = highlight("1) First item")
+        XCTAssertEqual(color(at: 0, in: storage), Theme.accentColor)
+    }
+
     func testBacktickFenceCannotBeClosedByTildeFence() {
         let text = """
         ```
