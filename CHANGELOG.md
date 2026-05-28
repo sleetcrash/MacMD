@@ -2,6 +2,31 @@
 
 All notable changes to MacMD will be documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-05-28
+
+### Added
+- `~~strikethrough~~` rendered with strikethrough style.
+- `~~~` fenced code blocks (in addition to triple-backtick). Fences must be closed by the same marker character.
+- `1)` ordered-list markers in addition to `1.`.
+- Interactive `[ ]` / `[x]` task-list checkboxes. Click a checkbox glyph to toggle its state; the toggle participates in the undo manager. Checked task lines render the body with strikethrough and a muted color.
+- Document-size guard: files larger than 64 MiB are refused at open with a standard document-open error; files larger than 8 MiB open without syntax highlighting so typing stays responsive.
+
+### Changed
+- A single trailing newline is appended on save when the document doesn't already end with one. Matches POSIX text-file convention and matches BBEdit, Sublime, VS Code.
+- A leading UTF-8 BOM is stripped on read.
+- Project now builds clean under Swift 6 strict concurrency (`SWIFT_STRICT_CONCURRENCY = complete` in all four target configurations).
+- `Scripts/package.sh` aborts if `MARKETING_VERSION` in the built binary disagrees with the version argument, and runs `codesign --verify --deep --strict` before packaging.
+
+### Fixed
+- `addFontTrait` now composes both traits when called with `[.bold, .italic]` instead of silently dropping the second. No current caller hit this, but the behavior was latent and would have surprised future contributors.
+
+### Internal
+- `Theme.editorFont` cached as `static let` (was re-resolving the system font on every read).
+- `Theme.headingFont(level:)` cached as a six-element array indexed by level.
+- `MarkdownTextView.updateNSView` reduced to a direct `String != String` comparison.
+- `MarkdownHighlighter` inline-rule table extracted into a file-private `MarkdownRules` namespace, separating runtime state from static configuration.
+- `try!` regex compilation replaced with a checked factory that names the failing pattern.
+
 ## [1.0.3] - 2026-05-27
 
 ### Changed
