@@ -72,6 +72,20 @@ private enum MarkdownRules {
     }
 
     static let inlineRules: [Rule] = [
+        Rule(regex: r("^([ \\t]*[-*+][ \\t]+)(\\[[ xX]\\])([ \\t]+)(.*)$", options: [.anchorsMatchLines])) { ts, m in
+            let bracket = m.range(at: 2)
+            ts.addAttribute(.foregroundColor, value: Theme.accentColor, range: bracket)
+            let nsString = ts.string as NSString
+            let bracketString = nsString.substring(with: bracket)
+            let isChecked = bracketString == "[x]" || bracketString == "[X]"
+            if isChecked {
+                let body = m.range(at: 4)
+                if body.length > 0 {
+                    ts.addAttribute(.strikethroughStyle, value: NSUnderlineStyle.single.rawValue, range: body)
+                    ts.addAttribute(.foregroundColor, value: Theme.mutedColor, range: body)
+                }
+            }
+        },
         Rule(regex: r("^(#{1,6})[ \\t]+.+$", options: [.anchorsMatchLines])) { ts, m in
             let full = m.range
             let hashes = m.range(at: 1)

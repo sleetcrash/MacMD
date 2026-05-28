@@ -271,6 +271,29 @@ final class MarkdownHighlighterTests: XCTestCase {
         XCTAssertNil(storage.attribute(.strikethroughStyle, at: index, effectiveRange: nil))
     }
 
+    func testUnfinishedTaskListBracketIsAccent() {
+        let storage = highlight("- [ ] buy milk")
+        let bracketIndex = "- ".count
+        XCTAssertEqual(color(at: bracketIndex, in: storage), Theme.accentColor)
+    }
+
+    func testFinishedTaskListBracketIsAccentAndBodyIsStruck() {
+        let text = "- [x] mow lawn"
+        let storage = highlight(text)
+        let bracketIndex = "- ".count
+        XCTAssertEqual(color(at: bracketIndex, in: storage), Theme.accentColor)
+        let bodyIndex = (text as NSString).range(of: "mow").location
+        let raw = storage.attribute(.strikethroughStyle, at: bodyIndex, effectiveRange: nil) as? Int
+        XCTAssertEqual(raw, NSUnderlineStyle.single.rawValue)
+    }
+
+    func testUnfinishedTaskListBodyIsNotStruck() {
+        let text = "- [ ] buy milk"
+        let storage = highlight(text)
+        let bodyIndex = (text as NSString).range(of: "buy").location
+        XCTAssertNil(storage.attribute(.strikethroughStyle, at: bodyIndex, effectiveRange: nil))
+    }
+
     func testBacktickFenceCannotBeClosedByTildeFence() {
         let text = """
         ```
