@@ -68,14 +68,10 @@ final class MarkdownHighlighter: NSObject, NSTextStorageDelegate {
     private static func addFontTrait(_ trait: NSFontDescriptor.SymbolicTraits,
                                      to ts: NSTextStorage,
                                      in range: NSRange) {
-        let mask: NSFontTraitMask
-        if trait.contains(.bold) {
-            mask = .boldFontMask
-        } else if trait.contains(.italic) {
-            mask = .italicFontMask
-        } else {
-            return
-        }
+        var mask: NSFontTraitMask = []
+        if trait.contains(.bold) { mask.insert(.boldFontMask) }
+        if trait.contains(.italic) { mask.insert(.italicFontMask) }
+        guard !mask.isEmpty else { return }
         let manager = NSFontManager.shared
         ts.enumerateAttribute(.font, in: range, options: []) { value, subRange, _ in
             guard let existing = value as? NSFont else { return }
