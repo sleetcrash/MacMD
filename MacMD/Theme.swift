@@ -4,14 +4,16 @@ enum Theme {
     static let editorFontSize: CGFloat = 14
     static let editorLineSpacing: CGFloat = 4
 
-    static var editorFont: NSFont {
-        NSFont.monospacedSystemFont(ofSize: editorFontSize, weight: .regular)
+    static let editorFont: NSFont = .monospacedSystemFont(ofSize: editorFontSize, weight: .regular)
+
+    private static let headingFonts: [NSFont] = (1...6).map { level in
+        let bump = CGFloat(7 - level)
+        return .monospacedSystemFont(ofSize: editorFontSize + bump, weight: .bold)
     }
 
     static func headingFont(level: Int) -> NSFont {
-        let bump: CGFloat = max(0, CGFloat(7 - level))
-        let size = editorFontSize + bump
-        return NSFont.monospacedSystemFont(ofSize: size, weight: .bold)
+        let clamped = max(1, min(6, level))
+        return headingFonts[clamped - 1]
     }
 
     static var textColor: NSColor { .labelColor }
