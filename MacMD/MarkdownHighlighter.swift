@@ -6,12 +6,58 @@ final class MarkdownHighlighter: NSObject, NSTextStorageDelegate {
     var isDisabled = false
     private var lastFenceLineStarts: [Int] = []
 
-    private struct Rule {
+    func textStorage(_ textStorage: NSTextStorage,
+                     didProcessEditing editedMask: NSTextStorageEditActions,
+                     range editedRange: NSRange,
+                     changeInLength delta: Int) {
+        guard editedMask.contains(.editedCharacters), !isSuppressed, !isDisabled else { return }
+
+        let nsString = textStorage.string as NSString
+        let total = NSRange(location: 0, length: nsString.length)
+        guard editedRange.location <= nsString.length else { return }
+
+        let fenceLines = MarkdownRules.fenceLineRanges(in: nsString, fullRange: total)
+        let currentFenceStarts = fenceLines.map { $0.location }
+        let fencesChanged = currentFenceStarts != lastFenceLineStarts
+        lastFenceLineStarts = currentFenceStarts
+
+        let codeSpans = MarkdownRules.spansFromFences(fenceLines, fullRange: total)
+
+        if fencesChanged {
+            MarkdownRules.applyHighlighting(to: textStorage, in: total, fencedSpans: codeSpans)
+            return
+        }
+
+        let paragraph = nsString.paragraphRange(for: editedRange)
+        let targetRange: NSRange
+        if let containing = codeSpans.first(where: { NSLocationInRange(paragraph.location, $0) || NSIntersectionRange($0, paragraph).length > 0 }) {
+            targetRange = containing
+        } else {
+            targetRange = paragraph
+        }
+
+        MarkdownRules.applyHighlighting(to: textStorage, in: targetRange, fencedSpans: codeSpans)
+    }
+
+    func rehighlightAll(_ textStorage: NSTextStorage) {
+        guard !isDisabled else { return }
+        let nsString = textStorage.string as NSString
+        let full = NSRange(location: 0, length: nsString.length)
+        let fenceLines = MarkdownRules.fenceLineRanges(in: nsString, fullRange: full)
+        lastFenceLineStarts = fenceLines.map { $0.location }
+        let spans = MarkdownRules.spansFromFences(fenceLines, fullRange: full)
+        MarkdownRules.applyHighlighting(to: textStorage, in: full, fencedSpans: spans)
+    }
+}
+
+private enum MarkdownRules {
+
+    struct Rule {
         let regex: NSRegularExpression
         let apply: (NSTextStorage, NSTextCheckingResult) -> Void
     }
 
-    private static func r(_ pattern: String, options: NSRegularExpression.Options = []) -> NSRegularExpression {
+    static func r(_ pattern: String, options: NSRegularExpression.Options = []) -> NSRegularExpression {
         do {
             return try NSRegularExpression(pattern: pattern, options: options)
         } catch {
@@ -19,9 +65,9 @@ final class MarkdownHighlighter: NSObject, NSTextStorageDelegate {
         }
     }
 
-    private static let fencePattern: NSRegularExpression = r("^[ \\t]*```[^\\n]*$", options: [.anchorsMatchLines])
+    static let fencePattern: NSRegularExpression = r("^[ \\t]*```[^\\n]*$", options: [.anchorsMatchLines])
 
-    private static let inlineRules: [Rule] = [
+    static let inlineRules: [Rule] = [
         Rule(regex: r("^(#{1,6})[ \\t]+.+$", options: [.anchorsMatchLines])) { ts, m in
             let full = m.range
             let hashes = m.range(at: 1)
@@ -70,9 +116,9 @@ final class MarkdownHighlighter: NSObject, NSTextStorageDelegate {
         }
     ]
 
-    private static func addFontTrait(_ trait: NSFontDescriptor.SymbolicTraits,
-                                     to ts: NSTextStorage,
-                                     in range: NSRange) {
+    static func addFontTrait(_ trait: NSFontDescriptor.SymbolicTraits,
+                             to ts: NSTextStorage,
+                             in range: NSRange) {
         var mask: NSFontTraitMask = []
         if trait.contains(.bold) { mask.insert(.boldFontMask) }
         if trait.contains(.italic) { mask.insert(.italicFontMask) }
@@ -85,50 +131,7 @@ final class MarkdownHighlighter: NSObject, NSTextStorageDelegate {
         }
     }
 
-    func textStorage(_ textStorage: NSTextStorage,
-                     didProcessEditing editedMask: NSTextStorageEditActions,
-                     range editedRange: NSRange,
-                     changeInLength delta: Int) {
-        guard editedMask.contains(.editedCharacters), !isSuppressed, !isDisabled else { return }
-
-        let nsString = textStorage.string as NSString
-        let total = NSRange(location: 0, length: nsString.length)
-        guard editedRange.location <= nsString.length else { return }
-
-        let fenceLines = fenceLineRanges(in: nsString, fullRange: total)
-        let currentFenceStarts = fenceLines.map { $0.location }
-        let fencesChanged = currentFenceStarts != lastFenceLineStarts
-        lastFenceLineStarts = currentFenceStarts
-
-        let codeSpans = spansFromFences(fenceLines, fullRange: total)
-
-        if fencesChanged {
-            applyHighlighting(to: textStorage, in: total, fencedSpans: codeSpans)
-            return
-        }
-
-        let paragraph = nsString.paragraphRange(for: editedRange)
-        let targetRange: NSRange
-        if let containing = codeSpans.first(where: { NSLocationInRange(paragraph.location, $0) || NSIntersectionRange($0, paragraph).length > 0 }) {
-            targetRange = containing
-        } else {
-            targetRange = paragraph
-        }
-
-        applyHighlighting(to: textStorage, in: targetRange, fencedSpans: codeSpans)
-    }
-
-    func rehighlightAll(_ textStorage: NSTextStorage) {
-        guard !isDisabled else { return }
-        let nsString = textStorage.string as NSString
-        let full = NSRange(location: 0, length: nsString.length)
-        let fenceLines = fenceLineRanges(in: nsString, fullRange: full)
-        lastFenceLineStarts = fenceLines.map { $0.location }
-        let spans = spansFromFences(fenceLines, fullRange: full)
-        applyHighlighting(to: textStorage, in: full, fencedSpans: spans)
-    }
-
-    private func applyHighlighting(to ts: NSTextStorage, in range: NSRange, fencedSpans: [NSRange]) {
+    static func applyHighlighting(to ts: NSTextStorage, in range: NSRange, fencedSpans: [NSRange]) {
         guard range.length > 0 else { return }
 
         ts.removeAttribute(.font, range: range)
@@ -148,24 +151,24 @@ final class MarkdownHighlighter: NSObject, NSTextStorageDelegate {
         }
 
         let source = ts.string
-        for rule in Self.inlineRules {
+        for rule in inlineRules {
             rule.regex.enumerateMatches(in: source, options: [], range: range) { match, _, _ in
                 guard let m = match else { return }
-                if Self.intersectsAny(m.range, ranges: fencedSpans) { return }
+                if intersectsAny(m.range, ranges: fencedSpans) { return }
                 rule.apply(ts, m)
             }
         }
     }
 
-    private func fenceLineRanges(in nsString: NSString, fullRange: NSRange) -> [NSRange] {
+    static func fenceLineRanges(in nsString: NSString, fullRange: NSRange) -> [NSRange] {
         var fences: [NSRange] = []
-        Self.fencePattern.enumerateMatches(in: nsString as String, options: [], range: fullRange) { match, _, _ in
+        fencePattern.enumerateMatches(in: nsString as String, options: [], range: fullRange) { match, _, _ in
             if let m = match { fences.append(m.range) }
         }
         return fences
     }
 
-    private func spansFromFences(_ fences: [NSRange], fullRange: NSRange) -> [NSRange] {
+    static func spansFromFences(_ fences: [NSRange], fullRange: NSRange) -> [NSRange] {
         var spans: [NSRange] = []
         var i = 0
         while i < fences.count {
@@ -186,7 +189,7 @@ final class MarkdownHighlighter: NSObject, NSTextStorageDelegate {
         return spans
     }
 
-    private static func intersectsAny(_ range: NSRange, ranges: [NSRange]) -> Bool {
+    static func intersectsAny(_ range: NSRange, ranges: [NSRange]) -> Bool {
         for r in ranges where NSIntersectionRange(r, range).length > 0 { return true }
         return false
     }
