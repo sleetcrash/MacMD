@@ -75,9 +75,7 @@ struct MarkdownTextView: NSViewRepresentable {
 
     func updateNSView(_ nsView: NSScrollView, context: Context) {
         guard let textView = nsView.documentView as? NSTextView else { return }
-        let currentNS = textView.string as NSString
-        let targetNS = text as NSString
-        if currentNS.length != targetNS.length || currentNS as String != text {
+        if textView.string != text {
             context.coordinator.replace(textView: textView, with: text)
         }
     }
