@@ -15,6 +15,7 @@
 		F2000000000000000000000F /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000000F /* Theme.swift */; };
 		F200000000000000000000A0 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000A0 /* Assets.xcassets */; };
 		F200000000000000000000A1 /* MarkdownHighlighterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000A3 /* MarkdownHighlighterTests.swift */; };
+		F200000000000000000000A7 /* MarkdownDocumentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000A6 /* MarkdownDocumentTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -38,6 +39,7 @@
 		F100000000000000000000A1 /* MacMD.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MacMD.entitlements; sourceTree = "<group>"; };
 		F100000000000000000000A2 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		F100000000000000000000A3 /* MarkdownHighlighterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownHighlighterTests.swift; sourceTree = "<group>"; };
+		F100000000000000000000A6 /* MarkdownDocumentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownDocumentTests.swift; sourceTree = "<group>"; };
 		F100000000000000000000A4 /* MacMD.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MacMD.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F100000000000000000000A5 /* MacMDTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MacMDTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -89,6 +91,7 @@
 			isa = PBXGroup;
 			children = (
 				F100000000000000000000A3 /* MarkdownHighlighterTests.swift */,
+				F100000000000000000000A6 /* MarkdownDocumentTests.swift */,
 			);
 			path = MacMDTests;
 			sourceTree = "<group>";
@@ -214,6 +217,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F200000000000000000000A1 /* MarkdownHighlighterTests.swift in Sources */,
+				F200000000000000000000A7 /* MarkdownDocumentTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
