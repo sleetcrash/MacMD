@@ -9,7 +9,7 @@ struct MarkdownTextView: NSViewRepresentable {
     }
 
     func makeNSView(context: Context) -> NSScrollView {
-        let scrollView = NSTextView.scrollableTextView()
+        let scrollView = ClickableTextView.scrollableClickableTextView()
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = false
         scrollView.autohidesScrollers = true
@@ -17,7 +17,7 @@ struct MarkdownTextView: NSViewRepresentable {
         scrollView.drawsBackground = true
         scrollView.backgroundColor = .textBackgroundColor
 
-        guard let textView = scrollView.documentView as? NSTextView else {
+        guard let textView = scrollView.documentView as? ClickableTextView else {
             return scrollView
         }
 
@@ -66,6 +66,7 @@ struct MarkdownTextView: NSViewRepresentable {
 
         textView.delegate = context.coordinator
         textView.textStorage?.delegate = context.coordinator.highlighter
+        textView.highlighter = context.coordinator.highlighter
 
         context.coordinator.textView = textView
         context.coordinator.loadInitial(text: text)
@@ -75,13 +76,12 @@ struct MarkdownTextView: NSViewRepresentable {
 
     func updateNSView(_ nsView: NSScrollView, context: Context) {
         guard let textView = nsView.documentView as? NSTextView else { return }
-        let currentNS = textView.string as NSString
-        let targetNS = text as NSString
-        if currentNS.length != targetNS.length || currentNS as String != text {
+        if textView.string != text {
             context.coordinator.replace(textView: textView, with: text)
         }
     }
 
+    @MainActor
     final class Coordinator: NSObject, NSTextViewDelegate {
         @Binding var text: String
         weak var textView: NSTextView?
@@ -102,7 +102,11 @@ struct MarkdownTextView: NSViewRepresentable {
             ts.replaceCharacters(in: NSRange(location: 0, length: ts.length), with: text)
             ts.endEditing()
             highlighter.isSuppressed = false
-            highlighter.rehighlightAll(ts)
+            if text.utf8.count >= MarkdownDocument.softSizeLimit {
+                highlighter.isDisabled = true
+            } else {
+                highlighter.rehighlightAll(ts)
+            }
             isUpdatingFromBinding = false
         }
 
@@ -116,10 +120,11 @@ struct MarkdownTextView: NSViewRepresentable {
             ts.endEditing()
             highlighter.isSuppressed = false
             highlighter.rehighlightAll(ts)
+
             let newLength = (ts.string as NSString).length
-            let clampedLocation = min(oldSelection.location, newLength)
-            let clampedLength = min(oldSelection.length, newLength - clampedLocation)
-            textView.setSelectedRange(NSRange(location: clampedLocation, length: clampedLength))
+            let location = min(oldSelection.location, newLength)
+            let length = min(oldSelection.length, newLength - location)
+            textView.setSelectedRange(NSRange(location: location, length: length))
             isUpdatingFromBinding = false
         }
 
@@ -128,5 +133,61 @@ struct MarkdownTextView: NSViewRepresentable {
                   let tv = notification.object as? NSTextView else { return }
             text = tv.string
         }
+    }
+}
+
+final class ClickableTextView: NSTextView {
+    weak var highlighter: MarkdownHighlighter?
+
+    static func scrollableClickableTextView() -> NSScrollView {
+        let scrollView = NSScrollView()
+        let textView = ClickableTextView()
+        textView.minSize = NSSize(width: 0, height: 0)
+        textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        textView.isVerticallyResizable = true
+        textView.isHorizontallyResizable = false
+        textView.autoresizingMask = [.width]
+        textView.textContainer?.containerSize = NSSize(width: 0, height: CGFloat.greatestFiniteMagnitude)
+        textView.textContainer?.widthTracksTextView = true
+        scrollView.documentView = textView
+        scrollView.hasVerticalScroller = true
+        return scrollView
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        guard let highlighter, let ts = textStorage else {
+            super.mouseDown(with: event)
+            return
+        }
+        let pointInView = convert(event.locationInWindow, from: nil)
+        let pointInContainer = NSPoint(
+            x: pointInView.x - textContainerOrigin.x,
+            y: pointInView.y - textContainerOrigin.y
+        )
+        guard let container = textContainer, let layoutManager else {
+            super.mouseDown(with: event)
+            return
+        }
+        let glyphIndex = layoutManager.glyphIndex(for: pointInContainer, in: container)
+        let charIndex = layoutManager.characterIndexForGlyph(at: glyphIndex)
+
+        let ranges = highlighter.taskCheckboxRanges(in: ts)
+        guard let bracket = ranges.first(where: { NSLocationInRange(charIndex, $0) }) else {
+            super.mouseDown(with: event)
+            return
+        }
+
+        let innerLocation = bracket.location + 1
+        let innerRange = NSRange(location: innerLocation, length: 1)
+        let current = (ts.string as NSString).substring(with: innerRange)
+        let replacement = (current == " ") ? "x" : " "
+
+        let priorSelection = selectedRange()
+        guard shouldChangeText(in: innerRange, replacementString: replacement) else { return }
+        ts.beginEditing()
+        ts.replaceCharacters(in: innerRange, with: replacement)
+        ts.endEditing()
+        didChangeText()
+        setSelectedRange(priorSelection)
     }
 }

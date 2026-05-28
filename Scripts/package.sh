@@ -38,6 +38,17 @@ fi
 
 echo "Using build: $BUILT_APP"
 
+INFO_PLIST="$BUILT_APP/Contents/Info.plist"
+BUILT_VERSION=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$INFO_PLIST")
+if [[ "$BUILT_VERSION" != "$VERSION" ]]; then
+    echo "ERROR: built binary reports CFBundleShortVersionString=$BUILT_VERSION but package script was invoked with $VERSION" >&2
+    echo "Bump MARKETING_VERSION in MacMD.xcodeproj/project.pbxproj and rebuild." >&2
+    exit 1
+fi
+
+echo "Verifying code signature..."
+codesign --verify --deep --strict "$BUILT_APP"
+
 mkdir -p "$DIST"
 rm -f "$DIST/$ZIP_NAME" "$DIST/$ZIP_NAME.sha256" \
       "$DIST/$DMG_NAME" "$DIST/$DMG_NAME.sha256"

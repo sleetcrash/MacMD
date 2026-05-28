@@ -15,6 +15,8 @@
 		F2000000000000000000000F /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000000F /* Theme.swift */; };
 		F200000000000000000000A0 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000A0 /* Assets.xcassets */; };
 		F200000000000000000000A1 /* MarkdownHighlighterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000A3 /* MarkdownHighlighterTests.swift */; };
+		F200000000000000000000A7 /* MarkdownDocumentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000A6 /* MarkdownDocumentTests.swift */; };
+		F200000000000000000000A9 /* TaskListInteractionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000A8 /* TaskListInteractionTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -38,6 +40,8 @@
 		F100000000000000000000A1 /* MacMD.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MacMD.entitlements; sourceTree = "<group>"; };
 		F100000000000000000000A2 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		F100000000000000000000A3 /* MarkdownHighlighterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownHighlighterTests.swift; sourceTree = "<group>"; };
+		F100000000000000000000A6 /* MarkdownDocumentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownDocumentTests.swift; sourceTree = "<group>"; };
+		F100000000000000000000A8 /* TaskListInteractionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskListInteractionTests.swift; sourceTree = "<group>"; };
 		F100000000000000000000A4 /* MacMD.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MacMD.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F100000000000000000000A5 /* MacMDTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MacMDTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -89,6 +93,8 @@
 			isa = PBXGroup;
 			children = (
 				F100000000000000000000A3 /* MarkdownHighlighterTests.swift */,
+				F100000000000000000000A6 /* MarkdownDocumentTests.swift */,
+				F100000000000000000000A8 /* TaskListInteractionTests.swift */,
 			);
 			path = MacMDTests;
 			sourceTree = "<group>";
@@ -214,6 +220,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				F200000000000000000000A1 /* MarkdownHighlighterTests.swift in Sources */,
+				F200000000000000000000A7 /* MarkdownDocumentTests.swift in Sources */,
+				F200000000000000000000A9 /* TaskListInteractionTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -363,10 +371,11 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.0.3;
+				MARKETING_VERSION = 1.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.eb.MacMD;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_VERSION = 5.0;
 			};
 			name = Debug;
@@ -392,10 +401,11 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.0.3;
+				MARKETING_VERSION = 1.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.eb.MacMD;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
@@ -409,10 +419,11 @@
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.0.3;
+				MARKETING_VERSION = 1.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.eb.MacMDTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_VERSION = 5.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/MacMD.app/Contents/MacOS/MacMD";
 			};
@@ -427,10 +438,11 @@
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.0.3;
+				MARKETING_VERSION = 1.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.eb.MacMDTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_VERSION = 5.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/MacMD.app/Contents/MacOS/MacMD";
 			};

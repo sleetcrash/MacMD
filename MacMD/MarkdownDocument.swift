@@ -24,14 +24,36 @@ struct MarkdownDocument: FileDocument {
         guard let data = configuration.file.regularFileContents else {
             throw CocoaError(.fileReadCorruptFile)
         }
-        guard let s = String(data: data, encoding: .utf8) else {
-            throw CocoaError(.fileReadInapplicableStringEncoding)
-        }
-        self.text = s
+        self.text = try Self.decode(data)
     }
 
     func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
-        let data = Data(text.utf8)
-        return FileWrapper(regularFileWithContents: data)
+        FileWrapper(regularFileWithContents: Self.encode(text))
+    }
+
+    static let hardSizeLimit: Int = 64 * 1024 * 1024
+    static let softSizeLimit: Int = 8 * 1024 * 1024
+
+    static func decode(_ data: Data) throws -> String {
+        if data.count > hardSizeLimit {
+            throw CocoaError(.fileReadTooLarge)
+        }
+        guard var s = String(data: data, encoding: .utf8) else {
+            throw CocoaError(.fileReadInapplicableStringEncoding)
+        }
+        if s.first == "\u{FEFF}" {
+            s.removeFirst()
+        }
+        return s
+    }
+
+    static func encode(_ text: String) -> Data {
+        guard !text.isEmpty else { return Data() }
+        if text.last == "\n" {
+            return Data(text.utf8)
+        }
+        var output = text
+        output.append("\n")
+        return Data(output.utf8)
     }
 }
