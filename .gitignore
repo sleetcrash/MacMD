@@ -1,0 +1,40 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+
+# Xcode
+build/
+DerivedData/
+*.xcuserstate
+*.xccheckout
+*.moved-aside
+xcuserdata/
+*.xcscmblueprint
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager
+.build/
+Packages/
+Package.pins
+Package.resolved
+.swiftpm/
+
+# Built products
+MacMD.app
+*.app.dSYM
+
+# Release artifacts (uploaded to GitHub releases, not committed)
+/dist/
+
+# Temp / editor
+*.swp
+*.swo
+*~
+
+# Local-only project reference doc
+project.md
