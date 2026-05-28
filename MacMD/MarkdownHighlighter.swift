@@ -3,6 +3,7 @@ import AppKit
 final class MarkdownHighlighter: NSObject, NSTextStorageDelegate {
 
     var isSuppressed = false
+    var isDisabled = false
     private var lastFenceLineStarts: [Int] = []
 
     private struct Rule {
@@ -84,7 +85,7 @@ final class MarkdownHighlighter: NSObject, NSTextStorageDelegate {
                      didProcessEditing editedMask: NSTextStorageEditActions,
                      range editedRange: NSRange,
                      changeInLength delta: Int) {
-        guard editedMask.contains(.editedCharacters), !isSuppressed else { return }
+        guard editedMask.contains(.editedCharacters), !isSuppressed, !isDisabled else { return }
 
         let nsString = textStorage.string as NSString
         let total = NSRange(location: 0, length: nsString.length)
@@ -114,6 +115,7 @@ final class MarkdownHighlighter: NSObject, NSTextStorageDelegate {
     }
 
     func rehighlightAll(_ textStorage: NSTextStorage) {
+        guard !isDisabled else { return }
         let nsString = textStorage.string as NSString
         let full = NSRange(location: 0, length: nsString.length)
         let fenceLines = fenceLineRanges(in: nsString, fullRange: full)

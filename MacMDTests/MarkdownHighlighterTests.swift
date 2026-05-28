@@ -213,4 +213,28 @@ final class MarkdownHighlighterTests: XCTestCase {
         XCTAssertEqual(color(at: codeIndexAfter, in: storage), Theme.textColor,
                        "Content should return to plain text after its opening fence is deleted")
     }
+
+    func testDisabledHighlighterAppliesNoAttributes() {
+        let storage = NSTextStorage(string: "# Heading\nBody")
+        let highlighter = MarkdownHighlighter()
+        storage.delegate = highlighter
+        highlighter.isDisabled = true
+        highlighter.rehighlightAll(storage)
+        XCTAssertNil(storage.attribute(.foregroundColor, at: 0, effectiveRange: nil))
+        XCTAssertNil(storage.attribute(.paragraphStyle, at: 0, effectiveRange: nil))
+    }
+
+    func testDisabledHighlighterIgnoresEdits() {
+        let storage = NSTextStorage(string: "plain")
+        let highlighter = MarkdownHighlighter()
+        storage.delegate = highlighter
+        highlighter.rehighlightAll(storage)
+        highlighter.isDisabled = true
+        storage.beginEditing()
+        storage.replaceCharacters(in: NSRange(location: 0, length: 5), with: "# Big")
+        storage.endEditing()
+        let font = storage.attribute(.font, at: 0, effectiveRange: nil) as? NSFont
+        let traits = font?.fontDescriptor.symbolicTraits ?? []
+        XCTAssertFalse(traits.contains(.bold), "disabled highlighter must not apply heading bold")
+    }
 }

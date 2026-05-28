@@ -100,7 +100,11 @@ struct MarkdownTextView: NSViewRepresentable {
             ts.replaceCharacters(in: NSRange(location: 0, length: ts.length), with: text)
             ts.endEditing()
             highlighter.isSuppressed = false
-            highlighter.rehighlightAll(ts)
+            if text.utf8.count >= MarkdownDocument.softSizeLimit {
+                highlighter.isDisabled = true
+            } else {
+                highlighter.rehighlightAll(ts)
+            }
             isUpdatingFromBinding = false
         }
 
