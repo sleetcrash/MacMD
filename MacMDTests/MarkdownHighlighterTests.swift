@@ -258,6 +258,19 @@ final class MarkdownHighlighterTests: XCTestCase {
         XCTAssertEqual(color(at: 0, in: storage), Theme.accentColor)
     }
 
+    func testStrikethroughAppliesUnderlineStyle() {
+        let storage = highlight("This is ~~struck~~ text")
+        let struckIndex = "This is ~~".count
+        let raw = storage.attribute(.strikethroughStyle, at: struckIndex, effectiveRange: nil) as? Int
+        XCTAssertEqual(raw, NSUnderlineStyle.single.rawValue)
+    }
+
+    func testStrikethroughRejectsSpaceAfterOpeningDelimiter() {
+        let storage = highlight("not strike: ~~ foo ~~")
+        let index = "not strike: ".count + 3
+        XCTAssertNil(storage.attribute(.strikethroughStyle, at: index, effectiveRange: nil))
+    }
+
     func testBacktickFenceCannotBeClosedByTildeFence() {
         let text = """
         ```

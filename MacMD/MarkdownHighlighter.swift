@@ -94,6 +94,9 @@ private enum MarkdownRules {
         Rule(regex: r("`[^`\\n]+`")) { ts, m in
             ts.addAttribute(.backgroundColor, value: Theme.codeBackgroundColor, range: m.range)
         },
+        Rule(regex: r("~~(?!\\s)[^~\\n]+?(?<!\\s)~~")) { ts, m in
+            ts.addAttribute(.strikethroughStyle, value: NSUnderlineStyle.single.rawValue, range: m.range)
+        },
         Rule(regex: r("\\[([^\\]\\n]+)\\]\\(([^)\\n]+)\\)")) { ts, m in
             let label = m.range(at: 1)
             let url = m.range(at: 2)
@@ -142,6 +145,7 @@ private enum MarkdownRules {
         ts.removeAttribute(.foregroundColor, range: range)
         ts.removeAttribute(.backgroundColor, range: range)
         ts.removeAttribute(.underlineStyle, range: range)
+        ts.removeAttribute(.strikethroughStyle, range: range)
         ts.addAttribute(.font, value: Theme.editorFont, range: range)
         ts.addAttribute(.foregroundColor, value: Theme.textColor, range: range)
         ts.addAttribute(.paragraphStyle, value: Theme.bodyParagraphStyle, range: range)
