@@ -24,14 +24,21 @@ struct MarkdownDocument: FileDocument {
         guard let data = configuration.file.regularFileContents else {
             throw CocoaError(.fileReadCorruptFile)
         }
-        guard let s = String(data: data, encoding: .utf8) else {
-            throw CocoaError(.fileReadInapplicableStringEncoding)
-        }
-        self.text = s
+        self.text = try Self.decode(data)
     }
 
     func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
-        let data = Data(text.utf8)
-        return FileWrapper(regularFileWithContents: data)
+        FileWrapper(regularFileWithContents: Self.encode(text))
+    }
+
+    static func decode(_ data: Data) throws -> String {
+        guard let s = String(data: data, encoding: .utf8) else {
+            throw CocoaError(.fileReadInapplicableStringEncoding)
+        }
+        return s
+    }
+
+    static func encode(_ text: String) -> Data {
+        Data(text.utf8)
     }
 }
