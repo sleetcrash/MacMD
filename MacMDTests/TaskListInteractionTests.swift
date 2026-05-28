@@ -2,6 +2,7 @@ import XCTest
 import AppKit
 @testable import MacMD
 
+@MainActor
 final class TaskListInteractionTests: XCTestCase {
 
     func testToggleReplacesSpaceWithX() {

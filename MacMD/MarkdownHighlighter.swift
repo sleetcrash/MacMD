@@ -1,6 +1,7 @@
 import AppKit
 
-final class MarkdownHighlighter: NSObject, NSTextStorageDelegate {
+@MainActor
+final class MarkdownHighlighter: NSObject, @preconcurrency NSTextStorageDelegate {
 
     var isSuppressed = false
     var isDisabled = false
@@ -54,6 +55,7 @@ final class MarkdownHighlighter: NSObject, NSTextStorageDelegate {
     }
 }
 
+@MainActor
 private enum MarkdownRules {
 
     struct Rule {

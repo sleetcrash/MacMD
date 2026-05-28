@@ -2,6 +2,7 @@ import XCTest
 import AppKit
 @testable import MacMD
 
+@MainActor
 final class MarkdownHighlighterTests: XCTestCase {
 
     private func highlight(_ text: String) -> NSTextStorage {

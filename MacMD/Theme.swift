@@ -1,5 +1,6 @@
 import AppKit
 
+@MainActor
 enum Theme {
     static let editorFontSize: CGFloat = 14
     static let editorLineSpacing: CGFloat = 4

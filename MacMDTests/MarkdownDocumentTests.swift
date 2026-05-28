@@ -1,6 +1,7 @@
 import XCTest
 @testable import MacMD
 
+@MainActor
 final class MarkdownDocumentTests: XCTestCase {
     func testDecodeReturnsStringForValidUTF8() throws {
         let data = Data("# Heading".utf8)
