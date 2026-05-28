@@ -12,7 +12,11 @@ final class MarkdownHighlighter: NSObject, NSTextStorageDelegate {
     }
 
     private static func r(_ pattern: String, options: NSRegularExpression.Options = []) -> NSRegularExpression {
-        try! NSRegularExpression(pattern: pattern, options: options)
+        do {
+            return try NSRegularExpression(pattern: pattern, options: options)
+        } catch {
+            fatalError("MarkdownHighlighter: pattern \(pattern) failed to compile: \(error)")
+        }
     }
 
     private static let fencePattern: NSRegularExpression = r("^[ \\t]*```[^\\n]*$", options: [.anchorsMatchLines])
