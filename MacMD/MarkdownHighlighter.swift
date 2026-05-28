@@ -4,7 +4,7 @@ final class MarkdownHighlighter: NSObject, NSTextStorageDelegate {
 
     var isSuppressed = false
     var isDisabled = false
-    private var lastFenceLineStarts: [Int] = []
+    private var lastFenceLines: [MarkdownRules.FenceLine] = []
 
     func textStorage(_ textStorage: NSTextStorage,
                      didProcessEditing editedMask: NSTextStorageEditActions,
@@ -16,10 +16,9 @@ final class MarkdownHighlighter: NSObject, NSTextStorageDelegate {
         let total = NSRange(location: 0, length: nsString.length)
         guard editedRange.location <= nsString.length else { return }
 
-        let fenceLines = MarkdownRules.fenceLineRanges(in: nsString, fullRange: total)
-        let currentFenceStarts = fenceLines.map { $0.location }
-        let fencesChanged = currentFenceStarts != lastFenceLineStarts
-        lastFenceLineStarts = currentFenceStarts
+        let fenceLines = MarkdownRules.fenceLines(in: nsString, fullRange: total)
+        let fencesChanged = fenceLines != lastFenceLines
+        lastFenceLines = fenceLines
 
         let codeSpans = MarkdownRules.spansFromFences(fenceLines, fullRange: total)
 
@@ -43,8 +42,8 @@ final class MarkdownHighlighter: NSObject, NSTextStorageDelegate {
         guard !isDisabled else { return }
         let nsString = textStorage.string as NSString
         let full = NSRange(location: 0, length: nsString.length)
-        let fenceLines = MarkdownRules.fenceLineRanges(in: nsString, fullRange: full)
-        lastFenceLineStarts = fenceLines.map { $0.location }
+        let fenceLines = MarkdownRules.fenceLines(in: nsString, fullRange: full)
+        lastFenceLines = fenceLines
         let spans = MarkdownRules.spansFromFences(fenceLines, fullRange: full)
         MarkdownRules.applyHighlighting(to: textStorage, in: full, fencedSpans: spans)
     }
@@ -65,7 +64,12 @@ private enum MarkdownRules {
         }
     }
 
-    static let fencePattern: NSRegularExpression = r("^[ \\t]*```[^\\n]*$", options: [.anchorsMatchLines])
+    static let fencePattern: NSRegularExpression = r("^[ \\t]*(`{3,}|~{3,})[^\\n]*$", options: [.anchorsMatchLines])
+
+    struct FenceLine: Equatable {
+        let range: NSRange
+        let marker: Character
+    }
 
     static let inlineRules: [Rule] = [
         Rule(regex: r("^(#{1,6})[ \\t]+.+$", options: [.anchorsMatchLines])) { ts, m in
@@ -160,27 +164,40 @@ private enum MarkdownRules {
         }
     }
 
-    static func fenceLineRanges(in nsString: NSString, fullRange: NSRange) -> [NSRange] {
-        var fences: [NSRange] = []
+    static func fenceLines(in nsString: NSString, fullRange: NSRange) -> [FenceLine] {
+        var lines: [FenceLine] = []
         fencePattern.enumerateMatches(in: nsString as String, options: [], range: fullRange) { match, _, _ in
-            if let m = match { fences.append(m.range) }
+            guard let m = match else { return }
+            let markerGroup = m.range(at: 1)
+            guard markerGroup.location != NSNotFound else { return }
+            let markerString = nsString.substring(with: NSRange(location: markerGroup.location, length: 1))
+            guard let marker = markerString.first else { return }
+            lines.append(FenceLine(range: m.range, marker: marker))
         }
-        return fences
+        return lines
     }
 
-    static func spansFromFences(_ fences: [NSRange], fullRange: NSRange) -> [NSRange] {
+    static func spansFromFences(_ lines: [FenceLine], fullRange: NSRange) -> [NSRange] {
         var spans: [NSRange] = []
         var i = 0
-        while i < fences.count {
-            let open = fences[i]
-            if i + 1 < fences.count {
-                let close = fences[i + 1]
-                let start = open.location
-                let end = close.location + close.length
+        while i < lines.count {
+            let open = lines[i]
+            var closeIndex: Int? = nil
+            var j = i + 1
+            while j < lines.count {
+                if lines[j].marker == open.marker {
+                    closeIndex = j
+                    break
+                }
+                j += 1
+            }
+            if let close = closeIndex {
+                let start = open.range.location
+                let end = lines[close].range.location + lines[close].range.length
                 spans.append(NSRange(location: start, length: end - start))
-                i += 2
+                i = close + 1
             } else {
-                let start = open.location
+                let start = open.range.location
                 let end = fullRange.location + fullRange.length
                 spans.append(NSRange(location: start, length: end - start))
                 i += 1

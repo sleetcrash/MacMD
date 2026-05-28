@@ -237,4 +237,37 @@ final class MarkdownHighlighterTests: XCTestCase {
         let traits = font?.fontDescriptor.symbolicTraits ?? []
         XCTAssertFalse(traits.contains(.bold), "disabled highlighter must not apply heading bold")
     }
+
+    func testTildeFencedCodeBlock() {
+        let text = """
+        Before
+        ~~~
+        let x = 1
+        ~~~
+        After
+        """
+        let storage = highlight(text)
+        let insideIndex = (text as NSString).range(of: "let x").location
+        XCTAssertEqual(color(at: insideIndex, in: storage), Theme.mutedColor)
+        let afterIndex = (text as NSString).range(of: "After").location
+        XCTAssertEqual(color(at: afterIndex, in: storage), Theme.textColor)
+    }
+
+    func testBacktickFenceCannotBeClosedByTildeFence() {
+        let text = """
+        ```
+        code one
+        ~~~
+        code two
+        ```
+        outside
+        """
+        let storage = highlight(text)
+        let codeTwoIndex = (text as NSString).range(of: "code two").location
+        XCTAssertEqual(color(at: codeTwoIndex, in: storage), Theme.mutedColor,
+                       "tilde line in the middle of a backtick fence is content, not a closer")
+        let outsideIndex = (text as NSString).range(of: "outside").location
+        XCTAssertEqual(color(at: outsideIndex, in: storage), Theme.textColor,
+                       "the second triple-backtick closes the fence")
+    }
 }
