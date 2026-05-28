@@ -31,7 +31,13 @@ struct MarkdownDocument: FileDocument {
         FileWrapper(regularFileWithContents: Self.encode(text))
     }
 
+    static let hardSizeLimit: Int = 64 * 1024 * 1024
+    static let softSizeLimit: Int = 8 * 1024 * 1024
+
     static func decode(_ data: Data) throws -> String {
+        if data.count > hardSizeLimit {
+            throw CocoaError(.fileReadTooLarge)
+        }
         guard var s = String(data: data, encoding: .utf8) else {
             throw CocoaError(.fileReadInapplicableStringEncoding)
         }
