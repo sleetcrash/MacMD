@@ -5,6 +5,8 @@ import AppKit
 @MainActor
 final class MarkdownHighlighterTests: XCTestCase {
 
+    // MARK: - Helpers
+
     private func highlight(_ text: String) -> NSTextStorage {
         let storage = NSTextStorage(string: text)
         let highlighter = MarkdownHighlighter()
@@ -20,6 +22,8 @@ final class MarkdownHighlighterTests: XCTestCase {
     private func color(at location: Int, in storage: NSTextStorage) -> NSColor? {
         storage.attribute(.foregroundColor, at: location, effectiveRange: nil) as? NSColor
     }
+
+    // MARK: - Headings
 
     func testHeadingIsBold() {
         let storage = highlight("# Hello\nBody text")
@@ -38,6 +42,8 @@ final class MarkdownHighlighterTests: XCTestCase {
         }
     }
 
+    // MARK: - Emphasis
+
     func testBoldDoubleStar() {
         let storage = highlight("This is **bold** text")
         let boldIndex = "This is **".count
@@ -49,6 +55,21 @@ final class MarkdownHighlighterTests: XCTestCase {
         let italicIndex = "An *".count
         XCTAssertTrue(font(at: italicIndex, in: storage)?.fontDescriptor.symbolicTraits.contains(.italic) ?? false)
     }
+
+    func testStrikethroughAppliesUnderlineStyle() {
+        let storage = highlight("This is ~~struck~~ text")
+        let struckIndex = "This is ~~".count
+        let raw = storage.attribute(.strikethroughStyle, at: struckIndex, effectiveRange: nil) as? Int
+        XCTAssertEqual(raw, NSUnderlineStyle.single.rawValue)
+    }
+
+    func testStrikethroughRejectsSpaceAfterOpeningDelimiter() {
+        let storage = highlight("not strike: ~~ foo ~~")
+        let index = "not strike: ".count + 3
+        XCTAssertNil(storage.attribute(.strikethroughStyle, at: index, effectiveRange: nil))
+    }
+
+    // MARK: - Code spans and fences
 
     func testInlineCodeHasBackground() {
         let storage = highlight("Use `code` here")
@@ -81,6 +102,41 @@ final class MarkdownHighlighterTests: XCTestCase {
         XCTAssertEqual(color(at: insideIndex, in: storage), Theme.mutedColor)
     }
 
+    func testTildeFencedCodeBlock() {
+        let text = """
+        Before
+        ~~~
+        let x = 1
+        ~~~
+        After
+        """
+        let storage = highlight(text)
+        let insideIndex = (text as NSString).range(of: "let x").location
+        XCTAssertEqual(color(at: insideIndex, in: storage), Theme.mutedColor)
+        let afterIndex = (text as NSString).range(of: "After").location
+        XCTAssertEqual(color(at: afterIndex, in: storage), Theme.textColor)
+    }
+
+    func testBacktickFenceCannotBeClosedByTildeFence() {
+        let text = """
+        ```
+        code one
+        ~~~
+        code two
+        ```
+        outside
+        """
+        let storage = highlight(text)
+        let codeTwoIndex = (text as NSString).range(of: "code two").location
+        XCTAssertEqual(color(at: codeTwoIndex, in: storage), Theme.mutedColor,
+                       "tilde line in the middle of a backtick fence is content, not a closer")
+        let outsideIndex = (text as NSString).range(of: "outside").location
+        XCTAssertEqual(color(at: outsideIndex, in: storage), Theme.textColor,
+                       "the second triple-backtick closes the fence")
+    }
+
+    // MARK: - Links
+
     func testLinkUnderlinesLabel() {
         let storage = highlight("See [Apple](https://apple.com) today")
         let labelIndex = "See [".count
@@ -88,6 +144,8 @@ final class MarkdownHighlighterTests: XCTestCase {
         XCTAssertEqual(underline, NSUnderlineStyle.single.rawValue)
         XCTAssertEqual(color(at: labelIndex, in: storage), Theme.linkColor)
     }
+
+    // MARK: - Lists
 
     func testUnorderedListMarker() {
         let storage = highlight("- First item")
@@ -98,6 +156,22 @@ final class MarkdownHighlighterTests: XCTestCase {
         let storage = highlight("1. First item")
         XCTAssertEqual(color(at: 0, in: storage), Theme.accentColor)
     }
+
+    func testOrderedListMarkerWithParen() {
+        let storage = highlight("1) First item")
+        XCTAssertEqual(color(at: 0, in: storage), Theme.accentColor)
+    }
+
+    func testAsteriskListMarkerIsNotItalicized() {
+        let storage = highlight("* item one")
+        let contentIndex = "* ".count
+        XCTAssertFalse(font(at: contentIndex, in: storage)?.fontDescriptor.symbolicTraits.contains(.italic) ?? true,
+                       "Bullet list item with asterisk must not trigger italic")
+        XCTAssertEqual(color(at: 0, in: storage), Theme.accentColor,
+                       "Asterisk list marker should be accent-colored")
+    }
+
+    // MARK: - Blockquotes, rules, plain text
 
     func testBlockquote() {
         let storage = highlight("> quoted text")
@@ -115,14 +189,7 @@ final class MarkdownHighlighterTests: XCTestCase {
         XCTAssertEqual(color(at: 0, in: storage), Theme.textColor)
     }
 
-    func testAsteriskListMarkerIsNotItalicized() {
-        let storage = highlight("* item one")
-        let contentIndex = "* ".count
-        XCTAssertFalse(font(at: contentIndex, in: storage)?.fontDescriptor.symbolicTraits.contains(.italic) ?? true,
-                       "Bullet list item with asterisk must not trigger italic")
-        XCTAssertEqual(color(at: 0, in: storage), Theme.accentColor,
-                       "Asterisk list marker should be accent-colored")
-    }
+    // MARK: - Composition
 
     func testItalicRejectsSpaceAfterOpeningDelimiter() {
         let storage = highlight("not italic: * foo *")
@@ -160,6 +227,8 @@ final class MarkdownHighlighterTests: XCTestCase {
         XCTAssertTrue(traits.contains(.italic), "Blockquote still adds italic trait")
     }
 
+    // MARK: - Paragraph styling and partial edits
+
     func testBodyParagraphStyleApplied() {
         let storage = highlight("Line one.")
         let paragraphStyle = storage.attribute(.paragraphStyle, at: 0, effectiveRange: nil) as? NSParagraphStyle
@@ -176,6 +245,8 @@ final class MarkdownHighlighterTests: XCTestCase {
         storage.endEditing()
         XCTAssertTrue(font(at: 0, in: storage)?.fontDescriptor.symbolicTraits.contains(.bold) ?? false)
     }
+
+    // MARK: - Fence boundary rehighlight
 
     func testAddingFenceRehighlightsFollowingContent() {
         let storage = NSTextStorage(string: "hello world\nmore text\n")
@@ -215,6 +286,8 @@ final class MarkdownHighlighterTests: XCTestCase {
                        "Content should return to plain text after its opening fence is deleted")
     }
 
+    // MARK: - Disabled mode
+
     func testDisabledHighlighterAppliesNoAttributes() {
         let storage = NSTextStorage(string: "# Heading\nBody")
         let highlighter = MarkdownHighlighter()
@@ -234,43 +307,12 @@ final class MarkdownHighlighterTests: XCTestCase {
         storage.beginEditing()
         storage.replaceCharacters(in: NSRange(location: 0, length: 5), with: "# Big")
         storage.endEditing()
-        let font = storage.attribute(.font, at: 0, effectiveRange: nil) as? NSFont
-        let traits = font?.fontDescriptor.symbolicTraits ?? []
+        let f = storage.attribute(.font, at: 0, effectiveRange: nil) as? NSFont
+        let traits = f?.fontDescriptor.symbolicTraits ?? []
         XCTAssertFalse(traits.contains(.bold), "disabled highlighter must not apply heading bold")
     }
 
-    func testTildeFencedCodeBlock() {
-        let text = """
-        Before
-        ~~~
-        let x = 1
-        ~~~
-        After
-        """
-        let storage = highlight(text)
-        let insideIndex = (text as NSString).range(of: "let x").location
-        XCTAssertEqual(color(at: insideIndex, in: storage), Theme.mutedColor)
-        let afterIndex = (text as NSString).range(of: "After").location
-        XCTAssertEqual(color(at: afterIndex, in: storage), Theme.textColor)
-    }
-
-    func testOrderedListMarkerWithParen() {
-        let storage = highlight("1) First item")
-        XCTAssertEqual(color(at: 0, in: storage), Theme.accentColor)
-    }
-
-    func testStrikethroughAppliesUnderlineStyle() {
-        let storage = highlight("This is ~~struck~~ text")
-        let struckIndex = "This is ~~".count
-        let raw = storage.attribute(.strikethroughStyle, at: struckIndex, effectiveRange: nil) as? Int
-        XCTAssertEqual(raw, NSUnderlineStyle.single.rawValue)
-    }
-
-    func testStrikethroughRejectsSpaceAfterOpeningDelimiter() {
-        let storage = highlight("not strike: ~~ foo ~~")
-        let index = "not strike: ".count + 3
-        XCTAssertNil(storage.attribute(.strikethroughStyle, at: index, effectiveRange: nil))
-    }
+    // MARK: - Task lists
 
     func testUnfinishedTaskListBracketIsAccent() {
         let storage = highlight("- [ ] buy milk")
@@ -295,23 +337,7 @@ final class MarkdownHighlighterTests: XCTestCase {
         XCTAssertNil(storage.attribute(.strikethroughStyle, at: bodyIndex, effectiveRange: nil))
     }
 
-    func testBacktickFenceCannotBeClosedByTildeFence() {
-        let text = """
-        ```
-        code one
-        ~~~
-        code two
-        ```
-        outside
-        """
-        let storage = highlight(text)
-        let codeTwoIndex = (text as NSString).range(of: "code two").location
-        XCTAssertEqual(color(at: codeTwoIndex, in: storage), Theme.mutedColor,
-                       "tilde line in the middle of a backtick fence is content, not a closer")
-        let outsideIndex = (text as NSString).range(of: "outside").location
-        XCTAssertEqual(color(at: outsideIndex, in: storage), Theme.textColor,
-                       "the second triple-backtick closes the fence")
-    }
+    // MARK: - Task checkbox ranges
 
     func testTaskCheckboxRangesEmptyWhenNoTaskLists() {
         let storage = NSTextStorage(string: "# Heading\nBody")
