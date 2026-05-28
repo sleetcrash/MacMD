@@ -18,4 +18,19 @@ final class MarkdownDocumentTests: XCTestCase {
         let data = Data(s.utf8)
         XCTAssertEqual(try MarkdownDocument.decode(data), s)
     }
+
+    func testEncodeAppendsTrailingNewlineWhenMissing() {
+        let data = MarkdownDocument.encode("hello")
+        XCTAssertEqual(String(data: data, encoding: .utf8), "hello\n")
+    }
+
+    func testEncodeDoesNotDoubleTrailingNewline() {
+        let data = MarkdownDocument.encode("hello\n")
+        XCTAssertEqual(String(data: data, encoding: .utf8), "hello\n")
+    }
+
+    func testEncodeLeavesEmptyTextEmpty() {
+        let data = MarkdownDocument.encode("")
+        XCTAssertEqual(String(data: data, encoding: .utf8), "")
+    }
 }

@@ -42,6 +42,12 @@ struct MarkdownDocument: FileDocument {
     }
 
     static func encode(_ text: String) -> Data {
-        Data(text.utf8)
+        guard !text.isEmpty else { return Data() }
+        if text.last == "\n" {
+            return Data(text.utf8)
+        }
+        var output = text
+        output.append("\n")
+        return Data(output.utf8)
     }
 }
