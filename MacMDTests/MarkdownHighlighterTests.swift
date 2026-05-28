@@ -311,4 +311,27 @@ final class MarkdownHighlighterTests: XCTestCase {
         XCTAssertEqual(color(at: outsideIndex, in: storage), Theme.textColor,
                        "the second triple-backtick closes the fence")
     }
+
+    func testTaskCheckboxRangesEmptyWhenNoTaskLists() {
+        let storage = NSTextStorage(string: "# Heading\nBody")
+        let highlighter = MarkdownHighlighter()
+        XCTAssertEqual(highlighter.taskCheckboxRanges(in: storage), [])
+    }
+
+    func testTaskCheckboxRangesFindsBracketPairs() {
+        let text = "- [ ] one\n- [x] two\n"
+        let storage = NSTextStorage(string: text)
+        let highlighter = MarkdownHighlighter()
+        let ranges = highlighter.taskCheckboxRanges(in: storage)
+        XCTAssertEqual(ranges.count, 2)
+        XCTAssertEqual((text as NSString).substring(with: ranges[0]), "[ ]")
+        XCTAssertEqual((text as NSString).substring(with: ranges[1]), "[x]")
+    }
+
+    func testTaskCheckboxRangesEmptyWhenDisabled() {
+        let storage = NSTextStorage(string: "- [ ] one")
+        let highlighter = MarkdownHighlighter()
+        highlighter.isDisabled = true
+        XCTAssertEqual(highlighter.taskCheckboxRanges(in: storage), [])
+    }
 }

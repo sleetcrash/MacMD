@@ -47,6 +47,11 @@ final class MarkdownHighlighter: NSObject, NSTextStorageDelegate {
         let spans = MarkdownRules.spansFromFences(fenceLines, fullRange: full)
         MarkdownRules.applyHighlighting(to: textStorage, in: full, fencedSpans: spans)
     }
+
+    func taskCheckboxRanges(in textStorage: NSTextStorage) -> [NSRange] {
+        guard !isDisabled else { return [] }
+        return MarkdownRules.taskCheckboxRanges(in: textStorage)
+    }
 }
 
 private enum MarkdownRules {
@@ -227,5 +232,24 @@ private enum MarkdownRules {
     static func intersectsAny(_ range: NSRange, ranges: [NSRange]) -> Bool {
         for r in ranges where NSIntersectionRange(r, range).length > 0 { return true }
         return false
+    }
+
+    static let taskListPattern: NSRegularExpression = r(
+        "^[ \\t]*[-*+][ \\t]+(\\[[ xX]\\])[ \\t]+",
+        options: [.anchorsMatchLines]
+    )
+
+    static func taskCheckboxRanges(in textStorage: NSTextStorage) -> [NSRange] {
+        let nsString = textStorage.string as NSString
+        let full = NSRange(location: 0, length: nsString.length)
+        var ranges: [NSRange] = []
+        taskListPattern.enumerateMatches(in: nsString as String, options: [], range: full) { match, _, _ in
+            guard let m = match else { return }
+            let bracket = m.range(at: 1)
+            if bracket.location != NSNotFound {
+                ranges.append(bracket)
+            }
+        }
+        return ranges
     }
 }
