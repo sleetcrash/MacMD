@@ -80,13 +80,18 @@ As you type, MacMD styles these markdown constructs live:
     **bold** and __bold__                  — bold
     *italic* and _italic_                  — italic
     ***bold italic***                      — bold + italic compose correctly
+    ~~strikethrough~~                      — single-line strike
     `inline code`                          — subtle background tint
-    ```                                    — fenced code blocks get the same tint,
-    fenced code                               and style to end of document if you
-    ```                                       haven't closed them yet
+    ```        ~~~                         — fenced code blocks get the same tint,
+    fenced     fenced                         and style to end of document if you
+    ```        ~~~                            haven't closed them yet (backtick and
+                                              tilde fences both work; a fence can
+                                              only be closed by the same marker)
     [link label](https://example.com)      — label underlined in link color, URL muted
     - unordered, * and + also valid        — marker in accent color
-    1. ordered list                        — marker in accent color
+    1. ordered list, 1) also valid         — marker in accent color
+    - [ ] todo                             — bracket accent; click to toggle
+    - [x] done                             — bracket accent + body strike-through
     > blockquote                           — muted + italic, composes with bold inside
     ---                                    — muted
 
@@ -98,7 +103,14 @@ Semantic colors are used throughout, so Dark Mode adapts automatically when you 
 
 Plain UTF-8 text. Byte-for-byte what you typed — no smart quotes, no dash substitution, no link detection, no autocorrect. Paste from another app always comes in as plain text.
 
+Two narrow exceptions to byte fidelity, in line with what BBEdit, Sublime, and VS Code do:
+
+- A single trailing newline is appended on save when the document doesn't already end with one (POSIX text-file convention; matters for shell pipelines, `wc -l`, and `git diff`).
+- A leading UTF-8 BOM (`EF BB BF`) is stripped on read, since BOMs are how some Windows editors and web tools sign their UTF-8 output and most editors silent-strip on import.
+
 If you try to open a file that isn't valid UTF-8, MacMD refuses and surfaces a clear error rather than silently corrupting it with replacement characters.
+
+Files larger than 64 MiB are rejected outright with a standard document-open error. Files between 8 MiB and 64 MiB open with syntax highlighting disabled so typing stays responsive — they're still fully editable, just unstyled.
 
 ## Security
 
@@ -124,7 +136,7 @@ Run tests:
 
     xcodebuild test -project MacMD.xcodeproj -scheme MacMD -destination 'platform=macOS'
 
-The test suite covers every syntax highlighting rule and the tricky edge cases (bold+italic composition, unclosed and newly-added/removed code fences, list-marker vs italic disambiguation, paragraph-style preservation).
+The test suite (46 tests as of 1.1.0) covers every syntax highlighting rule and the tricky edge cases — bold+italic composition, unclosed and newly-added/removed code fences, tilde-vs-backtick fence pairing, list-marker vs italic disambiguation, paragraph-style preservation, document size guard, BOM stripping, trailing-newline policy, and the task-list click toggle.
 
 ### Produce a release bundle
 
@@ -159,6 +171,8 @@ Upload all four to the GitHub release page. Most users prefer the DMG; the zip i
         Assets.xcassets/          AppIcon + AccentColor
       MacMDTests/
         MarkdownHighlighterTests.swift
+        MarkdownDocumentTests.swift
+        TaskListInteractionTests.swift
       Scripts/
         README.md
         make_icon.swift           Regenerates the app icon PNGs
