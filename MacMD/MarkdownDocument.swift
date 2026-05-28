@@ -32,8 +32,11 @@ struct MarkdownDocument: FileDocument {
     }
 
     static func decode(_ data: Data) throws -> String {
-        guard let s = String(data: data, encoding: .utf8) else {
+        guard var s = String(data: data, encoding: .utf8) else {
             throw CocoaError(.fileReadInapplicableStringEncoding)
+        }
+        if s.first == "\u{FEFF}" {
+            s.removeFirst()
         }
         return s
     }
