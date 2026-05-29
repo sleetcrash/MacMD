@@ -39,4 +39,42 @@ final class TaskListInteractionTests: XCTestCase {
         let ranges = highlighter.taskCheckboxRanges(in: storage)
         XCTAssertEqual(ranges.count, 3)
     }
+
+    func testFormatCommandTogglesCheckboxOnCaretLine() {
+        let textView = ClickableTextView()
+        let highlighter = MarkdownHighlighter()
+        textView.highlighter = highlighter
+        textView.string = "- [ ] one\n- [ ] two"
+        let caret = (textView.string as NSString).range(of: "two").location
+        textView.setSelectedRange(NSRange(location: caret, length: 0))
+
+        textView.toggleTaskCheckbox(nil)
+
+        XCTAssertEqual(textView.string, "- [ ] one\n- [x] two",
+                       "Only the checkbox on the caret's line should flip")
+    }
+
+    func testFormatCommandTogglesCheckedBackToUnchecked() {
+        let textView = ClickableTextView()
+        let highlighter = MarkdownHighlighter()
+        textView.highlighter = highlighter
+        textView.string = "- [x] done"
+        textView.setSelectedRange(NSRange(location: 0, length: 0))
+
+        textView.toggleTaskCheckbox(nil)
+
+        XCTAssertEqual(textView.string, "- [ ] done")
+    }
+
+    func testFormatCommandIsNoOpWhenCaretLineHasNoCheckbox() {
+        let textView = ClickableTextView()
+        let highlighter = MarkdownHighlighter()
+        textView.highlighter = highlighter
+        textView.string = "plain paragraph"
+        textView.setSelectedRange(NSRange(location: 0, length: 0))
+
+        textView.toggleTaskCheckbox(nil)
+
+        XCTAssertEqual(textView.string, "plain paragraph")
+    }
 }

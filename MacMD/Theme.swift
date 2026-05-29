@@ -2,19 +2,38 @@ import AppKit
 
 @MainActor
 enum Theme {
-    static let editorFontSize: CGFloat = 14
     static let editorLineSpacing: CGFloat = 4
 
-    static let editorFont: NSFont = .monospacedSystemFont(ofSize: editorFontSize, weight: .regular)
+    private(set) static var editorFontSize: CGFloat = FontSize.standard
+    private(set) static var editorFont: NSFont = monospaced(FontSize.standard)
+    private static var headingFonts: [NSFont] = makeHeadingFonts(base: FontSize.standard)
 
-    private static let headingFonts: [NSFont] = (1...6).map { level in
-        let bump = CGFloat(7 - level)
-        return .monospacedSystemFont(ofSize: editorFontSize + bump, weight: .bold)
+    /// Clamps to the supported range and rebuilds the cached fonts. Returns
+    /// whether the size actually changed, so callers can skip a re-highlight.
+    @discardableResult
+    static func setEditorFontSize(_ size: CGFloat) -> Bool {
+        let clamped = FontSize.clamp(size)
+        guard clamped != editorFontSize else { return false }
+        editorFontSize = clamped
+        editorFont = monospaced(clamped)
+        headingFonts = makeHeadingFonts(base: clamped)
+        return true
     }
 
     static func headingFont(level: Int) -> NSFont {
         let clamped = max(1, min(6, level))
         return headingFonts[clamped - 1]
+    }
+
+    private static func monospaced(_ size: CGFloat) -> NSFont {
+        .monospacedSystemFont(ofSize: size, weight: .regular)
+    }
+
+    private static func makeHeadingFonts(base: CGFloat) -> [NSFont] {
+        (1...6).map { level in
+            let bump = CGFloat(7 - level)
+            return .monospacedSystemFont(ofSize: base + bump, weight: .bold)
+        }
     }
 
     static var textColor: NSColor { .labelColor }

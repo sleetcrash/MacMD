@@ -3,12 +3,14 @@ import AppKit
 
 struct MarkdownTextView: NSViewRepresentable {
     @Binding var text: String
+    var fontSize: CGFloat
 
     func makeCoordinator() -> Coordinator {
         Coordinator(text: $text)
     }
 
     func makeNSView(context: Context) -> NSScrollView {
+        Theme.setEditorFontSize(fontSize)
         let scrollView = ClickableTextView.scrollableClickableTextView()
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = false
@@ -64,6 +66,8 @@ struct MarkdownTextView: NSViewRepresentable {
             .paragraphStyle: paragraph
         ]
 
+        textView.setAccessibilityLabel("Markdown editor")
+
         textView.delegate = context.coordinator
         textView.textStorage?.delegate = context.coordinator.highlighter
         textView.highlighter = context.coordinator.highlighter
@@ -76,6 +80,9 @@ struct MarkdownTextView: NSViewRepresentable {
 
     func updateNSView(_ nsView: NSScrollView, context: Context) {
         guard let textView = nsView.documentView as? NSTextView else { return }
+        if Theme.setEditorFontSize(fontSize) {
+            context.coordinator.applyFontChange(to: textView)
+        }
         if textView.string != text {
             context.coordinator.replace(textView: textView, with: text)
         }
@@ -128,6 +135,16 @@ struct MarkdownTextView: NSViewRepresentable {
             isUpdatingFromBinding = false
         }
 
+        func applyFontChange(to textView: NSTextView) {
+            guard let ts = textView.textStorage else { return }
+            textView.typingAttributes[.font] = Theme.editorFont
+            if highlighter.isDisabled {
+                textView.font = Theme.editorFont
+            } else {
+                highlighter.rehighlightAll(ts)
+            }
+        }
+
         func textDidChange(_ notification: Notification) {
             guard !isUpdatingFromBinding,
                   let tv = notification.object as? NSTextView else { return }
@@ -176,9 +193,28 @@ final class ClickableTextView: NSTextView {
             super.mouseDown(with: event)
             return
         }
+        toggleCheckbox(at: bracket)
+    }
 
-        let innerLocation = bracket.location + 1
-        let innerRange = NSRange(location: innerLocation, length: 1)
+    /// Toggles the task checkbox on the line holding the insertion point.
+    /// Wired to a Format-menu command so the checkboxes are reachable from the
+    /// keyboard and VoiceOver, not just by clicking.
+    @objc func toggleTaskCheckbox(_ sender: Any?) {
+        guard let highlighter, let ts = textStorage else { return }
+        let caret = min(selectedRange().location, ts.length)
+        let line = (ts.string as NSString).lineRange(for: NSRange(location: caret, length: 0))
+        let ranges = highlighter.taskCheckboxRanges(in: ts)
+        guard let bracket = ranges.first(where: { NSLocationInRange($0.location, line) }) else {
+            NSSound.beep()
+            return
+        }
+        toggleCheckbox(at: bracket)
+    }
+
+    private func toggleCheckbox(at bracket: NSRange) {
+        guard let ts = textStorage else { return }
+        let innerRange = NSRange(location: bracket.location + 1, length: 1)
+        guard NSMaxRange(innerRange) <= ts.length else { return }
         let current = (ts.string as NSString).substring(with: innerRange)
         let replacement = (current == " ") ? "x" : " "
 

@@ -218,6 +218,50 @@ final class MarkdownHighlighterTests: XCTestCase {
         XCTAssertFalse(outerTraits.contains(.italic), "Outer must NOT be italic")
     }
 
+    // MARK: - Editor font size
+
+    func testEditorFontSizeClampsBelowMinimum() {
+        Theme.setEditorFontSize(4)
+        XCTAssertEqual(Theme.editorFontSize, FontSize.minimum)
+        XCTAssertEqual(Theme.editorFont.pointSize, FontSize.minimum)
+        Theme.setEditorFontSize(FontSize.standard)
+    }
+
+    func testEditorFontSizeClampsAboveMaximum() {
+        Theme.setEditorFontSize(500)
+        XCTAssertEqual(Theme.editorFontSize, FontSize.maximum)
+        Theme.setEditorFontSize(FontSize.standard)
+    }
+
+    func testEditorFontSizeRebuildsHeadingFonts() {
+        Theme.setEditorFontSize(20)
+        XCTAssertEqual(Theme.editorFont.pointSize, 20)
+        XCTAssertEqual(Theme.headingFont(level: 6).pointSize, 21, "level 6 bumps the base by one point")
+        XCTAssertEqual(Theme.headingFont(level: 1).pointSize, 26, "level 1 bumps the base by six points")
+        Theme.setEditorFontSize(FontSize.standard)
+    }
+
+    func testEditorFontSizeChangeReportsWhetherItChanged() {
+        Theme.setEditorFontSize(FontSize.standard)
+        XCTAssertFalse(Theme.setEditorFontSize(FontSize.standard), "no change should report false")
+        XCTAssertTrue(Theme.setEditorFontSize(FontSize.standard + 2), "a real change should report true")
+        Theme.setEditorFontSize(FontSize.standard)
+    }
+
+    func testLongEmphasisLineHighlightsWithoutBacktracking() {
+        // A single long line of "** a ** a ..." used to send the bold rules into
+        // catastrophic backtracking and peg the main thread for minutes. The inner
+        // run is now bounded so this must finish near-instantly.
+        let line = "a " + String(repeating: "** a ", count: 40_000)
+        let storage = NSTextStorage(string: line)
+        let highlighter = MarkdownHighlighter()
+        storage.delegate = highlighter
+        let started = CFAbsoluteTimeGetCurrent()
+        highlighter.rehighlightAll(storage)
+        XCTAssertLessThan(CFAbsoluteTimeGetCurrent() - started, 2.0,
+                          "Emphasis highlighting must stay linear on long lines")
+    }
+
     func testBlockquoteComposesWithBold() {
         let text = "> **bolded** in a quote"
         let storage = highlight(text)
