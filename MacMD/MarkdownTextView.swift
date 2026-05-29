@@ -150,6 +150,49 @@ struct MarkdownTextView: NSViewRepresentable {
                   let tv = notification.object as? NSTextView else { return }
             text = tv.string
         }
+
+        /// Markdown-aware Return: continue the current list item, or end the
+        /// list on an empty item. Returns true when handled (the default
+        /// newline is suppressed), false to let a normal newline through.
+        func textView(_ textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
+            guard commandSelector == #selector(NSResponder.insertNewline(_:)),
+                  let ts = textView.textStorage else { return false }
+            let caret = textView.selectedRange()
+            guard caret.length == 0 else { return false }
+
+            let nsString = ts.string as NSString
+            var lineStart = 0, lineEnd = 0, contentsEnd = 0
+            nsString.getLineStart(&lineStart, end: &lineEnd, contentsEnd: &contentsEnd,
+                                  for: NSRange(location: caret.location, length: 0))
+            // Only act when the caret sits at the end of the line's content.
+            guard caret.location == contentsEnd else { return false }
+
+            let line = nsString.substring(with: NSRange(location: lineStart, length: contentsEnd - lineStart))
+            switch EditingCommands.listContinuation(forLine: line) {
+            case .none:
+                return false
+            case .continue(let newPrefix):
+                let insertion = "\n" + newPrefix
+                applyEdit(to: textView, ts: ts, range: caret, replacement: insertion,
+                          caretAfter: caret.location + (insertion as NSString).length)
+                return true
+            case .terminate(let prefixLength):
+                applyEdit(to: textView, ts: ts,
+                          range: NSRange(location: lineStart, length: prefixLength),
+                          replacement: "", caretAfter: lineStart)
+                return true
+            }
+        }
+
+        private func applyEdit(to textView: NSTextView, ts: NSTextStorage,
+                               range: NSRange, replacement: String, caretAfter: Int) {
+            guard textView.shouldChangeText(in: range, replacementString: replacement) else { return }
+            ts.beginEditing()
+            ts.replaceCharacters(in: range, with: replacement)
+            ts.endEditing()
+            textView.didChangeText()
+            textView.setSelectedRange(NSRange(location: caretAfter, length: 0))
+        }
     }
 }
 
@@ -225,5 +268,29 @@ final class ClickableTextView: NSTextView {
         ts.endEditing()
         didChangeText()
         setSelectedRange(priorSelection)
+    }
+
+    /// Wrap or unwrap the selection in a markdown emphasis marker. Bound to the
+    /// Format menu's Bold (`**`) and Italic (`*`) commands.
+    func macmdBold(_ sender: Any?) { applyEmphasis(marker: "**") }
+    func macmdItalic(_ sender: Any?) { applyEmphasis(marker: "*") }
+
+    private func applyEmphasis(marker: String) {
+        guard let ts = textStorage else { return }
+        let edit = EditingCommands.emphasisToggle(in: ts.string as NSString,
+                                                  selection: selectedRange(),
+                                                  marker: marker)
+        guard shouldChangeText(in: edit.range, replacementString: edit.replacement) else { return }
+        ts.beginEditing()
+        ts.replaceCharacters(in: edit.range, with: edit.replacement)
+        ts.endEditing()
+        didChangeText()
+        setSelectedRange(edit.selectionAfter)
+    }
+
+    /// Print the document through the standard system print panel. Bound to
+    /// File ▸ Print. NSPrintOperation paginates the full (content-sized) view.
+    func macmdPrint(_ sender: Any?) {
+        NSPrintOperation(view: self).run()
     }
 }
