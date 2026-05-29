@@ -16,7 +16,7 @@ Go to the [latest release](../../releases/latest). You'll see several files; gra
 
 | File | What it is | Who should click it |
 |---|---|---|
-| **`MacMD-<version>.dmg`** | The installer. ~160 KB. | **Most people: this is the one you want.** |
+| **`MacMD-<version>.dmg`** | The installer. ~400 KB. | **Most people: this is the one you want.** |
 | `MacMD-<version>.zip` | Same app, zipped instead of in a DMG. | Alternative if your browser doesn't like DMGs. |
 | `*.sha256` | Tiny checksum files. | Optional; for verifying your download wasn't tampered with. |
 | `Source code (zip / tar.gz)` | The Swift source. | Only if you want to build it yourself. Ignore otherwise. |
