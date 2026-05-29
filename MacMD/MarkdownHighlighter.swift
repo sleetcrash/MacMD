@@ -100,10 +100,10 @@ private enum MarkdownRules {
             ts.addAttribute(.font, value: Theme.headingFont(level: level), range: full)
             ts.addAttribute(.foregroundColor, value: Theme.accentColor, range: full)
         },
-        Rule(regex: r("\\*\\*(?!\\s)[^\\n]+?(?<!\\s)\\*\\*")) { ts, m in
+        Rule(regex: r("\\*\\*(?!\\s)(?:[^*\\n]|\\*(?!\\*))+(?<!\\s)\\*\\*")) { ts, m in
             addFontTrait(.bold, to: ts, in: m.range)
         },
-        Rule(regex: r("(?<![A-Za-z0-9_])__(?!\\s)[^\\n]+?(?<!\\s)__(?![A-Za-z0-9_])")) { ts, m in
+        Rule(regex: r("(?<![A-Za-z0-9_])__(?!\\s)(?:[^_\\n]|_(?!_))+(?<!\\s)__(?![A-Za-z0-9_])")) { ts, m in
             addFontTrait(.bold, to: ts, in: m.range)
         },
         Rule(regex: r("(?<![\\*A-Za-z0-9])\\*(?!\\s)[^*\\n]+(?<!\\s)\\*(?![\\*A-Za-z0-9])")) { ts, m in
