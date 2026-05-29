@@ -17,6 +17,8 @@
 		F200000000000000000000A1 /* MarkdownHighlighterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000A3 /* MarkdownHighlighterTests.swift */; };
 		F200000000000000000000A7 /* MarkdownDocumentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000A6 /* MarkdownDocumentTests.swift */; };
 		F200000000000000000000A9 /* TaskListInteractionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000A8 /* TaskListInteractionTests.swift */; };
+		F200000000000000000000B0 /* EditingCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000B0 /* EditingCommands.swift */; };
+		F200000000000000000000B1 /* EditingCommandsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000B1 /* EditingCommandsTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -42,6 +44,8 @@
 		F100000000000000000000A3 /* MarkdownHighlighterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownHighlighterTests.swift; sourceTree = "<group>"; };
 		F100000000000000000000A6 /* MarkdownDocumentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownDocumentTests.swift; sourceTree = "<group>"; };
 		F100000000000000000000A8 /* TaskListInteractionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskListInteractionTests.swift; sourceTree = "<group>"; };
+		F100000000000000000000B0 /* EditingCommands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditingCommands.swift; sourceTree = "<group>"; };
+		F100000000000000000000B1 /* EditingCommandsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditingCommandsTests.swift; sourceTree = "<group>"; };
 		F100000000000000000000A4 /* MacMD.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MacMD.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F100000000000000000000A5 /* MacMDTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MacMDTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -82,6 +86,7 @@
 				F1000000000000000000000D /* MarkdownTextView.swift */,
 				F1000000000000000000000E /* MarkdownHighlighter.swift */,
 				F1000000000000000000000F /* Theme.swift */,
+				F100000000000000000000B0 /* EditingCommands.swift */,
 				F100000000000000000000A0 /* Assets.xcassets */,
 				F100000000000000000000A2 /* Info.plist */,
 				F100000000000000000000A1 /* MacMD.entitlements */,
@@ -95,6 +100,7 @@
 				F100000000000000000000A3 /* MarkdownHighlighterTests.swift */,
 				F100000000000000000000A6 /* MarkdownDocumentTests.swift */,
 				F100000000000000000000A8 /* TaskListInteractionTests.swift */,
+				F100000000000000000000B1 /* EditingCommandsTests.swift */,
 			);
 			path = MacMDTests;
 			sourceTree = "<group>";
@@ -212,6 +218,7 @@
 				F2000000000000000000000D /* MarkdownTextView.swift in Sources */,
 				F2000000000000000000000E /* MarkdownHighlighter.swift in Sources */,
 				F2000000000000000000000F /* Theme.swift in Sources */,
+				F200000000000000000000B0 /* EditingCommands.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -222,6 +229,7 @@
 				F200000000000000000000A1 /* MarkdownHighlighterTests.swift in Sources */,
 				F200000000000000000000A7 /* MarkdownDocumentTests.swift in Sources */,
 				F200000000000000000000A9 /* TaskListInteractionTests.swift in Sources */,
+				F200000000000000000000B1 /* EditingCommandsTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
