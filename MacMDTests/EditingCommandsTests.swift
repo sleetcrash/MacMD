@@ -109,16 +109,46 @@ final class EditingCommandsTests: XCTestCase {
 
     // MARK: - Characterization (pinned, accepted Phase 1 limitations)
 
-    /// Italicizing a word that sits inside **bold** sees the adjacent `*` of the
-    /// `**` as an italic marker and toggles it off, yielding `*word*`. This is
-    /// the spec's "no special handling for composition" behavior. Pinned so any
-    /// future change to the flanking logic is caught deliberately.
-    func testItalicInsideBoldUnwrapsAdjacentMarker() {
+    /// ⌘I on a word inside **bold** must ADD italic (wrap), not strip a bold
+    /// asterisk. The flanking `*` is part of `**`, so it is not an italic
+    /// marker. Result: ***word***.
+    func testItalicInsideBoldAddsItalicNotStripBold() {
         let text = "**word**" as NSString
         let selection = NSRange(location: 2, length: 4) // "word"
         let edit = EditingCommands.emphasisToggle(in: text, selection: selection, marker: "*")
-        XCTAssertEqual(edit.range, NSRange(location: 1, length: 6))
+        XCTAssertEqual(edit.range, selection)
+        XCTAssertEqual(edit.replacement, "*word*")
+        XCTAssertEqual(edit.selectionAfter, NSRange(location: 3, length: 4))
+    }
+
+    /// Bold toggle-off of **word** still works: the flanking `**` is the exact
+    /// marker, not extended by a further `*`.
+    func testBoldToggleOffStillUnwraps() {
+        let text = "**word**" as NSString
+        let selection = NSRange(location: 2, length: 4)
+        let edit = EditingCommands.emphasisToggle(in: text, selection: selection, marker: "**")
+        XCTAssertEqual(edit.range, NSRange(location: 0, length: 8))
         XCTAssertEqual(edit.replacement, "word")
+    }
+
+    /// Italic toggle-off of a lone *word* still works.
+    func testItalicToggleOffLoneMarkers() {
+        let text = "*word*" as NSString
+        let selection = NSRange(location: 1, length: 4)
+        let edit = EditingCommands.emphasisToggle(in: text, selection: selection, marker: "*")
+        XCTAssertEqual(edit.range, NSRange(location: 0, length: 6))
+        XCTAssertEqual(edit.replacement, "word")
+    }
+
+    /// Known edge (pinned): italicizing a word inside ***bold+italic*** wraps
+    /// rather than removing the italic layer. Full asterisk-run parsing is out
+    /// of scope for this minimal editor; pinned so the behavior stays deliberate.
+    func testTripleAsteriskItalicWraps() {
+        let text = "***word***" as NSString
+        let selection = NSRange(location: 3, length: 4)
+        let edit = EditingCommands.emphasisToggle(in: text, selection: selection, marker: "*")
+        XCTAssertEqual(edit.range, selection)
+        XCTAssertEqual(edit.replacement, "*word*")
     }
 
     func testIndentedEmptyItemTerminates() {

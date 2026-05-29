@@ -40,11 +40,23 @@ enum EditingCommands {
 
         let beforeStart = selection.location - markerLength
         let afterStart = selection.location + selection.length
+        let markerChar = (marker as NSString).substring(to: 1)
+
+        // A flanking marker only counts for unwrapping when it is exactly the
+        // marker AND is not extended by another marker character on its outer
+        // side. That stops a lone `*` belonging to a `**` pair from being read
+        // as an italic marker, so toggling italic inside **bold** adds italic
+        // (wraps to ***word***) instead of stripping a bold asterisk.
+        func isExactMarker(markerStart: Int, outerIndex: Int) -> Bool {
+            guard markerStart >= 0, markerStart + markerLength <= text.length else { return false }
+            guard text.substring(with: NSRange(location: markerStart, length: markerLength)) == marker else { return false }
+            if outerIndex < 0 || outerIndex >= text.length { return true }
+            return text.substring(with: NSRange(location: outerIndex, length: 1)) != markerChar
+        }
+
         let isFlanked =
-            beforeStart >= 0 &&
-            afterStart + markerLength <= text.length &&
-            text.substring(with: NSRange(location: beforeStart, length: markerLength)) == marker &&
-            text.substring(with: NSRange(location: afterStart, length: markerLength)) == marker
+            isExactMarker(markerStart: beforeStart, outerIndex: beforeStart - 1) &&
+            isExactMarker(markerStart: afterStart, outerIndex: afterStart + markerLength)
 
         if isFlanked {
             return TextEdit(
