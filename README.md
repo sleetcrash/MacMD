@@ -12,11 +12,11 @@ Minimum macOS version: 14 (Sonoma). Tested on 15 (Sequoia) and 26 (Tahoe).
 
 ### 1. Download
 
-Go to the [latest release](../../releases/latest). You'll see several files — grab just one (version numbers will match whatever the current release is):
+Go to the [latest release](../../releases/latest). You'll see several files; grab just one (version numbers will match whatever the current release is):
 
 | File | What it is | Who should click it |
 |---|---|---|
-| **`MacMD-<version>.dmg`** | The installer. ~160 KB. | **Most people — this is the one you want.** |
+| **`MacMD-<version>.dmg`** | The installer. ~160 KB. | **Most people: this is the one you want.** |
 | `MacMD-<version>.zip` | Same app, zipped instead of in a DMG. | Alternative if your browser doesn't like DMGs. |
 | `*.sha256` | Tiny checksum files. | Optional; for verifying your download wasn't tampered with. |
 | `Source code (zip / tar.gz)` | The Swift source. | Only if you want to build it yourself. Ignore otherwise. |
@@ -68,7 +68,10 @@ File menu works exactly as you'd expect. All commands use standard Mac keybindin
     Cmd-W     Close window (prompts to save if dirty)
     Cmd-Z / Cmd-Shift-Z   Undo / Redo
     Cmd-F     Find (inline find bar)
-    Cmd-,     Preferences (none yet — App does nothing on this shortcut)
+    Cmd-Shift-L   Toggle the task checkbox on the current line
+    Cmd-+ / Cmd--   Increase / decrease editor font size
+    Cmd-0     Reset editor font size to the default
+    Cmd-,     Settings (currently just the editor font size)
 
 The editor autosaves in the background. If the app quits unexpectedly, reopening recovers your work. Recent files appear under `File → Open Recent`.
 
@@ -76,32 +79,32 @@ The editor autosaves in the background. If the app quits unexpectedly, reopening
 
 As you type, MacMD styles these markdown constructs live:
 
-    # Heading 1 through ###### Heading 6   — bold, accent color, sized per level
-    **bold** and __bold__                  — bold
-    *italic* and _italic_                  — italic
-    ***bold italic***                      — bold + italic compose correctly
-    ~~strikethrough~~                      — single-line strike
-    `inline code`                          — subtle background tint
-    ```        ~~~                         — fenced code blocks get the same tint,
+    # Heading 1 through ###### Heading 6   → bold, accent color, sized per level
+    **bold** and __bold__                  → bold
+    *italic* and _italic_                  → italic
+    ***bold italic***                      → bold + italic compose correctly
+    ~~strikethrough~~                      → single-line strike
+    `inline code`                          → subtle background tint
+    ```        ~~~                         → fenced code blocks get the same tint,
     fenced     fenced                         and style to end of document if you
     ```        ~~~                            haven't closed them yet (backtick and
                                               tilde fences both work; a fence can
                                               only be closed by the same marker)
-    [link label](https://example.com)      — label underlined in link color, URL muted
-    - unordered, * and + also valid        — marker in accent color
-    1. ordered list, 1) also valid         — marker in accent color
-    - [ ] todo                             — bracket accent; click to toggle
-    - [x] done                             — bracket accent + body strike-through
-    > blockquote                           — muted + italic, composes with bold inside
-    ---                                    — muted
+    [link label](https://example.com)      → label underlined in link color, URL muted
+    - unordered, * and + also valid        → marker in accent color
+    1. ordered list, 1) also valid         → marker in accent color
+    - [ ] todo                             → bracket accent; click to toggle
+    - [x] done                             → bracket accent + body strike-through
+    > blockquote                           → muted + italic, composes with bold inside
+    ---                                    → muted
 
-Highlighting updates only the paragraph you're editing, so typing stays smooth on long files. Inside fenced code blocks, inline rules are intentionally suppressed — code stays code.
+Highlighting updates only the paragraph you're editing, so typing stays smooth on long files. Inside fenced code blocks, inline rules are intentionally suppressed, so code stays code.
 
 Semantic colors are used throughout, so Dark Mode adapts automatically when you toggle system appearance.
 
 ## What gets saved
 
-Plain UTF-8 text. Byte-for-byte what you typed — no smart quotes, no dash substitution, no link detection, no autocorrect. Paste from another app always comes in as plain text.
+Plain UTF-8 text. Byte-for-byte what you typed: no smart quotes, no dash substitution, no link detection, no autocorrect. Paste from another app always comes in as plain text.
 
 Two narrow exceptions to byte fidelity, in line with what BBEdit, Sublime, and VS Code do:
 
@@ -110,13 +113,13 @@ Two narrow exceptions to byte fidelity, in line with what BBEdit, Sublime, and V
 
 If you try to open a file that isn't valid UTF-8, MacMD refuses and surfaces a clear error rather than silently corrupting it with replacement characters.
 
-Files larger than 64 MiB are rejected outright with a standard document-open error. Files between 8 MiB and 64 MiB open with syntax highlighting disabled so typing stays responsive — they're still fully editable, just unstyled.
+Files larger than 64 MiB are rejected outright with a standard document-open error. Files between 8 MiB and 64 MiB open with syntax highlighting disabled so typing stays responsive; they're still fully editable, just unstyled.
 
 ## Security
 
 MacMD has no network access, no access to the camera, microphone, location, photos, contacts, calendars, or Spotlight indexing. It doesn't register any URL schemes, daemons, or background services. The hardened runtime is enabled and the binary is code-signed.
 
-The app only ever opens and saves files you explicitly choose through the standard Open and Save panels — it doesn't browse your filesystem on its own.
+The app only ever opens and saves files you explicitly choose through the standard Open and Save panels; it doesn't browse your filesystem on its own.
 
 As of 1.0.2 MacMD is **not sandboxed**. The App Sandbox was removed because it caused intermittent save failures on external / USB volumes (the security-scoped URL granted at file-open time stopped being valid after the drive slept or was re-mounted, which is a known limitation of SwiftUI's `DocumentGroup`). This matches the posture of editors like BBEdit, Sublime Text, and VS Code.
 
@@ -136,7 +139,7 @@ Run tests:
 
     xcodebuild test -project MacMD.xcodeproj -scheme MacMD -destination 'platform=macOS'
 
-The test suite (46 tests as of 1.1.0) covers every syntax highlighting rule and the tricky edge cases — bold+italic composition, unclosed and newly-added/removed code fences, tilde-vs-backtick fence pairing, list-marker vs italic disambiguation, paragraph-style preservation, document size guard, BOM stripping, trailing-newline policy, and the task-list click toggle.
+The test suite (54 tests as of 1.1.1) covers every syntax highlighting rule and the tricky edge cases: bold+italic composition, unclosed and newly-added/removed code fences, tilde-vs-backtick fence pairing, list-marker vs italic disambiguation, paragraph-style preservation, document size guard, BOM stripping, trailing-newline policy, the task-list toggle (click and keyboard), editor font-size bounds, and a guard against pathological emphasis lines.
 
 ### Produce a release bundle
 
@@ -180,10 +183,11 @@ Upload all four to the GitHub release page. Most users prefer the DMG; the zip i
         package.sh                Builds Release and produces zip + dmg in dist/
       docs/
         screenshot.png
+        social-preview.png
       dist/                       (gitignored) release artifacts go here
 
 ## Known intentional limits
 
-No live rendered preview pane. No toolbar. No theming UI. No word count, export to HTML, or front-matter handling. The goal is "simple like TextEdit, but for markdown" — anything beyond that is out of scope.
+No live rendered preview pane. No toolbar. No theming UI. No word count, export to HTML, or front-matter handling. The goal is "simple like TextEdit, but for markdown"; anything beyond that is out of scope.
 
 No multi-cursor editing (NSTextView supports it; MacMD preserves only the primary selection through external text updates). No outline pane, no file browser.

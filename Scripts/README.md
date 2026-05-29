@@ -2,7 +2,7 @@
 
 ## make_icon.swift
 
-Regenerates the 10 app-icon PNGs (16, 32, 64, 128, 256, 512, 1024 px) directly into `MacMD/Assets.xcassets/AppIcon.appiconset/`. Uses CoreGraphics + CoreText — no external dependencies.
+Regenerates the 10 app-icon PNGs (16, 32, 64, 128, 256, 512, 1024 px) directly into `MacMD/Assets.xcassets/AppIcon.appiconset/`. Uses CoreGraphics + CoreText, no external dependencies.
 
 Run:
 
@@ -10,7 +10,7 @@ Run:
 
 Then rebuild the app in Xcode (or via `xcodebuild`). The asset catalog picks up the new PNGs automatically.
 
-Edit the script to change the icon — colors, font, corner radius, kerning are all local constants near the top.
+Edit the script to change the icon: colors, font, corner radius, and kerning are all local constants near the top.
 
 ## package.sh
 
@@ -23,9 +23,9 @@ Run:
 Produces: `dist/MacMD-X.Y.Z.zip`, `dist/MacMD-X.Y.Z.zip.sha256`, `dist/MacMD-X.Y.Z.dmg`, `dist/MacMD-X.Y.Z.dmg.sha256`.
 
 Notes for maintainers:
-- The script selects the **newest** `MacMD.app` in DerivedData by mtime — not arbitrary `find` order — so a stale previous-version build can't be picked up after a clean build. It prints `Using build: <path>` so you can eyeball the selection.
+- The script selects the **newest** `MacMD.app` in DerivedData by mtime, not arbitrary `find` order, so a stale previous-version build can't be picked up after a clean build. It prints `Using build: <path>` so you can eyeball the selection.
 - The DMG staging dir is cleaned with a `trap` on `EXIT`, so an `hdiutil` failure under `set -e` doesn't leak `/tmp/macmd-dmg.*`.
-- Ad-hoc signed. See `project.md` for the notarization path.
+- Ad-hoc signed, not Apple-notarized. The README's Install section documents the one-time Gatekeeper approval that end users perform.
 
 ## make_social_preview.swift
 

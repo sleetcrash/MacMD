@@ -2,6 +2,21 @@
 
 All notable changes to MacMD will be documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2026-05-28
+
+### Added
+- Adjustable editor font size. View menu: Increase Font Size (Cmd-+), Decrease Font Size (Cmd--), Actual Size (Cmd-0). The size is persisted across launches and applies to every open document.
+- A Settings window (Cmd-,) with a stepper for the editor font size.
+- Edit menu: Toggle Task Checkbox (Cmd-Shift-L) flips the checkbox on the line containing the insertion point, so task lists can be toggled from the keyboard and VoiceOver, not just by clicking. The editor view also carries an accessibility label.
+
+### Fixed
+- Security (availability): the `**bold**` and `__bold__` highlight rules used an unbounded lazy match that could backtrack catastrophically. A single crafted line (tens of KB of a repeated `** ` pattern) made the highlighter run for minutes on the main thread when the file was opened, freezing the UI. The inner run is now bounded so emphasis highlighting stays linear; `**bold *italic* bold**` composition is unchanged. Covered by a regression test that highlights a 200 KB adversarial line in milliseconds.
+- The task-checkbox toggle now bounds-checks its target character range against the end of the document before editing.
+
+### Internal
+- Editor fonts are rebuilt only when the size actually changes, keeping the per-keystroke highlight path allocation-free.
+- Test suite grown to 54 (was 46): emphasis backtracking guard, editor font-size bounds, and the keyboard toggle command.
+
 ## [1.1.0] - 2026-05-28
 
 ### Added
