@@ -2,6 +2,11 @@
 
 All notable changes to MacMD will be documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.2] - 2026-05-28
+
+### Changed
+- Bundle identifier is now `com.sleetcrash.MacMD` (was `com.eb.MacMD`), aligning the app with the Sleetcrash namespace used across the projects. macOS treats the renamed app as a new identity, so if a previous build is installed you may want to delete it and re-set the default "Open with" association for `.md` files to this version.
+
 ## [1.1.1] - 2026-05-28
 
 ### Added
