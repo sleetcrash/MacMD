@@ -51,7 +51,7 @@ All notable changes to MacMD will be documented in this file. The format is base
 ## [1.0.2] - 2026-04-27
 
 ### Removed
-- App Sandbox entitlement (`com.apple.security.app-sandbox`). MacMD is now distributed unsandboxed, matching the posture of BBEdit, Sublime Text, and VS Code. Hardened Runtime remains enabled. Trade-off: not Mac App Store eligible (was not a goal). Existing `.md` files are unaffected; the orphaned per-user container at `~/Library/Containers/com.eb.MacMD/` can be removed manually.
+- App Sandbox entitlement (`com.apple.security.app-sandbox`). MacMD is now distributed unsandboxed, matching the posture of BBEdit, Sublime Text, and VS Code. Hardened Runtime remains enabled. Trade-off: not Mac App Store eligible (was not a goal). Existing `.md` files are unaffected.
 
 ### Fixed
 - Documents on external / USB volumes (ExFAT, SMB, etc.) no longer fail to save with "you don't have permission" after the document has been open for an extended time. Root cause was sandbox security-scope invalidation on the file URL once the volume slept or was re-mounted (e.g., via `fskit` on macOS 15+); SwiftUI's `DocumentGroup` did not refresh the scope before atomic save. Removing the sandbox eliminates the failure mode.
