@@ -25,7 +25,7 @@ final class ThemeControllerTests: XCTestCase {
     func testApplyDoesNotPersist() {
         let d = freshDefaults()
         let c = ThemeController(defaults: d)
-        c.apply(coloring: .unified, themeId: "uni.teal", fontSize: 20)
+        c.apply(coloring: .unified, themeId: "uni.teal", fontSize: 20, appearance: .system)
         XCTAssertEqual(c.coloring, .unified)
         XCTAssertEqual(c.themeId, "uni.teal")
         // saved state untouched
@@ -36,7 +36,7 @@ final class ThemeControllerTests: XCTestCase {
     func testSavePersistsAndApplies() {
         let d = freshDefaults()
         let c = ThemeController(defaults: d)
-        c.save(coloring: .standard, themeId: "std.rgb", fontSize: 12)
+        c.save(coloring: .standard, themeId: "std.rgb", fontSize: 12, appearance: .system)
         XCTAssertEqual(c.coloring, .standard)
         XCTAssertEqual(d.string(forKey: ThemeSettings.schemeKey), Coloring.standard.rawValue)
         XCTAssertEqual(d.string(forKey: ThemeSettings.themeIdKey), "std.rgb")
@@ -48,10 +48,51 @@ final class ThemeControllerTests: XCTestCase {
         d.set(Coloring.unified.rawValue, forKey: ThemeSettings.schemeKey)
         d.set("uni.red", forKey: ThemeSettings.themeIdKey)
         let c = ThemeController(defaults: d)
-        c.apply(coloring: .standard, themeId: "std.rgb", fontSize: 24)
+        c.apply(coloring: .standard, themeId: "std.rgb", fontSize: 24, appearance: .light)
         c.revertToSaved()
         XCTAssertEqual(c.coloring, .unified)
         XCTAssertEqual(c.themeId, "uni.red")
+    }
+
+    // MARK: - Appearance (transactional, like coloring/theme/size)
+
+    func testInitLoadsSavedAppearance() {
+        let d = freshDefaults()
+        d.set(AppAppearance.dark.rawValue, forKey: ThemeSettings.appearanceKey)
+        let c = ThemeController(defaults: d)
+        XCTAssertEqual(c.appearance, .dark)
+    }
+
+    func testInitDefaultsToSystemAppearance() {
+        let c = ThemeController(defaults: freshDefaults())
+        XCTAssertEqual(c.appearance, .system)
+    }
+
+    func testApplyAppearanceDoesNotPersist() {
+        let d = freshDefaults()
+        let c = ThemeController(defaults: d)
+        c.apply(coloring: .off, themeId: "std.rgb", fontSize: 14, appearance: .dark)
+        XCTAssertEqual(c.appearance, .dark)
+        XCTAssertNil(d.string(forKey: ThemeSettings.appearanceKey))
+        XCTAssertEqual(c.savedAppearance, .system)
+    }
+
+    func testSaveAppearancePersists() {
+        let d = freshDefaults()
+        let c = ThemeController(defaults: d)
+        c.save(coloring: .off, themeId: "std.rgb", fontSize: 14, appearance: .light)
+        XCTAssertEqual(c.appearance, .light)
+        XCTAssertEqual(d.string(forKey: ThemeSettings.appearanceKey), AppAppearance.light.rawValue)
+    }
+
+    func testRevertRestoresSavedAppearance() {
+        let d = freshDefaults()
+        d.set(AppAppearance.dark.rawValue, forKey: ThemeSettings.appearanceKey)
+        let c = ThemeController(defaults: d)
+        c.apply(coloring: .off, themeId: "std.rgb", fontSize: 14, appearance: .light)
+        XCTAssertEqual(c.appearance, .light)
+        c.revertToSaved()
+        XCTAssertEqual(c.appearance, .dark)
     }
 
     func testSetFontSizeImmediatePersistsSizeOnly() {
@@ -68,9 +109,9 @@ final class ThemeControllerTests: XCTestCase {
     func testFontSizeClamps() {
         let d = freshDefaults()
         let c = ThemeController(defaults: d)
-        c.apply(coloring: .off, themeId: "std.rgb", fontSize: 999)
+        c.apply(coloring: .off, themeId: "std.rgb", fontSize: 999, appearance: .system)
         XCTAssertEqual(c.fontSize, Double(FontSize.maximum))
-        c.apply(coloring: .off, themeId: "std.rgb", fontSize: 1)
+        c.apply(coloring: .off, themeId: "std.rgb", fontSize: 1, appearance: .system)
         XCTAssertEqual(c.fontSize, Double(FontSize.minimum))
     }
 }
