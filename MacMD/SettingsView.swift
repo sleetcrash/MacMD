@@ -57,9 +57,12 @@ struct SettingsView: View {
             HStack(spacing: 10) {
                 Spacer()
                 Button("Close") { dismiss() }
+                    .buttonStyle(SquareButtonStyle())
                 Button("Apply") { theme.apply(coloring: wcColoring, themeId: wcThemeId, fontSize: wcFontSize) }
+                    .buttonStyle(SquareButtonStyle())
                     .disabled(!isDirty)
                 Button("Save") { theme.save(coloring: wcColoring, themeId: wcThemeId, fontSize: wcFontSize) }
+                    .buttonStyle(SquareButtonStyle())
                     .disabled(!isDirty)
                     .keyboardShortcut(.defaultAction)
             }
@@ -128,6 +131,26 @@ struct Swatch: View {
         color
             .frame(width: 12, height: 12)
             .overlay(Rectangle().strokeBorder(Color(white: 0.47).opacity(0.5), lineWidth: 1))
+    }
+}
+
+/// Sharp-cornered bordered button matching the other Settings controls.
+struct SquareButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 12))
+            .padding(.horizontal, 14)
+            .frame(height: 26)
+            .background(
+                configuration.isPressed
+                    ? Color(nsColor: .selectedControlColor)
+                    : Color(nsColor: .textBackgroundColor)
+            )
+            .overlay(Rectangle().strokeBorder(Color(nsColor: .separatorColor), lineWidth: 1))
+            .opacity(isEnabled ? 1.0 : 0.4)
+            .contentShape(Rectangle())
     }
 }
 
