@@ -22,3 +22,49 @@ extension NSColor {
         return String(format: "#%02X%02X%02X", r, g, b)
     }
 }
+
+/// How many distinct heading colors are in play.
+enum Coloring: String, CaseIterable, Codable {
+    case off, unified, standard
+
+    var displayName: String {
+        switch self {
+        case .off: return "Default"
+        case .unified: return "Unified"
+        case .standard: return "Standard"
+        }
+    }
+}
+
+/// The window appearance Mode.
+enum AppAppearance: String, CaseIterable, Codable {
+    case system, light, dark
+
+    /// The forced appearance, or nil to follow the OS (System).
+    var nsAppearance: NSAppearance? {
+        switch self {
+        case .system: return nil
+        case .light: return NSAppearance(named: .aqua)
+        case .dark: return NSAppearance(named: .darkAqua)
+        }
+    }
+}
+
+/// Pure theming engine: scheme → slot mapping and the preset palette library.
+enum ColorTheming {
+    /// Which palette slot colors a heading of `level` under `scheme`.
+    /// nil means "no palette color" — use `labelColor` (the Default scheme).
+    /// Standard: H1→0, H2→1, H3–H6→2. Unified: always 0.
+    static func slotIndex(forHeadingLevel level: Int, scheme: Coloring) -> Int? {
+        switch scheme {
+        case .off: return nil
+        case .unified: return 0
+        case .standard:
+            switch level {
+            case ...1: return 0
+            case 2: return 1
+            default: return 2
+            }
+        }
+    }
+}
