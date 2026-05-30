@@ -24,24 +24,30 @@ struct SettingsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(spacing: 14) {
-                ModeControl(appearanceRaw: $appearanceRaw)
-                    .frame(width: modeWidth, height: rowHeight)
-                SizeCombo(fontSize: $fontSize)
-                    .frame(width: segWidth, height: rowHeight)
+                LabeledField(label: "Mode") {
+                    ModeControl(appearanceRaw: $appearanceRaw)
+                        .frame(width: modeWidth, height: rowHeight)
+                }
+                LabeledField(label: "Size") {
+                    SizeCombo(fontSize: $fontSize)
+                        .frame(width: segWidth, height: rowHeight)
+                }
             }
             HStack(spacing: 14) {
-                ThemeMenu(coloring: coloring,
-                          themeId: $themeId,
-                          customs: customs,
-                          onCustom: { showingCustomEditor = true })
-                    .frame(width: modeWidth, height: rowHeight)
-                SchemeMenu(schemeRaw: $schemeRaw, themeId: $themeId)
-                    .frame(width: segWidth, height: rowHeight)
+                LabeledField(label: "Theme") {
+                    ThemeMenu(coloring: coloring, themeId: $themeId, customs: customs,
+                              onCustom: { showingCustomEditor = true })
+                        .frame(width: modeWidth, height: rowHeight)
+                }
+                LabeledField(label: "Scheme") {
+                    SchemeMenu(schemeRaw: $schemeRaw, themeId: $themeId)
+                        .frame(width: segWidth, height: rowHeight)
+                }
             }
             ThemePreview(coloring: coloring, palette: palette, appearance: appearance)
                 .frame(maxWidth: .infinity)
         }
-        .padding(20)
+        .padding(EdgeInsets(top: 26, leading: 20, bottom: 20, trailing: 20))
         .frame(width: 354)
     }
 }
@@ -252,5 +258,29 @@ struct SizeCombo: NSViewRepresentable {
             guard let cb = notification.object as? NSComboBox else { return }
             commit(cb)
         }
+    }
+}
+
+/// Wraps a control with an uppercase label that fades in on hover (keeps the
+/// pane clean) while always exposing the label to VoiceOver.
+struct LabeledField<Content: View>: View {
+    let label: String
+    @ViewBuilder let content: Content
+    @State private var hovering = false
+
+    var body: some View {
+        content
+            .overlay(alignment: .topLeading) {
+                Text(label.uppercased())
+                    .font(.system(size: 9))
+                    .tracking(0.6)
+                    .foregroundStyle(.secondary)
+                    .opacity(hovering ? 0.55 : 0)
+                    .offset(y: -14)
+                    .allowsHitTesting(false)
+            }
+            .onHover { hovering = $0 }
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(label)
     }
 }
