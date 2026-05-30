@@ -25,6 +25,7 @@
 		F200000000000000000000B5 /* SectionMapTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000B5 /* SectionMapTests.swift */; };
 		F200000000000000000000B6 /* ThemeSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000B6 /* ThemeSettings.swift */; };
 		F200000000000000000000B7 /* ThemeSettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000B7 /* ThemeSettingsTests.swift */; };
+		F200000000000000000000B8 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000B8 /* SettingsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -58,6 +59,7 @@
 		F100000000000000000000B5 /* SectionMapTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionMapTests.swift; sourceTree = "<group>"; };
 		F100000000000000000000B6 /* ThemeSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeSettings.swift; sourceTree = "<group>"; };
 		F100000000000000000000B7 /* ThemeSettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeSettingsTests.swift; sourceTree = "<group>"; };
+		F100000000000000000000B8 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		F100000000000000000000A4 /* MacMD.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MacMD.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F100000000000000000000A5 /* MacMDTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MacMDTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -102,6 +104,7 @@
 				F100000000000000000000B2 /* ColorTheming.swift */,
 				F100000000000000000000B4 /* SectionMap.swift */,
 				F100000000000000000000B6 /* ThemeSettings.swift */,
+				F100000000000000000000B8 /* SettingsView.swift */,
 				F100000000000000000000A0 /* Assets.xcassets */,
 				F100000000000000000000A2 /* Info.plist */,
 				F100000000000000000000A1 /* MacMD.entitlements */,
@@ -240,6 +243,7 @@
 				F200000000000000000000B2 /* ColorTheming.swift in Sources */,
 				F200000000000000000000B4 /* SectionMap.swift in Sources */,
 				F200000000000000000000B6 /* ThemeSettings.swift in Sources */,
+				F200000000000000000000B8 /* SettingsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

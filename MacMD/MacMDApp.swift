@@ -88,23 +88,6 @@ enum FontSize {
     }
 }
 
-struct SettingsView: View {
-    @AppStorage(FontSize.key) private var fontSize = Double(FontSize.standard)
-
-    var body: some View {
-        Form {
-            Stepper(value: $fontSize,
-                    in: Double(FontSize.minimum)...Double(FontSize.maximum),
-                    step: 1) {
-                Text("Editor font size: \(Int(fontSize)) pt")
-            }
-            Button("Reset to Default") { fontSize = Double(FontSize.standard) }
-        }
-        .padding(20)
-        .frame(width: 320)
-    }
-}
-
 /// Drive the focused editor's already-active NSTextFinder from a menu command.
 /// The action is carried as the sender's tag, the way the standard Find menu
 /// items do it. Resolving via `keyWindow?.firstResponder` (not
