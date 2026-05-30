@@ -24,7 +24,9 @@ final class MarkdownHighlighter: NSObject, @preconcurrency NSTextStorageDelegate
 
         let codeSpans = MarkdownRules.spansFromFences(fenceLines, fullRange: total)
 
-        let headings = MarkdownRules.headingLines(in: nsString, fullRange: total)
+        let headings: [MarkdownRules.HeadingLine] = Theme.activeColoring == .off
+            ? []
+            : MarkdownRules.headingLines(in: nsString, fullRange: total)
         let headingsChanged = headings != lastHeadingLines
         lastHeadingLines = headings
         let sectionMap = MarkdownRules.sectionMap(from: headings, excluding: codeSpans)
@@ -52,7 +54,9 @@ final class MarkdownHighlighter: NSObject, @preconcurrency NSTextStorageDelegate
         let fenceLines = MarkdownRules.fenceLines(in: nsString, fullRange: full)
         lastFenceLines = fenceLines
         let spans = MarkdownRules.spansFromFences(fenceLines, fullRange: full)
-        let headings = MarkdownRules.headingLines(in: nsString, fullRange: full)
+        let headings: [MarkdownRules.HeadingLine] = Theme.activeColoring == .off
+            ? []
+            : MarkdownRules.headingLines(in: nsString, fullRange: full)
         lastHeadingLines = headings
         let sectionMap = MarkdownRules.sectionMap(from: headings, excluding: spans)
         MarkdownRules.applyHighlighting(to: textStorage, in: full, fencedSpans: spans, sectionMap: sectionMap)
@@ -125,7 +129,7 @@ private enum MarkdownRules {
                 }
             }
         },
-        Rule(regex: r("^(#{1,6})[ \\t]+.+$", options: [.anchorsMatchLines])) { ts, m, _ in
+        Rule(regex: headingPattern) { ts, m, _ in
             let full = m.range
             let hashes = m.range(at: 1)
             let level = min(6, max(1, hashes.length))
