@@ -12,7 +12,6 @@ struct SettingsView: View {
     @State private var wcThemeId = ColorTheming.defaultStandardId
     @State private var wcFontSize = Double(FontSize.standard)
     @State private var showingCustomEditor = false
-    @State private var showThemeList = false
 
     private let wideWidth: CGFloat = 225
     private let segWidth: CGFloat = 75
@@ -44,14 +43,9 @@ struct SettingsView: View {
             }
             HStack(spacing: 14) {
                 LabeledField(label: "Theme") {
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.22)) { showThemeList.toggle() }
-                    } label: {
-                        ThemeBoxLabel(palette: wcPalette, isOpen: showThemeList)
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(wcColoring == .off)
-                    .frame(width: wideWidth, height: rowHeight)
+                    ThemeMenu(coloring: wcColoring, themeId: $wcThemeId, customs: customs,
+                              onCustom: { showingCustomEditor = true })
+                        .frame(width: wideWidth, height: rowHeight)
                 }
                 LabeledField(label: "Scheme") {
                     SchemeMenu(schemeRaw: $wcSchemeRaw, themeId: $wcThemeId)
@@ -73,20 +67,6 @@ struct SettingsView: View {
                     .keyboardShortcut(.defaultAction)
             }
         }
-        .overlay(alignment: .topLeading) {
-            if showThemeList {
-                ThemeList(coloring: wcColoring,
-                          themeId: $wcThemeId,
-                          customs: customs,
-                          onCustom: { showThemeList = false; showingCustomEditor = true },
-                          onSelect: { withAnimation(.easeInOut(duration: 0.22)) { showThemeList = false } })
-                    .frame(maxWidth: .infinity)
-                    .shadow(color: .black.opacity(0.35), radius: 10, x: 0, y: 6)
-                    .offset(y: rowHeight * 2 + 18 + 4)
-                    .transition(.opacity.combined(with: .move(edge: .top)))
-                    .zIndex(1)
-            }
-        }
         .padding(EdgeInsets(top: 26, leading: 20, bottom: 20, trailing: 20))
         .frame(width: 354)
         .background(
@@ -94,7 +74,6 @@ struct SettingsView: View {
                 .contentShape(Rectangle())
                 .onTapGesture {
                     NSApp.keyWindow?.makeFirstResponder(nil)
-                    if showThemeList { withAnimation(.easeInOut(duration: 0.22)) { showThemeList = false } }
                 }
         )
         .onAppear { syncFromSaved() }
@@ -213,73 +192,134 @@ struct ThemeBoxLabel: View {
     }
 }
 
-/// The inline theme list that unravels below the Theme/Scheme row. Full content
-/// width (matches the preview). Rows show name + light|dark swatches with hover
-/// highlighting. Replaces the old floating popover.
-struct ThemeList: View {
+/// The Theme selector. Shows the static box label and, on click, pops a NATIVE
+/// AppKit menu directly below the box — so it behaves exactly like the Scheme
+/// dropdown (a real connected dropdown), while still showing each theme's color
+/// swatches as a menu-item image (SwiftUI's own Menu can't render those).
+struct ThemeMenu: View {
     let coloring: Coloring
     @Binding var themeId: String
     let customs: [Palette]
     let onCustom: () -> Void
-    let onSelect: () -> Void
 
-    @State private var hoveredId: String?
+    @State private var pop = false
 
-    private var schemeCustoms: [Palette] { customs.filter { $0.scheme == coloring } }
+    private var currentPalette: Palette? {
+        ThemeSettings.resolvePalette(coloring: coloring, themeId: themeId, customs: customs)
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            ForEach(ColorTheming.presets(for: coloring)) { row(for: $0) }
-            if !schemeCustoms.isEmpty {
-                Divider().padding(.vertical, 4)
-                ForEach(schemeCustoms) { row(for: $0) }
-            }
-            Divider().padding(.vertical, 4)
-            rowButton(id: "__custom__", action: onCustom) {
-                Text("Custom+…").font(.system(size: 12))
-                Spacer()
-            }
-        }
-        .padding(.vertical, 6)
-        .frame(maxWidth: .infinity)
-        .background(Color(nsColor: .textBackgroundColor))
-        .overlay(Rectangle().strokeBorder(Color(nsColor: .separatorColor), lineWidth: 1))
-    }
-
-    private func row(for p: Palette) -> some View {
-        rowButton(id: p.id, action: { themeId = p.id; onSelect() }) {
-            Text(p.name).font(.system(size: 12)).lineLimit(1)
-            Spacer(minLength: 12)
-            swatchStrip(p)
-        }
-    }
-
-    @ViewBuilder private func swatchStrip(_ p: Palette) -> some View {
-        HStack(spacing: 2) {
-            ForEach(Array(p.slots.enumerated()), id: \.offset) { _, s in swatch(Color(nsColor: s.nsLight)) }
-            Text("|").opacity(0.35).padding(.horizontal, 1)
-            ForEach(Array(p.slots.enumerated()), id: \.offset) { _, s in swatch(Color(nsColor: s.nsDark)) }
-        }
-    }
-
-    private func swatch(_ c: Color) -> some View {
-        c.frame(width: 11, height: 11)
-            .overlay(Rectangle().strokeBorder(Color(white: 0.5).opacity(0.4), lineWidth: 1))
-    }
-
-    private func rowButton<Content: View>(id: String,
-                                          action: @escaping () -> Void,
-                                          @ViewBuilder content: () -> Content) -> some View {
-        Button(action: action) {
-            HStack(spacing: 0) { content() }
-                .padding(.vertical, 5)
-                .padding(.horizontal, 10)
-                .frame(maxWidth: .infinity)
-                .background(hoveredId == id ? Color.accentColor.opacity(0.25) : Color.clear)
-                .contentShape(Rectangle())
+        Button { pop = true } label: {
+            ThemeBoxLabel(palette: currentPalette)
         }
         .buttonStyle(.plain)
-        .onHover { inside in if inside { hoveredId = id } else if hoveredId == id { hoveredId = nil } }
+        .disabled(coloring == .off)
+        .overlay(
+            ThemeMenuPopper(pop: $pop, coloring: coloring, themeId: $themeId,
+                            customs: customs, onCustom: onCustom)
+                .allowsHitTesting(false)
+        )
+    }
+}
+
+/// Hosts a tiny anchor NSView the size of the Theme box and, when `pop` flips
+/// true, pops a native NSMenu just below it. The menu items carry swatch images.
+struct ThemeMenuPopper: NSViewRepresentable {
+    @Binding var pop: Bool
+    let coloring: Coloring
+    @Binding var themeId: String
+    let customs: [Palette]
+    let onCustom: () -> Void
+
+    func makeNSView(context: Context) -> NSView {
+        let v = FlippedAnchorView()
+        context.coordinator.anchor = v
+        return v
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        let c = context.coordinator
+        c.coloring = coloring
+        c.customs = customs
+        c.onSelect = { themeId = $0 }
+        c.onCustom = onCustom
+        if pop {
+            DispatchQueue.main.async {
+                pop = false
+                c.showMenu()
+            }
+        }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    final class FlippedAnchorView: NSView {
+        override var isFlipped: Bool { true }
+    }
+
+    final class Coordinator: NSObject {
+        weak var anchor: NSView?
+        var coloring: Coloring = .off
+        var customs: [Palette] = []
+        var onSelect: (String) -> Void = { _ in }
+        var onCustom: () -> Void = {}
+
+        func showMenu() {
+            guard let anchor else { return }
+            let menu = NSMenu()
+            menu.autoenablesItems = false
+            for preset in ColorTheming.presets(for: coloring) {
+                menu.addItem(makeItem(name: preset.name, id: preset.id, palette: preset))
+            }
+            let mine = customs.filter { $0.scheme == coloring }
+            if !mine.isEmpty {
+                menu.addItem(.separator())
+                for custom in mine {
+                    menu.addItem(makeItem(name: custom.name, id: custom.id, palette: custom))
+                }
+            }
+            menu.addItem(.separator())
+            let customItem = NSMenuItem(title: "Custom+…", action: #selector(pickCustom), keyEquivalent: "")
+            customItem.target = self
+            menu.addItem(customItem)
+
+            // Pop just below the box (anchor view is flipped: y = height is its bottom edge).
+            menu.minimumWidth = anchor.bounds.width
+            menu.popUp(positioning: nil, at: NSPoint(x: 0, y: anchor.bounds.height + 2), in: anchor)
+        }
+
+        private func makeItem(name: String, id: String, palette: Palette) -> NSMenuItem {
+            let item = NSMenuItem(title: name, action: #selector(pick(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = id
+            item.image = Coordinator.swatchImage(for: palette)
+            return item
+        }
+
+        @objc private func pick(_ sender: NSMenuItem) {
+            if let id = sender.representedObject as? String { onSelect(id) }
+        }
+        @objc private func pickCustom() { onCustom() }
+
+        static func swatchImage(for p: Palette) -> NSImage {
+            let sw: CGFloat = 12, gap: CGFloat = 2, sep: CGFloat = 6
+            let n = p.slots.count
+            let trio = CGFloat(n) * sw + CGFloat(max(0, n - 1)) * gap
+            let width = max(1, trio + sep + trio)
+            let img = NSImage(size: NSSize(width: width, height: sw))
+            img.lockFocus()
+            var x: CGFloat = 0
+            for s in p.slots {
+                s.nsLight.setFill(); NSBezierPath(rect: NSRect(x: x, y: 0, width: sw, height: sw)).fill(); x += sw + gap
+            }
+            x = trio + sep
+            for s in p.slots {
+                s.nsDark.setFill(); NSBezierPath(rect: NSRect(x: x, y: 0, width: sw, height: sw)).fill(); x += sw + gap
+            }
+            img.unlockFocus()
+            img.isTemplate = false
+            return img
+        }
     }
 }
 
