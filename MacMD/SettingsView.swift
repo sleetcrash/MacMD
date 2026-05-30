@@ -188,83 +188,90 @@ struct ThemeBoxLabel: View {
     }
 }
 
-/// The Theme dropdown: presets for the active scheme, a Saved group of customs
-/// in that scheme, and Custom+ to open the editor. Disabled under Default.
+/// The Theme selector: the static box label triggers a popover listing the
+/// scheme's presets and saved customs, each row showing its light|dark
+/// swatches (a SwiftUI popover is used instead of a native Menu because macOS
+/// menu items can't render multi-color swatch images).
 struct ThemeMenu: View {
     let coloring: Coloring
     @Binding var themeId: String
     let customs: [Palette]
     let onCustom: () -> Void
 
+    @State private var showPopover = false
+    @State private var hoveredId: String?
+
     private var currentPalette: Palette? {
         ThemeSettings.resolvePalette(coloring: coloring, themeId: themeId, customs: customs)
     }
+    private var schemeCustoms: [Palette] { customs.filter { $0.scheme == coloring } }
 
     var body: some View {
-        Menu {
-            ForEach(ColorTheming.presets(for: coloring)) { preset in
-                Button { themeId = preset.id } label: {
-                    Label {
-                        Text(preset.name)
-                    } icon: {
-                        Image(nsImage: swatchImage(for: preset))
-                    }
-                }
-            }
-            let schemeCustoms = customs.filter { $0.scheme == coloring }
-            if !schemeCustoms.isEmpty {
-                Divider()
-                Section("Saved") {
-                    ForEach(schemeCustoms) { custom in
-                        Button { themeId = custom.id } label: {
-                            Label {
-                                Text(custom.name)
-                            } icon: {
-                                Image(nsImage: swatchImage(for: custom))
-                            }
-                        }
-                    }
-                }
-            }
-            if coloring != .off {
-                Divider()
-                Button("Custom+…") { onCustom() }
-            }
-        } label: {
+        Button { showPopover.toggle() } label: {
             ThemeBoxLabel(palette: currentPalette)
         }
-        .menuStyle(.button)
         .buttonStyle(.plain)
-        .menuIndicator(.hidden)
         .disabled(coloring == .off)
+        .popover(isPresented: $showPopover, arrowEdge: .bottom) {
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(ColorTheming.presets(for: coloring)) { row(for: $0) }
+                if !schemeCustoms.isEmpty {
+                    Divider().padding(.vertical, 4)
+                    ForEach(schemeCustoms) { row(for: $0) }
+                }
+                Divider().padding(.vertical, 4)
+                rowButton(id: "__custom__", action: { showPopover = false; onCustom() }) {
+                    Text("Custom+…").font(.system(size: 12))
+                    Spacer()
+                }
+            }
+            .padding(6)
+            .frame(width: 250)
+        }
     }
 
-    /// Renders a palette's light|dark swatches into a small image for use as a
-    /// menu-item icon (native menus can't host SwiftUI color shapes directly).
-    private func swatchImage(for palette: Palette) -> NSImage {
-        let sw: CGFloat = 11        // swatch side
-        let gap: CGFloat = 2        // gap between swatches in a trio
-        let sepGap: CGFloat = 7     // gap between the light trio and the dark trio
-        let n = palette.slots.count
-        let trioWidth = CGFloat(n) * sw + CGFloat(max(0, n - 1)) * gap
-        let width = trioWidth + sepGap + trioWidth
-        let image = NSImage(size: NSSize(width: width, height: sw))
-        image.lockFocus()
-        var x: CGFloat = 0
-        for slot in palette.slots {
-            slot.nsLight.setFill()
-            NSRect(x: x, y: 0, width: sw, height: sw).fill()
-            x += sw + gap
+    private func row(for p: Palette) -> some View {
+        rowButton(id: p.id, action: { themeId = p.id; showPopover = false }) {
+            Text(p.name).font(.system(size: 12)).lineLimit(1)
+            Spacer(minLength: 12)
+            swatchStrip(p)
         }
-        x = trioWidth + sepGap
-        for slot in palette.slots {
-            slot.nsDark.setFill()
-            NSRect(x: x, y: 0, width: sw, height: sw).fill()
-            x += sw + gap
+    }
+
+    @ViewBuilder
+    private func swatchStrip(_ p: Palette) -> some View {
+        HStack(spacing: 2) {
+            ForEach(Array(p.slots.enumerated()), id: \.offset) { _, s in
+                swatch(Color(nsColor: s.nsLight))
+            }
+            Text("|").opacity(0.35).padding(.horizontal, 1)
+            ForEach(Array(p.slots.enumerated()), id: \.offset) { _, s in
+                swatch(Color(nsColor: s.nsDark))
+            }
         }
-        image.unlockFocus()
-        image.isTemplate = false   // keep the colors (don't tint as a template)
-        return image
+    }
+
+    private func swatch(_ c: Color) -> some View {
+        c.frame(width: 11, height: 11)
+            .overlay(Rectangle().strokeBorder(Color(white: 0.5).opacity(0.4), lineWidth: 1))
+    }
+
+    private func rowButton<Content: View>(id: String,
+                                          action: @escaping () -> Void,
+                                          @ViewBuilder content: () -> Content) -> some View {
+        Button(action: action) {
+            HStack(spacing: 0) { content() }
+                .padding(.vertical, 5)
+                .padding(.horizontal, 8)
+                .frame(maxWidth: .infinity)
+                .background(hoveredId == id ? Color.accentColor.opacity(0.25) : Color.clear)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { inside in
+            if inside { hoveredId = id }
+            else if hoveredId == id { hoveredId = nil }
+        }
     }
 }
 
