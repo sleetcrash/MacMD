@@ -49,6 +49,11 @@ struct SettingsView: View {
         }
         .padding(EdgeInsets(top: 26, leading: 20, bottom: 20, trailing: 20))
         .frame(width: 354)
+        .background(
+            Color.clear
+                .contentShape(Rectangle())
+                .onTapGesture { NSApp.keyWindow?.makeFirstResponder(nil) }
+        )
         .sheet(isPresented: $showingCustomEditor) {
             CustomThemeEditor(coloring: coloring,
                               customsData: $customsData,
@@ -227,6 +232,9 @@ struct SizeCombo: NSViewRepresentable {
         cb.alignment = .center
         cb.font = .systemFont(ofSize: 11)
         cb.stringValue = "\(Int(fontSize))"
+        DispatchQueue.main.async { [weak cb] in
+            cb?.window?.makeFirstResponder(nil)
+        }
         return cb
     }
 
