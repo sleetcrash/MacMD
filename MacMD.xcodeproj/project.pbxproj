@@ -19,6 +19,17 @@
 		F200000000000000000000A9 /* TaskListInteractionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000A8 /* TaskListInteractionTests.swift */; };
 		F200000000000000000000B0 /* EditingCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000B0 /* EditingCommands.swift */; };
 		F200000000000000000000B1 /* EditingCommandsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000B1 /* EditingCommandsTests.swift */; };
+		F200000000000000000000B2 /* ColorTheming.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000B2 /* ColorTheming.swift */; };
+		F200000000000000000000B3 /* ColorThemingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000B3 /* ColorThemingTests.swift */; };
+		F200000000000000000000B4 /* SectionMap.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000B4 /* SectionMap.swift */; };
+		F200000000000000000000B5 /* SectionMapTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000B5 /* SectionMapTests.swift */; };
+		F200000000000000000000B6 /* ThemeSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000B6 /* ThemeSettings.swift */; };
+		F200000000000000000000B7 /* ThemeSettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000B7 /* ThemeSettingsTests.swift */; };
+		F200000000000000000000B8 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000B8 /* SettingsView.swift */; };
+		F200000000000000000000B9 /* ThemePreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000B9 /* ThemePreview.swift */; };
+		F200000000000000000000BA /* CustomThemeEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000BA /* CustomThemeEditor.swift */; };
+		F200000000000000000000BB /* ThemeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000BB /* ThemeController.swift */; };
+		F200000000000000000000BC /* ThemeControllerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000BC /* ThemeControllerTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -46,6 +57,17 @@
 		F100000000000000000000A8 /* TaskListInteractionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskListInteractionTests.swift; sourceTree = "<group>"; };
 		F100000000000000000000B0 /* EditingCommands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditingCommands.swift; sourceTree = "<group>"; };
 		F100000000000000000000B1 /* EditingCommandsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditingCommandsTests.swift; sourceTree = "<group>"; };
+		F100000000000000000000B2 /* ColorTheming.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorTheming.swift; sourceTree = "<group>"; };
+		F100000000000000000000B3 /* ColorThemingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorThemingTests.swift; sourceTree = "<group>"; };
+		F100000000000000000000B4 /* SectionMap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionMap.swift; sourceTree = "<group>"; };
+		F100000000000000000000B5 /* SectionMapTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionMapTests.swift; sourceTree = "<group>"; };
+		F100000000000000000000B6 /* ThemeSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeSettings.swift; sourceTree = "<group>"; };
+		F100000000000000000000B7 /* ThemeSettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeSettingsTests.swift; sourceTree = "<group>"; };
+		F100000000000000000000B8 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		F100000000000000000000B9 /* ThemePreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemePreview.swift; sourceTree = "<group>"; };
+		F100000000000000000000BA /* CustomThemeEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomThemeEditor.swift; sourceTree = "<group>"; };
+		F100000000000000000000BB /* ThemeController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeController.swift; sourceTree = "<group>"; };
+		F100000000000000000000BC /* ThemeControllerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeControllerTests.swift; sourceTree = "<group>"; };
 		F100000000000000000000A4 /* MacMD.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MacMD.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F100000000000000000000A5 /* MacMDTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MacMDTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -87,6 +109,13 @@
 				F1000000000000000000000E /* MarkdownHighlighter.swift */,
 				F1000000000000000000000F /* Theme.swift */,
 				F100000000000000000000B0 /* EditingCommands.swift */,
+				F100000000000000000000B2 /* ColorTheming.swift */,
+				F100000000000000000000B4 /* SectionMap.swift */,
+				F100000000000000000000B6 /* ThemeSettings.swift */,
+				F100000000000000000000B8 /* SettingsView.swift */,
+				F100000000000000000000B9 /* ThemePreview.swift */,
+				F100000000000000000000BA /* CustomThemeEditor.swift */,
+				F100000000000000000000BB /* ThemeController.swift */,
 				F100000000000000000000A0 /* Assets.xcassets */,
 				F100000000000000000000A2 /* Info.plist */,
 				F100000000000000000000A1 /* MacMD.entitlements */,
@@ -101,6 +130,10 @@
 				F100000000000000000000A6 /* MarkdownDocumentTests.swift */,
 				F100000000000000000000A8 /* TaskListInteractionTests.swift */,
 				F100000000000000000000B1 /* EditingCommandsTests.swift */,
+				F100000000000000000000B3 /* ColorThemingTests.swift */,
+				F100000000000000000000B5 /* SectionMapTests.swift */,
+				F100000000000000000000B7 /* ThemeSettingsTests.swift */,
+				F100000000000000000000BC /* ThemeControllerTests.swift */,
 			);
 			path = MacMDTests;
 			sourceTree = "<group>";
@@ -219,6 +252,13 @@
 				F2000000000000000000000E /* MarkdownHighlighter.swift in Sources */,
 				F2000000000000000000000F /* Theme.swift in Sources */,
 				F200000000000000000000B0 /* EditingCommands.swift in Sources */,
+				F200000000000000000000B2 /* ColorTheming.swift in Sources */,
+				F200000000000000000000B4 /* SectionMap.swift in Sources */,
+				F200000000000000000000B6 /* ThemeSettings.swift in Sources */,
+				F200000000000000000000B8 /* SettingsView.swift in Sources */,
+				F200000000000000000000B9 /* ThemePreview.swift in Sources */,
+				F200000000000000000000BA /* CustomThemeEditor.swift in Sources */,
+				F200000000000000000000BB /* ThemeController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -230,6 +270,10 @@
 				F200000000000000000000A7 /* MarkdownDocumentTests.swift in Sources */,
 				F200000000000000000000A9 /* TaskListInteractionTests.swift in Sources */,
 				F200000000000000000000B1 /* EditingCommandsTests.swift in Sources */,
+				F200000000000000000000B3 /* ColorThemingTests.swift in Sources */,
+				F200000000000000000000B5 /* SectionMapTests.swift in Sources */,
+				F200000000000000000000B7 /* ThemeSettingsTests.swift in Sources */,
+				F200000000000000000000BC /* ThemeControllerTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

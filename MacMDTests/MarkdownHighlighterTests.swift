@@ -5,6 +5,11 @@ import AppKit
 @MainActor
 final class MarkdownHighlighterTests: XCTestCase {
 
+    override func tearDown() {
+        Theme.setActiveTheme(coloring: .off, palette: ColorTheming.standardPresets[0])
+        super.tearDown()
+    }
+
     // MARK: - Helpers
 
     private func highlight(_ text: String) -> NSTextStorage {
@@ -28,7 +33,7 @@ final class MarkdownHighlighterTests: XCTestCase {
     func testHeadingIsBold() {
         let storage = highlight("# Hello\nBody text")
         XCTAssertTrue(font(at: 0, in: storage)?.fontDescriptor.symbolicTraits.contains(.bold) ?? false)
-        XCTAssertEqual(color(at: 0, in: storage), Theme.accentColor)
+        XCTAssertEqual(color(at: 0, in: storage), Theme.textColor)
         let bodyIndex = "# Hello\n".count
         XCTAssertFalse(font(at: bodyIndex, in: storage)?.fontDescriptor.symbolicTraits.contains(.bold) ?? true)
     }
@@ -149,17 +154,17 @@ final class MarkdownHighlighterTests: XCTestCase {
 
     func testUnorderedListMarker() {
         let storage = highlight("- First item")
-        XCTAssertEqual(color(at: 0, in: storage), Theme.accentColor)
+        XCTAssertEqual(color(at: 0, in: storage), Theme.textColor)
     }
 
     func testOrderedListMarker() {
         let storage = highlight("1. First item")
-        XCTAssertEqual(color(at: 0, in: storage), Theme.accentColor)
+        XCTAssertEqual(color(at: 0, in: storage), Theme.textColor)
     }
 
     func testOrderedListMarkerWithParen() {
         let storage = highlight("1) First item")
-        XCTAssertEqual(color(at: 0, in: storage), Theme.accentColor)
+        XCTAssertEqual(color(at: 0, in: storage), Theme.textColor)
     }
 
     func testAsteriskListMarkerIsNotItalicized() {
@@ -167,8 +172,8 @@ final class MarkdownHighlighterTests: XCTestCase {
         let contentIndex = "* ".count
         XCTAssertFalse(font(at: contentIndex, in: storage)?.fontDescriptor.symbolicTraits.contains(.italic) ?? true,
                        "Bullet list item with asterisk must not trigger italic")
-        XCTAssertEqual(color(at: 0, in: storage), Theme.accentColor,
-                       "Asterisk list marker should be accent-colored")
+        XCTAssertEqual(color(at: 0, in: storage), Theme.textColor,
+                       "Asterisk list marker should use the body label color (Default scheme)")
     }
 
     // MARK: - Blockquotes, rules, plain text
@@ -361,14 +366,14 @@ final class MarkdownHighlighterTests: XCTestCase {
     func testUnfinishedTaskListBracketIsAccent() {
         let storage = highlight("- [ ] buy milk")
         let bracketIndex = "- ".count
-        XCTAssertEqual(color(at: bracketIndex, in: storage), Theme.accentColor)
+        XCTAssertEqual(color(at: bracketIndex, in: storage), Theme.textColor)
     }
 
     func testFinishedTaskListBracketIsAccentAndBodyIsStruck() {
         let text = "- [x] mow lawn"
         let storage = highlight(text)
         let bracketIndex = "- ".count
-        XCTAssertEqual(color(at: bracketIndex, in: storage), Theme.accentColor)
+        XCTAssertEqual(color(at: bracketIndex, in: storage), Theme.textColor)
         let bodyIndex = (text as NSString).range(of: "mow").location
         let raw = storage.attribute(.strikethroughStyle, at: bodyIndex, effectiveRange: nil) as? Int
         XCTAssertEqual(raw, NSUnderlineStyle.single.rawValue)
@@ -404,5 +409,69 @@ final class MarkdownHighlighterTests: XCTestCase {
         let highlighter = MarkdownHighlighter()
         highlighter.isDisabled = true
         XCTAssertEqual(highlighter.taskCheckboxRanges(in: storage), [])
+    }
+
+    // MARK: - Section-color theming
+
+    private func headingColorTest(_ text: String, coloring: Coloring, paletteId: String) -> NSTextStorage {
+        Theme.setActiveTheme(coloring: coloring, palette: ColorTheming.preset(id: paletteId))
+        return highlight(text)
+    }
+
+    func testStandardSchemeColorsHeadingsBySlot() {
+        let storage = headingColorTest("# H1\n## H2\n### H3", coloring: .standard, paletteId: "std.rgb")
+        XCTAssertEqual(color(at: 0, in: storage)?.resolvedHexLight, "#C13F50")            // H1
+        let h2 = ("# H1\n").count
+        XCTAssertEqual(color(at: h2, in: storage)?.resolvedHexLight, "#2E8049")           // H2
+        let h3 = ("# H1\n## H2\n").count
+        XCTAssertEqual(color(at: h3, in: storage)?.resolvedHexLight, "#2E86AB")           // H3
+    }
+
+    func testUnifiedSchemeColorsAllHeadingsSame() {
+        let storage = headingColorTest("# H1\n## H2", coloring: .unified, paletteId: "uni.teal")
+        XCTAssertEqual(color(at: 0, in: storage)?.resolvedHexLight, "#2E86AB")
+        let h2 = ("# H1\n").count
+        XCTAssertEqual(color(at: h2, in: storage)?.resolvedHexLight, "#2E86AB")
+    }
+
+    func testMarkerInheritsGoverningHeadingColor() {
+        // Bullet under ## Section takes the H2 (slot1) color.
+        let text = "## Section\n- item"
+        let storage = headingColorTest(text, coloring: .standard, paletteId: "std.rgb")
+        let bulletIndex = ("## Section\n").count   // the "-" of "- item"
+        XCTAssertEqual(color(at: bulletIndex, in: storage)?.resolvedHexLight, "#2E8049")
+    }
+
+    func testMarkerBeforeAnyHeadingTakesH1Color() {
+        let text = "- loose\n# Heading"
+        let storage = headingColorTest(text, coloring: .standard, paletteId: "std.rgb")
+        XCTAssertEqual(color(at: 0, in: storage)?.resolvedHexLight, "#C13F50")  // H1 color
+    }
+
+    func testDefaultSchemeKeepsMarkersLabelColor() {
+        Theme.setActiveTheme(coloring: .off, palette: ColorTheming.standardPresets[0])
+        let storage = highlight("## Section\n- item")
+        let bulletIndex = ("## Section\n").count
+        XCTAssertEqual(color(at: bulletIndex, in: storage), Theme.textColor)
+    }
+
+    func testEditingAHeadingRecolorsMarkersBelow() {
+        Theme.setActiveTheme(coloring: .standard, palette: ColorTheming.preset(id: "std.rgb"))
+        let storage = NSTextStorage(string: "## Section\n- item")
+        let highlighter = MarkdownHighlighter()
+        storage.delegate = highlighter
+        highlighter.rehighlightAll(storage)
+
+        let bulletIndex = ("## Section\n").count
+        XCTAssertEqual(color(at: bulletIndex, in: storage)?.resolvedHexLight, "#2E8049") // H2 slot1
+
+        // Promote the heading to H1 by deleting one '#'. The bullet must recolor
+        // to the H1 (slot0) color even though only the heading line was edited.
+        storage.beginEditing()
+        storage.replaceCharacters(in: NSRange(location: 0, length: 1), with: "")
+        storage.endEditing()
+
+        let newBulletIndex = ("# Section\n").count
+        XCTAssertEqual(color(at: newBulletIndex, in: storage)?.resolvedHexLight, "#C13F50") // H1 slot0
     }
 }

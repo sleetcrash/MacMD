@@ -2,6 +2,14 @@
 
 All notable changes to MacMD will be documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Section-color theming in Settings (Cmd-,): choose a coloring Scheme (Default / Unified / Standard), a Theme (preset palettes, single colors, or saved customs), an appearance Mode (Light / Dark / System), and the editor font Size. List markers inherit the color of the heading section above them, and a live preview shows the result. Custom palettes can be created, named (up to 10 characters), edited, and deleted, each with separate light and dark colors per slot.
+
+### Changed
+- Headings and list markers are no longer colored with the system accent color by default. The new out-of-box **Default** scheme renders headings in the adaptive label color (bold and sized only); pick a theme in Settings to color them. Existing users will see plain headings until they choose a theme.
+
 ## [1.1.2] - 2026-05-28
 
 ### Changed
