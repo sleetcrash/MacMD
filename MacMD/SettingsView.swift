@@ -12,6 +12,7 @@ struct SettingsView: View {
     @State private var wcThemeId = ColorTheming.defaultStandardId
     @State private var wcFontSize = Double(FontSize.standard)
     @State private var showingCustomEditor = false
+    @State private var previewAppearanceRaw = AppAppearance.system.rawValue
 
     private let wideWidth: CGFloat = 225
     private let segWidth: CGFloat = 75
@@ -19,6 +20,7 @@ struct SettingsView: View {
 
     private var wcColoring: Coloring { Coloring(rawValue: wcSchemeRaw) ?? .off }
     private var appearance: AppAppearance { AppAppearance(rawValue: appearanceRaw) ?? .system }
+    private var previewAppearance: AppAppearance { AppAppearance(rawValue: previewAppearanceRaw) ?? .system }
     private var customs: [Palette] { ThemeSettings.decodeCustoms(customsData) }
     private var wcPalette: Palette? {
         ThemeSettings.resolvePalette(coloring: wcColoring, themeId: wcThemeId, customs: customs)
@@ -33,11 +35,11 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(spacing: 14) {
                 LabeledField(label: "Mode") {
-                    ModeControl(appearanceRaw: $appearanceRaw)
+                    ModeControl(appearanceRaw: $previewAppearanceRaw)
                         .frame(width: wideWidth, height: rowHeight)
                 }
                 LabeledField(label: "Size") {
-                    SizeCombo(fontSize: $wcFontSize)
+                    SizeControl(fontSize: $wcFontSize)
                         .frame(width: segWidth, height: rowHeight)
                 }
             }
@@ -52,11 +54,11 @@ struct SettingsView: View {
                         .frame(width: segWidth, height: rowHeight)
                 }
             }
-            ThemePreview(coloring: wcColoring, palette: wcPalette, appearance: appearance)
+            ThemePreview(coloring: wcColoring, palette: wcPalette, appearance: previewAppearance)
                 .frame(maxWidth: .infinity)
             HStack(spacing: 10) {
                 Spacer()
-                Button("Close") { dismiss() }
+                Button("Close") { theme.revertToSaved(); dismiss() }
                     .buttonStyle(SquareButtonStyle())
                 Button("Apply") { theme.apply(coloring: wcColoring, themeId: wcThemeId, fontSize: wcFontSize) }
                     .buttonStyle(SquareButtonStyle())
@@ -92,6 +94,7 @@ struct SettingsView: View {
         wcSchemeRaw = theme.savedColoring.rawValue
         wcThemeId = theme.savedThemeId
         wcFontSize = theme.savedFontSize
+        previewAppearanceRaw = appearanceRaw
     }
 }
 
@@ -105,8 +108,6 @@ struct ModeControl: View {
         (.dark, "moon.fill", "Dark"),
         (.system, "laptopcomputer", "System"),
     ]
-    private let selectedBlue = Color(red: 0x34 / 255, green: 0x78 / 255, blue: 0xF6 / 255)
-
     var body: some View {
         HStack(spacing: 0) {
             ForEach(Array(items.enumerated()), id: \.offset) { index, item in
@@ -114,7 +115,7 @@ struct ModeControl: View {
                 Image(systemName: item.icon)
                     .font(.system(size: 13))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(selected ? selectedBlue : Color(nsColor: .textBackgroundColor))
+                    .background(selected ? Color.accentColor : Color(nsColor: .textBackgroundColor))
                     .foregroundStyle(selected ? Color.white : Color.primary)
                     .overlay(index == 0 ? nil : Divider(), alignment: .leading)
                     .contentShape(Rectangle())
@@ -362,68 +363,49 @@ struct SchemeMenu: View {
     }
 }
 
-/// Editable size combo: pick a standard size or type any value 9–32 (clamped).
-/// Shows the number only, centered. Backed by the existing FontSize preference.
-struct SizeCombo: NSViewRepresentable {
+/// Editable size control matching the square bordered style: a centered number
+/// field plus a chevron menu of standard sizes. Typed values clamp to 9–32.
+struct SizeControl: View {
     @Binding var fontSize: Double
-    private let sizes: [Int] = [9, 10, 11, 12, 14, 16, 18, 24, 32]
+    @State private var text: String = ""
+    @FocusState private var focused: Bool
+    private let sizes = [9, 10, 11, 12, 14, 16, 18, 24, 32]
 
-    func makeNSView(context: Context) -> NSComboBox {
-        let cb = NSComboBox()
-        cb.isEditable = true
-        cb.completes = false
-        cb.usesDataSource = false
-        cb.addItems(withObjectValues: sizes.map { "\($0)" })
-        cb.delegate = context.coordinator
-        cb.alignment = .center
-        cb.font = .systemFont(ofSize: 11)
-        cb.stringValue = "\(Int(fontSize))"
-        DispatchQueue.main.async { [weak cb] in
-            cb?.window?.makeFirstResponder(nil)
-        }
-        return cb
-    }
-
-    func updateNSView(_ cb: NSComboBox, context: Context) {
-        let s = "\(Int(fontSize))"
-        if cb.stringValue != s { cb.stringValue = s }
-    }
-
-    func makeCoordinator() -> Coordinator { Coordinator(self) }
-
-    @MainActor final class Coordinator: NSObject, NSComboBoxDelegate {
-        let parent: SizeCombo
-        init(_ parent: SizeCombo) { self.parent = parent }
-
-        private func commit(_ cb: NSComboBox) {
-            let raw = CGFloat(Double(cb.stringValue) ?? parent.fontSize)
-            let clamped = FontSize.clamp(raw)
-            parent.fontSize = Double(clamped)
-            cb.stringValue = "\(Int(clamped))"
-        }
-
-        func comboBoxSelectionDidChange(_ notification: Notification) {
-            guard let cb = notification.object as? NSComboBox else { return }
-            // objectValueOfSelectedItem is updated after this fires; defer.
-            DispatchQueue.main.async {
-                if let value = cb.objectValueOfSelectedItem as? String {
-                    cb.stringValue = value
+    var body: some View {
+        HStack(spacing: 2) {
+            TextField("", text: $text)
+                .textFieldStyle(.plain)
+                .multilineTextAlignment(.center)
+                .font(.system(size: 11))
+                .focused($focused)
+                .onSubmit(commit)
+                .onChange(of: focused) { _, isFocused in if !isFocused { commit() } }
+            Menu {
+                ForEach(sizes, id: \.self) { s in
+                    Button("\(s)") { fontSize = Double(s); text = "\(s)" }
                 }
-                self.commit(cb)
+            } label: {
+                Image(systemName: "chevron.down").font(.system(size: 8)).opacity(0.5)
             }
+            .menuStyle(.button)
+            .buttonStyle(.plain)
+            .menuIndicator(.hidden)
+            .fixedSize()
         }
+        .padding(.horizontal, 6)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(nsColor: .textBackgroundColor))
+        .overlay(Rectangle().strokeBorder(Color(nsColor: .separatorColor), lineWidth: 1))
+        .onAppear { text = "\(Int(fontSize))" }
+        .onChange(of: fontSize) { _, newValue in text = "\(Int(newValue))" }
+    }
 
-        func controlTextDidChange(_ notification: Notification) {
-            guard let cb = notification.object as? NSComboBox else { return }
-            let digits = cb.stringValue.filter(\.isNumber)
-            let capped = String(digits.prefix(2))
-            if cb.stringValue != capped { cb.stringValue = capped }
-        }
-
-        func controlTextDidEndEditing(_ notification: Notification) {
-            guard let cb = notification.object as? NSComboBox else { return }
-            commit(cb)
-        }
+    private func commit() {
+        let digits = text.filter(\.isNumber)
+        let value = CGFloat(Double(digits) ?? fontSize)
+        let clamped = FontSize.clamp(value)
+        fontSize = Double(clamped)
+        text = "\(Int(clamped))"
     }
 }
 
