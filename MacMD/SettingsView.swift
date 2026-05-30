@@ -38,11 +38,8 @@ struct SettingsView: View {
                 SchemeMenu(schemeRaw: $schemeRaw, themeId: $themeId)
                     .frame(width: segWidth, height: rowHeight)
             }
-            // Preview placeholder (Task 14)
-            Color(nsColor: .textBackgroundColor)
-                .frame(height: 120)
+            ThemePreview(coloring: coloring, palette: palette, appearance: appearance)
                 .frame(maxWidth: .infinity)
-                .overlay(Rectangle().strokeBorder(Color(nsColor: .separatorColor), lineWidth: 1))
         }
         .padding(20)
         .frame(width: 354)
