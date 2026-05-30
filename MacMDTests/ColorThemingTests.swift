@@ -2,7 +2,13 @@ import XCTest
 import AppKit
 @testable import MacMD
 
+@MainActor
 final class ColorThemingTests: XCTestCase {
+
+    override func tearDown() {
+        Theme.setActiveTheme(coloring: .off, palette: ColorTheming.standardPresets[0])
+        super.tearDown()
+    }
 
     // MARK: - Hex
 
@@ -155,6 +161,27 @@ final class ColorThemingTests: XCTestCase {
                                    slots: [ColorPair(light: "#111111", dark: "#222222")])
         // H2 maps to slot 1, which doesn't exist → labelColor fallback.
         XCTAssertEqual(shortPalette.headingColor(level: 2), .labelColor)
+    }
+
+    // MARK: - Theme active state
+
+    func testDefaultColoringHeadingColorIsLabelColor() {
+        Theme.setActiveTheme(coloring: .off, palette: ColorTheming.standardPresets[0])
+        XCTAssertEqual(Theme.headingColor(level: 1), .labelColor)
+        XCTAssertEqual(Theme.headingColor(level: 3), .labelColor)
+    }
+
+    func testStandardColoringResolvesSlotColors() {
+        Theme.setActiveTheme(coloring: .standard, palette: ColorTheming.preset(id: "std.rgb")!)
+        XCTAssertEqual(Theme.headingColor(level: 1).resolvedHexLight, "#C13F50")
+        XCTAssertEqual(Theme.headingColor(level: 2).resolvedHexLight, "#2E8049")
+        XCTAssertEqual(Theme.headingColor(level: 5).resolvedHexLight, "#2E86AB") // inherits H3
+    }
+
+    func testSetActiveThemeReportsChange() {
+        Theme.setActiveTheme(coloring: .off, palette: ColorTheming.standardPresets[0])
+        XCTAssertTrue(Theme.setActiveTheme(coloring: .unified, palette: ColorTheming.preset(id: "uni.teal")!))
+        XCTAssertFalse(Theme.setActiveTheme(coloring: .unified, palette: ColorTheming.preset(id: "uni.teal")!))
     }
 }
 

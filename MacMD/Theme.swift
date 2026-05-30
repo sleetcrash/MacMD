@@ -36,6 +36,29 @@ enum Theme {
         }
     }
 
+    // MARK: - Active theming (single source of truth for the highlighter)
+
+    private(set) static var activeColoring: Coloring = .off
+    private(set) static var activePalette: Palette = ColorTheming.standardPresets[0]
+
+    /// Sets the active coloring + palette. Returns whether anything changed, so
+    /// callers can skip a re-highlight (mirrors `setEditorFontSize`).
+    @discardableResult
+    static func setActiveTheme(coloring: Coloring, palette: Palette?) -> Bool {
+        let newPalette = palette ?? activePalette
+        guard coloring != activeColoring || newPalette != activePalette else { return false }
+        activeColoring = coloring
+        activePalette = newPalette
+        return true
+    }
+
+    /// The dynamic color for a heading of `level` under the active theme.
+    /// Default scheme → `labelColor` (headings are bold + sized only).
+    static func headingColor(level: Int) -> NSColor {
+        guard activeColoring != .off else { return .labelColor }
+        return activePalette.headingColor(level: level)
+    }
+
     static var textColor: NSColor { .labelColor }
     static var mutedColor: NSColor { .secondaryLabelColor }
     static var accentColor: NSColor { .controlAccentColor }
