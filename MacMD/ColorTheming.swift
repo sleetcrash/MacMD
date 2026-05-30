@@ -50,6 +50,27 @@ enum AppAppearance: String, CaseIterable, Codable {
     }
 }
 
+/// One heading slot's color as a tuned light/dark hex pair. Persisted as hex
+/// strings; resolved to a dynamic `NSColor` that follows the effective
+/// appearance, reusing the `Theme.codeBackgroundColor` dynamic-color pattern.
+struct ColorPair: Codable, Equatable {
+    let light: String
+    let dark: String
+
+    var nsLight: NSColor { NSColor(hex: light) ?? .labelColor }
+    var nsDark: NSColor { NSColor(hex: dark) ?? .labelColor }
+
+    func resolved(for appearance: NSAppearance) -> NSColor {
+        appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? nsDark : nsLight
+    }
+
+    var dynamic: NSColor {
+        NSColor(name: nil) { appearance in
+            appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? self.nsDark : self.nsLight
+        }
+    }
+}
+
 /// Pure theming engine: scheme → slot mapping and the preset palette library.
 enum ColorTheming {
     /// Which palette slot colors a heading of `level` under `scheme`.

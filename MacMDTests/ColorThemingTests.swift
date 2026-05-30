@@ -59,4 +59,35 @@ final class ColorThemingTests: XCTestCase {
         XCTAssertEqual(AppAppearance.light.nsAppearance?.name, .aqua)
         XCTAssertEqual(AppAppearance.dark.nsAppearance?.name, .darkAqua)
     }
+
+    // MARK: - ColorPair
+
+    func testColorPairResolvesLightAndDark() {
+        let pair = ColorPair(light: "#C13F50", dark: "#E86577")
+        XCTAssertEqual(pair.nsLight.hexString, "#C13F50")
+        XCTAssertEqual(pair.nsDark.hexString, "#E86577")
+        XCTAssertEqual(pair.resolved(for: NSAppearance(named: .aqua)!).hexString, "#C13F50")
+        XCTAssertEqual(pair.resolved(for: NSAppearance(named: .darkAqua)!).hexString, "#E86577")
+    }
+
+    func testColorPairCodableRoundTrip() throws {
+        let pair = ColorPair(light: "#1F7A5C", dark: "#43B488")
+        let data = try JSONEncoder().encode(pair)
+        let decoded = try JSONDecoder().decode(ColorPair.self, from: data)
+        XCTAssertEqual(decoded, pair)
+    }
+
+    func testColorPairDynamicResolvesPerAppearance() {
+        let pair = ColorPair(light: "#000000", dark: "#FFFFFF")
+        let dyn = pair.dynamic
+        var lightHex = "", darkHex = ""
+        NSAppearance(named: .aqua)!.performAsCurrentDrawingAppearance {
+            lightHex = (dyn.usingColorSpace(.sRGB) ?? dyn).hexString
+        }
+        NSAppearance(named: .darkAqua)!.performAsCurrentDrawingAppearance {
+            darkHex = (dyn.usingColorSpace(.sRGB) ?? dyn).hexString
+        }
+        XCTAssertEqual(lightHex, "#000000")
+        XCTAssertEqual(darkHex, "#FFFFFF")
+    }
 }
