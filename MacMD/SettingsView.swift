@@ -30,10 +30,11 @@ struct SettingsView: View {
                     .frame(width: segWidth, height: rowHeight)
             }
             HStack(spacing: 14) {
-                // Theme placeholder (Task 13)
-                Color(nsColor: .textBackgroundColor)
+                ThemeMenu(coloring: coloring,
+                          themeId: $themeId,
+                          customs: customs,
+                          onCustom: { showingCustomEditor = true })
                     .frame(width: modeWidth, height: rowHeight)
-                    .overlay(Rectangle().strokeBorder(Color.black.opacity(0.25), lineWidth: 1))
                 SchemeMenu(schemeRaw: $schemeRaw, themeId: $themeId)
                     .frame(width: segWidth, height: rowHeight)
             }
@@ -77,6 +78,88 @@ struct ModeControl: View {
             }
         }
         .overlay(Rectangle().strokeBorder(Color.black.opacity(0.22), lineWidth: 1))
+    }
+}
+
+struct Swatch: View {
+    let color: Color
+    var body: some View {
+        color
+            .frame(width: 12, height: 12)
+            .overlay(Rectangle().strokeBorder(Color(white: 0.47).opacity(0.5), lineWidth: 1))
+    }
+}
+
+/// The static Theme box label: name (left), the light │ dark swatch trios
+/// (right, flush to the arrow), and the dropdown arrow at the right edge.
+struct ThemeBoxLabel: View {
+    let palette: Palette?
+
+    var body: some View {
+        HStack(spacing: 0) {
+            Text(palette?.name ?? "Default")
+                .font(.system(size: 11))
+                .lineLimit(1)
+            Spacer(minLength: 8)
+            if let palette {
+                HStack(spacing: 2) {
+                    ForEach(Array(palette.slots.enumerated()), id: \.offset) { _, slot in
+                        Swatch(color: Color(nsColor: slot.nsLight))
+                    }
+                    Text("|").opacity(0.35).padding(.horizontal, 2)
+                    ForEach(Array(palette.slots.enumerated()), id: \.offset) { _, slot in
+                        Swatch(color: Color(nsColor: slot.nsDark))
+                    }
+                }
+            }
+            Image(systemName: "chevron.down")
+                .font(.system(size: 8))
+                .opacity(0.5)
+                .padding(.leading, 8)
+        }
+        .padding(.horizontal, 10)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(nsColor: .textBackgroundColor))
+        .overlay(Rectangle().strokeBorder(Color.black.opacity(0.25), lineWidth: 1))
+    }
+}
+
+/// The Theme dropdown: presets for the active scheme, a Saved group of customs
+/// in that scheme, and Custom+ to open the editor. Disabled under Default.
+struct ThemeMenu: View {
+    let coloring: Coloring
+    @Binding var themeId: String
+    let customs: [Palette]
+    let onCustom: () -> Void
+
+    private var currentPalette: Palette? {
+        ThemeSettings.resolvePalette(coloring: coloring, themeId: themeId, customs: customs)
+    }
+
+    var body: some View {
+        Menu {
+            ForEach(ColorTheming.presets(for: coloring)) { preset in
+                Button(preset.name) { themeId = preset.id }
+            }
+            let schemeCustoms = customs.filter { $0.scheme == coloring }
+            if !schemeCustoms.isEmpty {
+                Divider()
+                Section("Saved") {
+                    ForEach(schemeCustoms) { custom in
+                        Button(custom.name) { themeId = custom.id }
+                    }
+                }
+            }
+            if coloring != .off {
+                Divider()
+                Button("Custom+…") { onCustom() }
+            }
+        } label: {
+            ThemeBoxLabel(palette: currentPalette)
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .disabled(coloring == .off)
     }
 }
 
