@@ -43,8 +43,11 @@ enum Theme {
 
     /// Sets the active coloring + palette. Returns whether anything changed, so
     /// callers can skip a re-highlight (mirrors `setEditorFontSize`).
+    /// Precondition: `palette.scheme` must match `coloring`, except under `.off`.
     @discardableResult
     static func setActiveTheme(coloring: Coloring, palette: Palette?) -> Bool {
+        assert(palette == nil || coloring == .off || palette?.scheme == coloring,
+               "setActiveTheme: palette.scheme must match coloring")
         let newPalette = palette ?? activePalette
         guard coloring != activeColoring || newPalette != activePalette else { return false }
         activeColoring = coloring

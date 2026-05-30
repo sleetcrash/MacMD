@@ -17,7 +17,7 @@ enum ThemeSettings {
     /// renders an empty selection.
     static func resolvePalette(coloring: Coloring, themeId: String, customs: [Palette]) -> Palette? {
         guard coloring != .off else { return nil }
-        if let preset = ColorTheming.preset(id: themeId) { return preset }
+        if let preset = ColorTheming.preset(id: themeId), preset.scheme == coloring { return preset }
         if let custom = customs.first(where: { $0.id == themeId }) { return custom }
         return ColorTheming.presets(for: coloring).first
     }
@@ -40,6 +40,7 @@ enum ThemeSettings {
         AppAppearance(rawValue: UserDefaults.standard.string(forKey: appearanceKey) ?? "") ?? .system
     }
 
+    /// Defaults to the Standard default id; `resolvePalette` corrects any scheme mismatch.
     static var selectedThemeId: String {
         UserDefaults.standard.string(forKey: themeIdKey) ?? ColorTheming.defaultStandardId
     }

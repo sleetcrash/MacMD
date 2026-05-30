@@ -43,4 +43,10 @@ final class ThemeSettingsTests: XCTestCase {
         XCTAssertEqual(ThemeSettings.decodeCustoms(Data()), [])
         XCTAssertEqual(ThemeSettings.decodeCustoms(Data([0x00, 0x01])), [])
     }
+
+    func testResolveIgnoresCrossSchemePreset() {
+        // coloring is .unified but the id points to a Standard preset → fall back to the Unified default.
+        let p = ThemeSettings.resolvePalette(coloring: .unified, themeId: "std.rgb", customs: [])
+        XCTAssertEqual(p?.id, ColorTheming.defaultUnifiedId)
+    }
 }
