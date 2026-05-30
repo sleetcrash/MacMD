@@ -203,14 +203,26 @@ struct ThemeMenu: View {
     var body: some View {
         Menu {
             ForEach(ColorTheming.presets(for: coloring)) { preset in
-                Button(preset.name) { themeId = preset.id }
+                Button { themeId = preset.id } label: {
+                    Label {
+                        Text(preset.name)
+                    } icon: {
+                        Image(nsImage: swatchImage(for: preset))
+                    }
+                }
             }
             let schemeCustoms = customs.filter { $0.scheme == coloring }
             if !schemeCustoms.isEmpty {
                 Divider()
                 Section("Saved") {
                     ForEach(schemeCustoms) { custom in
-                        Button(custom.name) { themeId = custom.id }
+                        Button { themeId = custom.id } label: {
+                            Label {
+                                Text(custom.name)
+                            } icon: {
+                                Image(nsImage: swatchImage(for: custom))
+                            }
+                        }
                     }
                 }
             }
@@ -225,6 +237,34 @@ struct ThemeMenu: View {
         .buttonStyle(.plain)
         .menuIndicator(.hidden)
         .disabled(coloring == .off)
+    }
+
+    /// Renders a palette's light|dark swatches into a small image for use as a
+    /// menu-item icon (native menus can't host SwiftUI color shapes directly).
+    private func swatchImage(for palette: Palette) -> NSImage {
+        let sw: CGFloat = 11        // swatch side
+        let gap: CGFloat = 2        // gap between swatches in a trio
+        let sepGap: CGFloat = 7     // gap between the light trio and the dark trio
+        let n = palette.slots.count
+        let trioWidth = CGFloat(n) * sw + CGFloat(max(0, n - 1)) * gap
+        let width = trioWidth + sepGap + trioWidth
+        let image = NSImage(size: NSSize(width: width, height: sw))
+        image.lockFocus()
+        var x: CGFloat = 0
+        for slot in palette.slots {
+            slot.nsLight.setFill()
+            NSRect(x: x, y: 0, width: sw, height: sw).fill()
+            x += sw + gap
+        }
+        x = trioWidth + sepGap
+        for slot in palette.slots {
+            slot.nsDark.setFill()
+            NSRect(x: x, y: 0, width: sw, height: sw).fill()
+            x += sw + gap
+        }
+        image.unlockFocus()
+        image.isTemplate = false   // keep the colors (don't tint as a template)
+        return image
     }
 }
 
