@@ -2,50 +2,64 @@ import SwiftUI
 import AppKit
 
 struct SettingsView: View {
-    @AppStorage(FontSize.key) private var fontSize = Double(FontSize.standard)
-    @AppStorage(ThemeSettings.schemeKey) private var schemeRaw = Coloring.off.rawValue
-    @AppStorage(ThemeSettings.themeIdKey) private var themeId = ColorTheming.defaultStandardId
-    @AppStorage(ThemeSettings.appearanceKey) private var appearanceRaw = AppAppearance.system.rawValue
+    @EnvironmentObject private var theme: ThemeController
+    @Environment(\.dismiss) private var dismiss
     @AppStorage(ThemeSettings.customsKey) private var customsData = Data()
+    @AppStorage(ThemeSettings.appearanceKey) private var appearanceRaw = AppAppearance.system.rawValue
+
+    // Working copy — edits here don't reach the document until Apply/Save.
+    @State private var wcSchemeRaw = Coloring.off.rawValue
+    @State private var wcThemeId = ColorTheming.defaultStandardId
+    @State private var wcFontSize = Double(FontSize.standard)
     @State private var showingCustomEditor = false
 
-    // Static sizing from the locked mock.
-    private let modeWidth: CGFloat = 225
+    private let themeWidth: CGFloat = 225
     private let segWidth: CGFloat = 75
     private let rowHeight: CGFloat = 32
 
-    private var coloring: Coloring { Coloring(rawValue: schemeRaw) ?? .off }
+    private var wcColoring: Coloring { Coloring(rawValue: wcSchemeRaw) ?? .off }
     private var appearance: AppAppearance { AppAppearance(rawValue: appearanceRaw) ?? .system }
     private var customs: [Palette] { ThemeSettings.decodeCustoms(customsData) }
-    private var palette: Palette? {
-        ThemeSettings.resolvePalette(coloring: coloring, themeId: themeId, customs: customs)
+    private var wcPalette: Palette? {
+        ThemeSettings.resolvePalette(coloring: wcColoring, themeId: wcThemeId, customs: customs)
+    }
+    private var isDirty: Bool {
+        wcSchemeRaw != theme.savedColoring.rawValue
+        || wcThemeId != theme.savedThemeId
+        || wcFontSize != theme.savedFontSize
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(spacing: 14) {
-                LabeledField(label: "Mode") {
-                    ModeControl(appearanceRaw: $appearanceRaw)
-                        .frame(width: modeWidth, height: rowHeight)
+                LabeledField(label: "Theme") {
+                    ThemeMenu(coloring: wcColoring, themeId: $wcThemeId, customs: customs,
+                              onCustom: { showingCustomEditor = true })
+                        .frame(width: themeWidth, height: rowHeight)
                 }
-                LabeledField(label: "Size") {
-                    SizeCombo(fontSize: $fontSize)
+                LabeledField(label: "Scheme") {
+                    SchemeMenu(schemeRaw: $wcSchemeRaw, themeId: $wcThemeId)
                         .frame(width: segWidth, height: rowHeight)
                 }
             }
             HStack(spacing: 14) {
-                LabeledField(label: "Theme") {
-                    ThemeMenu(coloring: coloring, themeId: $themeId, customs: customs,
-                              onCustom: { showingCustomEditor = true })
-                        .frame(width: modeWidth, height: rowHeight)
-                }
-                LabeledField(label: "Scheme") {
-                    SchemeMenu(schemeRaw: $schemeRaw, themeId: $themeId)
+                LabeledField(label: "Size") {
+                    SizeCombo(fontSize: $wcFontSize)
                         .frame(width: segWidth, height: rowHeight)
                 }
+                Spacer()
             }
-            ThemePreview(coloring: coloring, palette: palette, appearance: appearance)
+            ThemePreview(coloring: wcColoring, palette: wcPalette, appearance: appearance)
                 .frame(maxWidth: .infinity)
+            HStack(spacing: 10) {
+                Spacer()
+                Button("Close") { dismiss() }
+                Button("Apply") { theme.apply(coloring: wcColoring, themeId: wcThemeId, fontSize: wcFontSize) }
+                    .disabled(!isDirty)
+                Button("Save") { theme.save(coloring: wcColoring, themeId: wcThemeId, fontSize: wcFontSize) }
+                    .disabled(!isDirty)
+                    .keyboardShortcut(.defaultAction)
+            }
         }
         .padding(EdgeInsets(top: 26, leading: 20, bottom: 20, trailing: 20))
         .frame(width: 354)
@@ -54,43 +68,22 @@ struct SettingsView: View {
                 .contentShape(Rectangle())
                 .onTapGesture { NSApp.keyWindow?.makeFirstResponder(nil) }
         )
+        .onAppear { syncFromSaved() }
+        .onDisappear {
+            // Closing the window any way (Close button or the red X) discards
+            // any unsaved Apply and snaps the document back to the saved theme.
+            theme.revertToSaved()
+            syncFromSaved()
+        }
         .sheet(isPresented: $showingCustomEditor) {
-            CustomThemeEditor(coloring: coloring,
-                              customsData: $customsData,
-                              selectedThemeId: $themeId)
+            CustomThemeEditor(coloring: wcColoring, customsData: $customsData, selectedThemeId: $wcThemeId)
         }
     }
-}
 
-/// Icon-only Light / Dark / System segmented control. Sun = Light, moon = Dark,
-/// laptop = System. Sharp corners, the selected segment filled blue (#3478F6).
-struct ModeControl: View {
-    @Binding var appearanceRaw: String
-
-    private let items: [(mode: AppAppearance, icon: String, label: String)] = [
-        (.light, "sun.max", "Light"),
-        (.dark, "moon.fill", "Dark"),
-        (.system, "laptopcomputer", "System"),
-    ]
-    private let selectedBlue = Color(red: 0x34 / 255, green: 0x78 / 255, blue: 0xF6 / 255)
-
-    var body: some View {
-        HStack(spacing: 0) {
-            ForEach(Array(items.enumerated()), id: \.offset) { index, item in
-                let selected = appearanceRaw == item.mode.rawValue
-                Image(systemName: item.icon)
-                    .font(.system(size: 13))
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(selected ? selectedBlue : Color(nsColor: .textBackgroundColor))
-                    .foregroundStyle(selected ? Color.white : Color.primary)
-                    .overlay(index == 0 ? nil : Divider(), alignment: .leading)
-                    .contentShape(Rectangle())
-                    .onTapGesture { appearanceRaw = item.mode.rawValue }
-                    .accessibilityLabel(item.label)
-                    .accessibilityAddTraits(selected ? .isSelected : [])
-            }
-        }
-        .overlay(Rectangle().strokeBorder(Color(nsColor: .separatorColor), lineWidth: 1))
+    private func syncFromSaved() {
+        wcSchemeRaw = theme.savedColoring.rawValue
+        wcThemeId = theme.savedThemeId
+        wcFontSize = theme.savedFontSize
     }
 }
 

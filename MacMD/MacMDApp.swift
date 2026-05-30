@@ -3,9 +3,13 @@ import AppKit
 
 @main
 struct MacMDApp: App {
+    @StateObject private var themeController = ThemeController()
+    @AppStorage(ThemeSettings.appearanceKey) private var appearanceRaw = AppAppearance.system.rawValue
+
     var body: some Scene {
         DocumentGroup(newDocument: MarkdownDocument()) { file in
             DocumentView(document: file.$document)
+                .environmentObject(themeController)
         }
         .commands {
             CommandGroup(replacing: .help) { }
@@ -44,13 +48,19 @@ struct MacMDApp: App {
                     (NSApp.keyWindow?.firstResponder as? ClickableTextView)?.macmdItalic(nil)
                 }
                 .keyboardShortcut("i", modifiers: .command)
+                Divider()
+                Menu("Appearance") {
+                    appearanceItem(.light, "Light")
+                    appearanceItem(.dark, "Dark")
+                    appearanceItem(.system, "System")
+                }
             }
             CommandGroup(after: .toolbar) {
-                Button("Increase Font Size") { FontSize.adjust(by: 1) }
+                Button("Increase Font Size") { themeController.adjustFontSize(by: 1) }
                     .keyboardShortcut("+", modifiers: .command)
-                Button("Decrease Font Size") { FontSize.adjust(by: -1) }
+                Button("Decrease Font Size") { themeController.adjustFontSize(by: -1) }
                     .keyboardShortcut("-", modifiers: .command)
-                Button("Actual Size") { FontSize.reset() }
+                Button("Actual Size") { themeController.resetFontSize() }
                     .keyboardShortcut("0", modifiers: .command)
                 Divider()
             }
@@ -58,6 +68,19 @@ struct MacMDApp: App {
 
         Settings {
             SettingsView()
+                .environmentObject(themeController)
+        }
+    }
+
+    private func appearanceItem(_ mode: AppAppearance, _ label: String) -> some View {
+        Button {
+            appearanceRaw = mode.rawValue
+        } label: {
+            if appearanceRaw == mode.rawValue {
+                Label(label, systemImage: "checkmark")
+            } else {
+                Text(label)
+            }
         }
     }
 }
