@@ -28,6 +28,8 @@
 		F200000000000000000000B8 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000B8 /* SettingsView.swift */; };
 		F200000000000000000000B9 /* ThemePreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000B9 /* ThemePreview.swift */; };
 		F200000000000000000000BA /* CustomThemeEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000BA /* CustomThemeEditor.swift */; };
+		F200000000000000000000BB /* ThemeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000BB /* ThemeController.swift */; };
+		F200000000000000000000BC /* ThemeControllerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000BC /* ThemeControllerTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -64,6 +66,8 @@
 		F100000000000000000000B8 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		F100000000000000000000B9 /* ThemePreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemePreview.swift; sourceTree = "<group>"; };
 		F100000000000000000000BA /* CustomThemeEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomThemeEditor.swift; sourceTree = "<group>"; };
+		F100000000000000000000BB /* ThemeController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeController.swift; sourceTree = "<group>"; };
+		F100000000000000000000BC /* ThemeControllerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeControllerTests.swift; sourceTree = "<group>"; };
 		F100000000000000000000A4 /* MacMD.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MacMD.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F100000000000000000000A5 /* MacMDTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MacMDTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -111,6 +115,7 @@
 				F100000000000000000000B8 /* SettingsView.swift */,
 				F100000000000000000000B9 /* ThemePreview.swift */,
 				F100000000000000000000BA /* CustomThemeEditor.swift */,
+				F100000000000000000000BB /* ThemeController.swift */,
 				F100000000000000000000A0 /* Assets.xcassets */,
 				F100000000000000000000A2 /* Info.plist */,
 				F100000000000000000000A1 /* MacMD.entitlements */,
@@ -128,6 +133,7 @@
 				F100000000000000000000B3 /* ColorThemingTests.swift */,
 				F100000000000000000000B5 /* SectionMapTests.swift */,
 				F100000000000000000000B7 /* ThemeSettingsTests.swift */,
+				F100000000000000000000BC /* ThemeControllerTests.swift */,
 			);
 			path = MacMDTests;
 			sourceTree = "<group>";
@@ -252,6 +258,7 @@
 				F200000000000000000000B8 /* SettingsView.swift in Sources */,
 				F200000000000000000000B9 /* ThemePreview.swift in Sources */,
 				F200000000000000000000BA /* CustomThemeEditor.swift in Sources */,
+				F200000000000000000000BB /* ThemeController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -266,6 +273,7 @@
 				F200000000000000000000B3 /* ColorThemingTests.swift in Sources */,
 				F200000000000000000000B5 /* SectionMapTests.swift in Sources */,
 				F200000000000000000000B7 /* ThemeSettingsTests.swift in Sources */,
+				F200000000000000000000BC /* ThemeControllerTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
