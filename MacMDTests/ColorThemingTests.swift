@@ -20,6 +20,7 @@ final class ColorThemingTests: XCTestCase {
     func testHexRejectsMalformed() {
         XCTAssertNil(NSColor(hex: "#12"))
         XCTAssertNil(NSColor(hex: "ZZZZZZ"))
+        XCTAssertNil(NSColor(hex: "#C13F50FF"))
     }
 
     func testHexStringRoundTrips() {
@@ -46,7 +47,7 @@ final class ColorThemingTests: XCTestCase {
         }
     }
 
-    func testSlotIndexStandardMapsH4ToH6IntoSlot2() {
+    func testSlotIndexStandardMapping() {
         XCTAssertEqual(ColorTheming.slotIndex(forHeadingLevel: 1, scheme: .standard), 0)
         XCTAssertEqual(ColorTheming.slotIndex(forHeadingLevel: 2, scheme: .standard), 1)
         XCTAssertEqual(ColorTheming.slotIndex(forHeadingLevel: 3, scheme: .standard), 2)
@@ -147,6 +148,13 @@ final class ColorThemingTests: XCTestCase {
         XCTAssertEqual(ColorTheming.presets(for: .standard).count, 6)
         XCTAssertEqual(ColorTheming.presets(for: .unified).count, 8)
         XCTAssertTrue(ColorTheming.presets(for: .off).isEmpty)
+    }
+
+    func testHeadingColorFallsBackWhenSlotMissing() {
+        let shortPalette = Palette(id: "short", name: "Short", scheme: .standard,
+                                   slots: [ColorPair(light: "#111111", dark: "#222222")])
+        // H2 maps to slot 1, which doesn't exist → labelColor fallback.
+        XCTAssertEqual(shortPalette.headingColor(level: 2), .labelColor)
     }
 }
 

@@ -15,7 +15,7 @@ extension NSColor {
 
     /// Uppercase `#RRGGBB` of the color resolved into sRGB.
     var hexString: String {
-        let c = usingColorSpace(.sRGB) ?? self
+        guard let c = usingColorSpace(.sRGB) else { return "#000000" }
         let r = Int((c.redComponent * 255).rounded())
         let g = Int((c.greenComponent * 255).rounded())
         let b = Int((c.blueComponent * 255).rounded())
@@ -25,6 +25,7 @@ extension NSColor {
 
 /// How many distinct heading colors are in play.
 enum Coloring: String, CaseIterable, Codable {
+    /// `.off` colors nothing (headings use the system label color); shown as "Default" in the UI.
     case off, unified, standard
 
     var displayName: String {
