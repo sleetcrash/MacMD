@@ -12,6 +12,7 @@ struct SettingsView: View {
     @State private var wcThemeId = ColorTheming.defaultStandardId
     @State private var wcFontSize = Double(FontSize.standard)
     @State private var showingCustomEditor = false
+    @State private var showThemeList = false
 
     private let wideWidth: CGFloat = 225
     private let segWidth: CGFloat = 75
@@ -43,14 +44,28 @@ struct SettingsView: View {
             }
             HStack(spacing: 14) {
                 LabeledField(label: "Theme") {
-                    ThemeMenu(coloring: wcColoring, themeId: $wcThemeId, customs: customs,
-                              onCustom: { showingCustomEditor = true })
-                        .frame(width: wideWidth, height: rowHeight)
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.22)) { showThemeList.toggle() }
+                    } label: {
+                        ThemeBoxLabel(palette: wcPalette, isOpen: showThemeList)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(wcColoring == .off)
+                    .frame(width: wideWidth, height: rowHeight)
                 }
                 LabeledField(label: "Scheme") {
                     SchemeMenu(schemeRaw: $wcSchemeRaw, themeId: $wcThemeId)
                         .frame(width: segWidth, height: rowHeight)
                 }
+            }
+            if showThemeList {
+                ThemeList(coloring: wcColoring,
+                          themeId: $wcThemeId,
+                          customs: customs,
+                          onCustom: { showThemeList = false; showingCustomEditor = true },
+                          onSelect: { withAnimation(.easeInOut(duration: 0.22)) { showThemeList = false } })
+                    .frame(maxWidth: .infinity)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
             }
             ThemePreview(coloring: wcColoring, palette: wcPalette, appearance: appearance)
                 .frame(maxWidth: .infinity)
@@ -72,7 +87,10 @@ struct SettingsView: View {
         .background(
             Color.clear
                 .contentShape(Rectangle())
-                .onTapGesture { NSApp.keyWindow?.makeFirstResponder(nil) }
+                .onTapGesture {
+                    NSApp.keyWindow?.makeFirstResponder(nil)
+                    if showThemeList { withAnimation(.easeInOut(duration: 0.22)) { showThemeList = false } }
+                }
         )
         .onAppear { syncFromSaved() }
         .onDisappear {
@@ -158,6 +176,7 @@ struct SquareButtonStyle: ButtonStyle {
 /// (right, flush to the arrow), and the dropdown arrow at the right edge.
 struct ThemeBoxLabel: View {
     let palette: Palette?
+    var isOpen: Bool = false
 
     var body: some View {
         HStack(spacing: 0) {
@@ -180,6 +199,7 @@ struct ThemeBoxLabel: View {
                 .font(.system(size: 8))
                 .opacity(0.5)
                 .padding(.leading, 8)
+                .rotationEffect(.degrees(isOpen ? 180 : 0))
         }
         .padding(.horizontal, 10)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -188,66 +208,52 @@ struct ThemeBoxLabel: View {
     }
 }
 
-/// The Theme selector: the static box label triggers a popover listing the
-/// scheme's presets and saved customs, each row showing its light|dark
-/// swatches (a SwiftUI popover is used instead of a native Menu because macOS
-/// menu items can't render multi-color swatch images).
-struct ThemeMenu: View {
+/// The inline theme list that unravels below the Theme/Scheme row. Full content
+/// width (matches the preview). Rows show name + light|dark swatches with hover
+/// highlighting. Replaces the old floating popover.
+struct ThemeList: View {
     let coloring: Coloring
     @Binding var themeId: String
     let customs: [Palette]
     let onCustom: () -> Void
+    let onSelect: () -> Void
 
-    @State private var showPopover = false
     @State private var hoveredId: String?
 
-    private var currentPalette: Palette? {
-        ThemeSettings.resolvePalette(coloring: coloring, themeId: themeId, customs: customs)
-    }
     private var schemeCustoms: [Palette] { customs.filter { $0.scheme == coloring } }
 
     var body: some View {
-        Button { showPopover.toggle() } label: {
-            ThemeBoxLabel(palette: currentPalette)
-        }
-        .buttonStyle(.plain)
-        .disabled(coloring == .off)
-        .popover(isPresented: $showPopover, arrowEdge: .bottom) {
-            VStack(alignment: .leading, spacing: 0) {
-                ForEach(ColorTheming.presets(for: coloring)) { row(for: $0) }
-                if !schemeCustoms.isEmpty {
-                    Divider().padding(.vertical, 4)
-                    ForEach(schemeCustoms) { row(for: $0) }
-                }
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(ColorTheming.presets(for: coloring)) { row(for: $0) }
+            if !schemeCustoms.isEmpty {
                 Divider().padding(.vertical, 4)
-                rowButton(id: "__custom__", action: { showPopover = false; onCustom() }) {
-                    Text("Custom+…").font(.system(size: 12))
-                    Spacer()
-                }
+                ForEach(schemeCustoms) { row(for: $0) }
             }
-            .padding(6)
-            .frame(width: 250)
+            Divider().padding(.vertical, 4)
+            rowButton(id: "__custom__", action: onCustom) {
+                Text("Custom+…").font(.system(size: 12))
+                Spacer()
+            }
         }
+        .padding(.vertical, 6)
+        .frame(maxWidth: .infinity)
+        .background(Color(nsColor: .textBackgroundColor))
+        .overlay(Rectangle().strokeBorder(Color(nsColor: .separatorColor), lineWidth: 1))
     }
 
     private func row(for p: Palette) -> some View {
-        rowButton(id: p.id, action: { themeId = p.id; showPopover = false }) {
+        rowButton(id: p.id, action: { themeId = p.id; onSelect() }) {
             Text(p.name).font(.system(size: 12)).lineLimit(1)
             Spacer(minLength: 12)
             swatchStrip(p)
         }
     }
 
-    @ViewBuilder
-    private func swatchStrip(_ p: Palette) -> some View {
+    @ViewBuilder private func swatchStrip(_ p: Palette) -> some View {
         HStack(spacing: 2) {
-            ForEach(Array(p.slots.enumerated()), id: \.offset) { _, s in
-                swatch(Color(nsColor: s.nsLight))
-            }
+            ForEach(Array(p.slots.enumerated()), id: \.offset) { _, s in swatch(Color(nsColor: s.nsLight)) }
             Text("|").opacity(0.35).padding(.horizontal, 1)
-            ForEach(Array(p.slots.enumerated()), id: \.offset) { _, s in
-                swatch(Color(nsColor: s.nsDark))
-            }
+            ForEach(Array(p.slots.enumerated()), id: \.offset) { _, s in swatch(Color(nsColor: s.nsDark)) }
         }
     }
 
@@ -262,16 +268,13 @@ struct ThemeMenu: View {
         Button(action: action) {
             HStack(spacing: 0) { content() }
                 .padding(.vertical, 5)
-                .padding(.horizontal, 8)
+                .padding(.horizontal, 10)
                 .frame(maxWidth: .infinity)
                 .background(hoveredId == id ? Color.accentColor.opacity(0.25) : Color.clear)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .onHover { inside in
-            if inside { hoveredId = id }
-            else if hoveredId == id { hoveredId = nil }
-        }
+        .onHover { inside in if inside { hoveredId = id } else if hoveredId == id { hoveredId = nil } }
     }
 }
 
