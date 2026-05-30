@@ -259,6 +259,13 @@ struct SizeCombo: NSViewRepresentable {
             }
         }
 
+        func controlTextDidChange(_ notification: Notification) {
+            guard let cb = notification.object as? NSComboBox else { return }
+            let digits = cb.stringValue.filter(\.isNumber)
+            let capped = String(digits.prefix(2))
+            if cb.stringValue != capped { cb.stringValue = capped }
+        }
+
         func controlTextDidEndEditing(_ notification: Notification) {
             guard let cb = notification.object as? NSComboBox else { return }
             commit(cb)
