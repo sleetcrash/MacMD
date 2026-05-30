@@ -173,7 +173,7 @@ final class MarkdownHighlighterTests: XCTestCase {
         XCTAssertFalse(font(at: contentIndex, in: storage)?.fontDescriptor.symbolicTraits.contains(.italic) ?? true,
                        "Bullet list item with asterisk must not trigger italic")
         XCTAssertEqual(color(at: 0, in: storage), Theme.textColor,
-                       "Asterisk list marker should be accent-colored")
+                       "Asterisk list marker should use the body label color (Default scheme)")
     }
 
     // MARK: - Blockquotes, rules, plain text

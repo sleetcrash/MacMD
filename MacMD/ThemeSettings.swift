@@ -18,7 +18,7 @@ enum ThemeSettings {
     static func resolvePalette(coloring: Coloring, themeId: String, customs: [Palette]) -> Palette? {
         guard coloring != .off else { return nil }
         if let preset = ColorTheming.preset(id: themeId), preset.scheme == coloring { return preset }
-        if let custom = customs.first(where: { $0.id == themeId }) { return custom }
+        if let custom = customs.first(where: { $0.id == themeId && $0.scheme == coloring }) { return custom }
         return ColorTheming.presets(for: coloring).first
     }
 

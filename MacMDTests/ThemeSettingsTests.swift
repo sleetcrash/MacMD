@@ -49,4 +49,13 @@ final class ThemeSettingsTests: XCTestCase {
         let p = ThemeSettings.resolvePalette(coloring: .unified, themeId: "std.rgb", customs: [])
         XCTAssertEqual(p?.id, ColorTheming.defaultUnifiedId)
     }
+
+    func testResolveIgnoresCrossSchemeCustom() {
+        // A Unified custom id requested under Standard coloring must NOT load
+        // (wrong slot count); fall back to the Standard default preset instead.
+        let unifiedCustom = Palette(id: "custom.u", name: "U", scheme: .unified,
+                                    slots: [ColorPair(light: "#111111", dark: "#222222")])
+        let p = ThemeSettings.resolvePalette(coloring: .standard, themeId: "custom.u", customs: [unifiedCustom])
+        XCTAssertEqual(p?.id, ColorTheming.defaultStandardId)
+    }
 }
