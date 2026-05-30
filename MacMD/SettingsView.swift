@@ -53,7 +53,8 @@ struct SettingsView: View {
                         .frame(width: segWidth, height: rowHeight)
                 }
             }
-            ThemePreview(coloring: wcColoring, palette: wcPalette, appearance: wcAppearance)
+            ThemePreview(coloring: wcColoring, palette: wcPalette,
+                         appearance: wcAppearance, fontSize: CGFloat(wcFontSize))
                 .frame(maxWidth: .infinity)
             HStack(spacing: 10) {
                 Spacer()
@@ -83,7 +84,12 @@ struct SettingsView: View {
                     NSApp.keyWindow?.makeFirstResponder(nil)
                 }
         )
-        .onAppear { syncFromSaved() }
+        .onAppear {
+            syncFromSaved()
+            // Don't let the Size text field grab focus when the window opens —
+            // AppKit makes the only text field the initial first responder.
+            DispatchQueue.main.async { NSApp.keyWindow?.makeFirstResponder(nil) }
+        }
         .onDisappear {
             // Closing the window any way (Close button or the red X) discards
             // any unsaved Apply and snaps the document back to the saved theme.
