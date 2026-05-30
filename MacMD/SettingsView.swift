@@ -13,7 +13,7 @@ struct SettingsView: View {
     @State private var wcFontSize = Double(FontSize.standard)
     @State private var showingCustomEditor = false
 
-    private let themeWidth: CGFloat = 225
+    private let wideWidth: CGFloat = 225
     private let segWidth: CGFloat = 75
     private let rowHeight: CGFloat = 32
 
@@ -32,22 +32,25 @@ struct SettingsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(spacing: 14) {
+                LabeledField(label: "Mode") {
+                    ModeControl(appearanceRaw: $appearanceRaw)
+                        .frame(width: wideWidth, height: rowHeight)
+                }
+                LabeledField(label: "Size") {
+                    SizeCombo(fontSize: $wcFontSize)
+                        .frame(width: segWidth, height: rowHeight)
+                }
+            }
+            HStack(spacing: 14) {
                 LabeledField(label: "Theme") {
                     ThemeMenu(coloring: wcColoring, themeId: $wcThemeId, customs: customs,
                               onCustom: { showingCustomEditor = true })
-                        .frame(width: themeWidth, height: rowHeight)
+                        .frame(width: wideWidth, height: rowHeight)
                 }
                 LabeledField(label: "Scheme") {
                     SchemeMenu(schemeRaw: $wcSchemeRaw, themeId: $wcThemeId)
                         .frame(width: segWidth, height: rowHeight)
                 }
-            }
-            HStack(spacing: 14) {
-                LabeledField(label: "Size") {
-                    SizeCombo(fontSize: $wcFontSize)
-                        .frame(width: segWidth, height: rowHeight)
-                }
-                Spacer()
             }
             ThemePreview(coloring: wcColoring, palette: wcPalette, appearance: appearance)
                 .frame(maxWidth: .infinity)
@@ -84,6 +87,38 @@ struct SettingsView: View {
         wcSchemeRaw = theme.savedColoring.rawValue
         wcThemeId = theme.savedThemeId
         wcFontSize = theme.savedFontSize
+    }
+}
+
+/// Icon-only Light / Dark / System segmented control. Binds directly to the
+/// persisted appearance (immediate, not part of the Apply/Save working copy).
+struct ModeControl: View {
+    @Binding var appearanceRaw: String
+
+    private let items: [(mode: AppAppearance, icon: String, label: String)] = [
+        (.light, "sun.max", "Light"),
+        (.dark, "moon.fill", "Dark"),
+        (.system, "laptopcomputer", "System"),
+    ]
+    private let selectedBlue = Color(red: 0x34 / 255, green: 0x78 / 255, blue: 0xF6 / 255)
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(Array(items.enumerated()), id: \.offset) { index, item in
+                let selected = appearanceRaw == item.mode.rawValue
+                Image(systemName: item.icon)
+                    .font(.system(size: 13))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(selected ? selectedBlue : Color(nsColor: .textBackgroundColor))
+                    .foregroundStyle(selected ? Color.white : Color.primary)
+                    .overlay(index == 0 ? nil : Divider(), alignment: .leading)
+                    .contentShape(Rectangle())
+                    .onTapGesture { appearanceRaw = item.mode.rawValue }
+                    .accessibilityLabel(item.label)
+                    .accessibilityAddTraits(selected ? .isSelected : [])
+            }
+        }
+        .overlay(Rectangle().strokeBorder(Color(nsColor: .separatorColor), lineWidth: 1))
     }
 }
 
