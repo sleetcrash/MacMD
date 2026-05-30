@@ -58,15 +58,6 @@ struct SettingsView: View {
                         .frame(width: segWidth, height: rowHeight)
                 }
             }
-            if showThemeList {
-                ThemeList(coloring: wcColoring,
-                          themeId: $wcThemeId,
-                          customs: customs,
-                          onCustom: { showThemeList = false; showingCustomEditor = true },
-                          onSelect: { withAnimation(.easeInOut(duration: 0.22)) { showThemeList = false } })
-                    .frame(maxWidth: .infinity)
-                    .transition(.opacity.combined(with: .move(edge: .top)))
-            }
             ThemePreview(coloring: wcColoring, palette: wcPalette, appearance: appearance)
                 .frame(maxWidth: .infinity)
             HStack(spacing: 10) {
@@ -80,6 +71,20 @@ struct SettingsView: View {
                     .buttonStyle(SquareButtonStyle())
                     .disabled(!isDirty)
                     .keyboardShortcut(.defaultAction)
+            }
+        }
+        .overlay(alignment: .topLeading) {
+            if showThemeList {
+                ThemeList(coloring: wcColoring,
+                          themeId: $wcThemeId,
+                          customs: customs,
+                          onCustom: { showThemeList = false; showingCustomEditor = true },
+                          onSelect: { withAnimation(.easeInOut(duration: 0.22)) { showThemeList = false } })
+                    .frame(maxWidth: .infinity)
+                    .shadow(color: .black.opacity(0.35), radius: 10, x: 0, y: 6)
+                    .offset(y: rowHeight * 2 + 18 + 4)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+                    .zIndex(1)
             }
         }
         .padding(EdgeInsets(top: 26, leading: 20, bottom: 20, trailing: 20))
