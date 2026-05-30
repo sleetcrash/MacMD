@@ -49,6 +49,11 @@ struct SettingsView: View {
         }
         .padding(EdgeInsets(top: 26, leading: 20, bottom: 20, trailing: 20))
         .frame(width: 354)
+        .sheet(isPresented: $showingCustomEditor) {
+            CustomThemeEditor(coloring: coloring,
+                              customsData: $customsData,
+                              selectedThemeId: $themeId)
+        }
     }
 }
 
