@@ -4,7 +4,6 @@ import AppKit
 @main
 struct MacMDApp: App {
     @StateObject private var themeController = ThemeController()
-    @AppStorage(ThemeSettings.appearanceKey) private var appearanceRaw = AppAppearance.system.rawValue
 
     var body: some Scene {
         DocumentGroup(newDocument: MarkdownDocument()) { file in
@@ -39,22 +38,7 @@ struct MacMDApp: App {
                 }
                 .keyboardShortcut("p", modifiers: .command)
             }
-            CommandMenu("Format") {
-                Button("Bold") {
-                    (NSApp.keyWindow?.firstResponder as? ClickableTextView)?.macmdBold(nil)
-                }
-                .keyboardShortcut("b", modifiers: .command)
-                Button("Italic") {
-                    (NSApp.keyWindow?.firstResponder as? ClickableTextView)?.macmdItalic(nil)
-                }
-                .keyboardShortcut("i", modifiers: .command)
-                Divider()
-                Menu("Appearance") {
-                    appearanceItem(.light, "Light")
-                    appearanceItem(.dark, "Dark")
-                    appearanceItem(.system, "System")
-                }
-            }
+            FormatCommands()
             CommandGroup(after: .toolbar) {
                 Button("Increase Font Size") { themeController.adjustFontSize(by: 1) }
                     .keyboardShortcut("+", modifiers: .command)
@@ -66,21 +50,39 @@ struct MacMDApp: App {
             }
         }
 
-        Settings {
+        Window("Appearance", id: AppearanceScene.id) {
             SettingsView()
                 .environmentObject(themeController)
         }
+        .windowResizability(.contentSize)
+        .defaultPosition(.center)
     }
+}
 
-    private func appearanceItem(_ mode: AppAppearance, _ label: String) -> some View {
-        Button {
-            appearanceRaw = mode.rawValue
-        } label: {
-            if appearanceRaw == mode.rawValue {
-                Label(label, systemImage: "checkmark")
-            } else {
-                Text(label)
+/// Identifies the Appearance settings window, opened from Format ▸ Appearance.
+enum AppearanceScene {
+    static let id = "appearance"
+}
+
+/// The Format menu. Bold/Italic act on the focused editor; Appearance opens the
+/// Appearance window — this replaces both the old MacMD ▸ Settings item and the
+/// former Format ▸ Appearance mode submenu. Cmd-, still opens it.
+struct FormatCommands: Commands {
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some Commands {
+        CommandMenu("Format") {
+            Button("Bold") {
+                (NSApp.keyWindow?.firstResponder as? ClickableTextView)?.macmdBold(nil)
             }
+            .keyboardShortcut("b", modifiers: .command)
+            Button("Italic") {
+                (NSApp.keyWindow?.firstResponder as? ClickableTextView)?.macmdItalic(nil)
+            }
+            .keyboardShortcut("i", modifiers: .command)
+            Divider()
+            Button("Appearance") { openWindow(id: AppearanceScene.id) }
+                .keyboardShortcut(",", modifiers: .command)
         }
     }
 }

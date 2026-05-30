@@ -5,22 +5,20 @@ struct SettingsView: View {
     @EnvironmentObject private var theme: ThemeController
     @Environment(\.dismiss) private var dismiss
     @AppStorage(ThemeSettings.customsKey) private var customsData = Data()
-    @AppStorage(ThemeSettings.appearanceKey) private var appearanceRaw = AppAppearance.system.rawValue
 
     // Working copy — edits here don't reach the document until Apply/Save.
     @State private var wcSchemeRaw = Coloring.off.rawValue
     @State private var wcThemeId = ColorTheming.defaultStandardId
     @State private var wcFontSize = Double(FontSize.standard)
+    @State private var wcAppearanceRaw = AppAppearance.system.rawValue
     @State private var showingCustomEditor = false
-    @State private var previewAppearanceRaw = AppAppearance.system.rawValue
 
     private let wideWidth: CGFloat = 225
     private let segWidth: CGFloat = 75
     private let rowHeight: CGFloat = 32
 
     private var wcColoring: Coloring { Coloring(rawValue: wcSchemeRaw) ?? .off }
-    private var appearance: AppAppearance { AppAppearance(rawValue: appearanceRaw) ?? .system }
-    private var previewAppearance: AppAppearance { AppAppearance(rawValue: previewAppearanceRaw) ?? .system }
+    private var wcAppearance: AppAppearance { AppAppearance(rawValue: wcAppearanceRaw) ?? .system }
     private var customs: [Palette] { ThemeSettings.decodeCustoms(customsData) }
     private var wcPalette: Palette? {
         ThemeSettings.resolvePalette(coloring: wcColoring, themeId: wcThemeId, customs: customs)
@@ -29,13 +27,14 @@ struct SettingsView: View {
         wcSchemeRaw != theme.savedColoring.rawValue
         || wcThemeId != theme.savedThemeId
         || wcFontSize != theme.savedFontSize
+        || wcAppearanceRaw != theme.savedAppearance.rawValue
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(spacing: 14) {
                 LabeledField(label: "Mode") {
-                    ModeControl(appearanceRaw: $previewAppearanceRaw)
+                    ModeControl(appearanceRaw: $wcAppearanceRaw)
                         .frame(width: wideWidth, height: rowHeight)
                 }
                 LabeledField(label: "Size") {
@@ -54,16 +53,22 @@ struct SettingsView: View {
                         .frame(width: segWidth, height: rowHeight)
                 }
             }
-            ThemePreview(coloring: wcColoring, palette: wcPalette, appearance: previewAppearance)
+            ThemePreview(coloring: wcColoring, palette: wcPalette, appearance: wcAppearance)
                 .frame(maxWidth: .infinity)
             HStack(spacing: 10) {
                 Spacer()
                 Button("Close") { theme.revertToSaved(); dismiss() }
                     .buttonStyle(SquareButtonStyle())
-                Button("Apply") { theme.apply(coloring: wcColoring, themeId: wcThemeId, fontSize: wcFontSize) }
+                Button("Apply") {
+                    theme.apply(coloring: wcColoring, themeId: wcThemeId,
+                                fontSize: wcFontSize, appearance: wcAppearance)
+                }
                     .buttonStyle(SquareButtonStyle())
                     .disabled(!isDirty)
-                Button("Save") { theme.save(coloring: wcColoring, themeId: wcThemeId, fontSize: wcFontSize) }
+                Button("Save") {
+                    theme.save(coloring: wcColoring, themeId: wcThemeId,
+                               fontSize: wcFontSize, appearance: wcAppearance)
+                }
                     .buttonStyle(SquareButtonStyle())
                     .disabled(!isDirty)
                     .keyboardShortcut(.defaultAction)
@@ -94,12 +99,13 @@ struct SettingsView: View {
         wcSchemeRaw = theme.savedColoring.rawValue
         wcThemeId = theme.savedThemeId
         wcFontSize = theme.savedFontSize
-        previewAppearanceRaw = appearanceRaw
+        wcAppearanceRaw = theme.savedAppearance.rawValue
     }
 }
 
-/// Icon-only Light / Dark / System segmented control. Binds directly to the
-/// persisted appearance (immediate, not part of the Apply/Save working copy).
+/// Icon-only Light / Dark / System segmented control. Binds the working copy,
+/// so changing Mode only previews while the window is open; it reaches the
+/// editor on Apply and persists on Save, exactly like Theme/Scheme/Size.
 struct ModeControl: View {
     @Binding var appearanceRaw: String
 
