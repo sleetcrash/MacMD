@@ -6,6 +6,7 @@ final class MarkdownHighlighter: NSObject, @preconcurrency NSTextStorageDelegate
     var isSuppressed = false
     var isDisabled = false
     private var lastFenceLines: [MarkdownRules.FenceLine] = []
+    private var lastHeadingLines: [MarkdownRules.HeadingLine] = []
 
     func textStorage(_ textStorage: NSTextStorage,
                      didProcessEditing editedMask: NSTextStorageEditActions,
@@ -24,9 +25,11 @@ final class MarkdownHighlighter: NSObject, @preconcurrency NSTextStorageDelegate
         let codeSpans = MarkdownRules.spansFromFences(fenceLines, fullRange: total)
 
         let headings = MarkdownRules.headingLines(in: nsString, fullRange: total)
+        let headingsChanged = headings != lastHeadingLines
+        lastHeadingLines = headings
         let sectionMap = MarkdownRules.sectionMap(from: headings, excluding: codeSpans)
 
-        if fencesChanged {
+        if fencesChanged || headingsChanged {
             MarkdownRules.applyHighlighting(to: textStorage, in: total, fencedSpans: codeSpans, sectionMap: sectionMap)
             return
         }
@@ -50,6 +53,7 @@ final class MarkdownHighlighter: NSObject, @preconcurrency NSTextStorageDelegate
         lastFenceLines = fenceLines
         let spans = MarkdownRules.spansFromFences(fenceLines, fullRange: full)
         let headings = MarkdownRules.headingLines(in: nsString, fullRange: full)
+        lastHeadingLines = headings
         let sectionMap = MarkdownRules.sectionMap(from: headings, excluding: spans)
         MarkdownRules.applyHighlighting(to: textStorage, in: full, fencedSpans: spans, sectionMap: sectionMap)
     }

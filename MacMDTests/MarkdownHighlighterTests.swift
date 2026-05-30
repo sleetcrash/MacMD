@@ -454,4 +454,24 @@ final class MarkdownHighlighterTests: XCTestCase {
         let bulletIndex = ("## Section\n").count
         XCTAssertEqual(color(at: bulletIndex, in: storage), Theme.textColor)
     }
+
+    func testEditingAHeadingRecolorsMarkersBelow() {
+        Theme.setActiveTheme(coloring: .standard, palette: ColorTheming.preset(id: "std.rgb"))
+        let storage = NSTextStorage(string: "## Section\n- item")
+        let highlighter = MarkdownHighlighter()
+        storage.delegate = highlighter
+        highlighter.rehighlightAll(storage)
+
+        let bulletIndex = ("## Section\n").count
+        XCTAssertEqual(color(at: bulletIndex, in: storage)?.resolvedHexLight, "#2E8049") // H2 slot1
+
+        // Promote the heading to H1 by deleting one '#'. The bullet must recolor
+        // to the H1 (slot0) color even though only the heading line was edited.
+        storage.beginEditing()
+        storage.replaceCharacters(in: NSRange(location: 0, length: 1), with: "")
+        storage.endEditing()
+
+        let newBulletIndex = ("# Section\n").count
+        XCTAssertEqual(color(at: newBulletIndex, in: storage)?.resolvedHexLight, "#C13F50") // H1 slot0
+    }
 }
