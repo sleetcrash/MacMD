@@ -57,9 +57,9 @@ struct SettingsView: View {
                          appearance: wcAppearance, fontSize: CGFloat(wcFontSize))
                 .frame(maxWidth: .infinity)
             HStack(spacing: 10) {
-                Spacer()
                 Button("Close") { theme.revertToSaved(); dismiss() }
                     .buttonStyle(SquareButtonStyle())
+                Spacer()
                 Button("Apply") {
                     theme.apply(coloring: wcColoring, themeId: wcThemeId,
                                 fontSize: wcFontSize, appearance: wcAppearance)
@@ -69,6 +69,7 @@ struct SettingsView: View {
                 Button("Save") {
                     theme.save(coloring: wcColoring, themeId: wcThemeId,
                                fontSize: wcFontSize, appearance: wcAppearance)
+                    dismiss()
                 }
                     .buttonStyle(SquareButtonStyle())
                     .disabled(!isDirty)
