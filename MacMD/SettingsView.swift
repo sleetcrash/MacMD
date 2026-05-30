@@ -42,7 +42,7 @@ struct SettingsView: View {
             Color(nsColor: .textBackgroundColor)
                 .frame(height: 120)
                 .frame(maxWidth: .infinity)
-                .overlay(Rectangle().strokeBorder(Color.black.opacity(0.12), lineWidth: 1))
+                .overlay(Rectangle().strokeBorder(Color(nsColor: .separatorColor), lineWidth: 1))
         }
         .padding(20)
         .frame(width: 354)
@@ -77,7 +77,7 @@ struct ModeControl: View {
                     .accessibilityAddTraits(selected ? .isSelected : [])
             }
         }
-        .overlay(Rectangle().strokeBorder(Color.black.opacity(0.22), lineWidth: 1))
+        .overlay(Rectangle().strokeBorder(Color(nsColor: .separatorColor), lineWidth: 1))
     }
 }
 
@@ -120,7 +120,7 @@ struct ThemeBoxLabel: View {
         .padding(.horizontal, 10)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(nsColor: .textBackgroundColor))
-        .overlay(Rectangle().strokeBorder(Color.black.opacity(0.25), lineWidth: 1))
+        .overlay(Rectangle().strokeBorder(Color(nsColor: .separatorColor), lineWidth: 1))
     }
 }
 
@@ -157,7 +157,8 @@ struct ThemeMenu: View {
         } label: {
             ThemeBoxLabel(palette: currentPalette)
         }
-        .menuStyle(.borderlessButton)
+        .menuStyle(.button)
+        .buttonStyle(.plain)
         .menuIndicator(.hidden)
         .disabled(coloring == .off)
     }
@@ -185,9 +186,10 @@ struct SchemeMenu: View {
             .padding(.horizontal, 7)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color(nsColor: .textBackgroundColor))
-            .overlay(Rectangle().strokeBorder(Color.black.opacity(0.25), lineWidth: 1))
+            .overlay(Rectangle().strokeBorder(Color(nsColor: .separatorColor), lineWidth: 1))
         }
-        .menuStyle(.borderlessButton)
+        .menuStyle(.button)
+        .buttonStyle(.plain)
         .menuIndicator(.hidden)
     }
 
@@ -227,7 +229,7 @@ struct SizeCombo: NSViewRepresentable {
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
-    final class Coordinator: NSObject, NSComboBoxDelegate {
+    @MainActor final class Coordinator: NSObject, NSComboBoxDelegate {
         let parent: SizeCombo
         init(_ parent: SizeCombo) { self.parent = parent }
 
