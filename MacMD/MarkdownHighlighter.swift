@@ -6,6 +6,7 @@ final class MarkdownHighlighter: NSObject, @preconcurrency NSTextStorageDelegate
     var isSuppressed = false
     var isDisabled = false
     private var lastFenceLines: [MarkdownRules.FenceLine] = []
+    private var lastHeadingLines: [MarkdownRules.HeadingLine] = []
 
     func textStorage(_ textStorage: NSTextStorage,
                      didProcessEditing editedMask: NSTextStorageEditActions,
@@ -23,8 +24,15 @@ final class MarkdownHighlighter: NSObject, @preconcurrency NSTextStorageDelegate
 
         let codeSpans = MarkdownRules.spansFromFences(fenceLines, fullRange: total)
 
-        if fencesChanged {
-            MarkdownRules.applyHighlighting(to: textStorage, in: total, fencedSpans: codeSpans)
+        let headings: [MarkdownRules.HeadingLine] = Theme.activeColoring == .off
+            ? []
+            : MarkdownRules.headingLines(in: nsString, fullRange: total)
+        let headingsChanged = headings != lastHeadingLines
+        lastHeadingLines = headings
+        let sectionMap = MarkdownRules.sectionMap(from: headings, excluding: codeSpans)
+
+        if fencesChanged || headingsChanged {
+            MarkdownRules.applyHighlighting(to: textStorage, in: total, fencedSpans: codeSpans, sectionMap: sectionMap)
             return
         }
 
@@ -36,7 +44,7 @@ final class MarkdownHighlighter: NSObject, @preconcurrency NSTextStorageDelegate
             targetRange = paragraph
         }
 
-        MarkdownRules.applyHighlighting(to: textStorage, in: targetRange, fencedSpans: codeSpans)
+        MarkdownRules.applyHighlighting(to: textStorage, in: targetRange, fencedSpans: codeSpans, sectionMap: sectionMap)
     }
 
     func rehighlightAll(_ textStorage: NSTextStorage) {
@@ -46,7 +54,12 @@ final class MarkdownHighlighter: NSObject, @preconcurrency NSTextStorageDelegate
         let fenceLines = MarkdownRules.fenceLines(in: nsString, fullRange: full)
         lastFenceLines = fenceLines
         let spans = MarkdownRules.spansFromFences(fenceLines, fullRange: full)
-        MarkdownRules.applyHighlighting(to: textStorage, in: full, fencedSpans: spans)
+        let headings: [MarkdownRules.HeadingLine] = Theme.activeColoring == .off
+            ? []
+            : MarkdownRules.headingLines(in: nsString, fullRange: full)
+        lastHeadingLines = headings
+        let sectionMap = MarkdownRules.sectionMap(from: headings, excluding: spans)
+        MarkdownRules.applyHighlighting(to: textStorage, in: full, fencedSpans: spans, sectionMap: sectionMap)
     }
 
     func taskCheckboxRanges(in textStorage: NSTextStorage) -> [NSRange] {
@@ -60,7 +73,7 @@ private enum MarkdownRules {
 
     struct Rule {
         let regex: NSRegularExpression
-        let apply: (NSTextStorage, NSTextCheckingResult) -> Void
+        let apply: (NSTextStorage, NSTextCheckingResult, SectionMap) -> Void
     }
 
     static func r(_ pattern: String, options: NSRegularExpression.Options = []) -> NSRegularExpression {
@@ -78,10 +91,33 @@ private enum MarkdownRules {
         let marker: Character
     }
 
+    static let headingPattern: NSRegularExpression = r("^(#{1,6})[ \\t]+.+$", options: [.anchorsMatchLines])
+
+    struct HeadingLine: Equatable {
+        let range: NSRange
+        let level: Int
+    }
+
+    static func headingLines(in nsString: NSString, fullRange: NSRange) -> [HeadingLine] {
+        var lines: [HeadingLine] = []
+        headingPattern.enumerateMatches(in: nsString as String, options: [], range: fullRange) { match, _, _ in
+            guard let m = match else { return }
+            let hashes = m.range(at: 1)
+            lines.append(HeadingLine(range: m.range, level: min(6, max(1, hashes.length))))
+        }
+        return lines
+    }
+
+    static func sectionMap(from headings: [HeadingLine], excluding fencedSpans: [NSRange]) -> SectionMap {
+        let usable = headings.filter { !intersectsAny($0.range, ranges: fencedSpans) }
+        return SectionMap(headings: usable.map { (location: $0.range.location, level: $0.level) })
+    }
+
     static let inlineRules: [Rule] = [
-        Rule(regex: r("^([ \\t]*[-*+][ \\t]+)(\\[[ xX]\\])([ \\t]+)(.*)$", options: [.anchorsMatchLines])) { ts, m in
+        Rule(regex: r("^([ \\t]*[-*+][ \\t]+)(\\[[ xX]\\])([ \\t]+)(.*)$", options: [.anchorsMatchLines])) { ts, m, map in
             let bracket = m.range(at: 2)
-            ts.addAttribute(.foregroundColor, value: Theme.accentColor, range: bracket)
+            let level = map.governingLevel(at: bracket.location)
+            ts.addAttribute(.foregroundColor, value: Theme.headingColor(level: level), range: bracket)
             let nsString = ts.string as NSString
             let bracketString = nsString.substring(with: bracket)
             let isChecked = bracketString == "[x]" || bracketString == "[X]"
@@ -93,32 +129,32 @@ private enum MarkdownRules {
                 }
             }
         },
-        Rule(regex: r("^(#{1,6})[ \\t]+.+$", options: [.anchorsMatchLines])) { ts, m in
+        Rule(regex: headingPattern) { ts, m, _ in
             let full = m.range
             let hashes = m.range(at: 1)
             let level = min(6, max(1, hashes.length))
             ts.addAttribute(.font, value: Theme.headingFont(level: level), range: full)
-            ts.addAttribute(.foregroundColor, value: Theme.accentColor, range: full)
+            ts.addAttribute(.foregroundColor, value: Theme.headingColor(level: level), range: full)
         },
-        Rule(regex: r("\\*\\*(?!\\s)(?:[^*\\n]|\\*(?!\\*))+(?<!\\s)\\*\\*")) { ts, m in
+        Rule(regex: r("\\*\\*(?!\\s)(?:[^*\\n]|\\*(?!\\*))+(?<!\\s)\\*\\*")) { ts, m, _ in
             addFontTrait(.bold, to: ts, in: m.range)
         },
-        Rule(regex: r("(?<![A-Za-z0-9_])__(?!\\s)(?:[^_\\n]|_(?!_))+(?<!\\s)__(?![A-Za-z0-9_])")) { ts, m in
+        Rule(regex: r("(?<![A-Za-z0-9_])__(?!\\s)(?:[^_\\n]|_(?!_))+(?<!\\s)__(?![A-Za-z0-9_])")) { ts, m, _ in
             addFontTrait(.bold, to: ts, in: m.range)
         },
-        Rule(regex: r("(?<![\\*A-Za-z0-9])\\*(?!\\s)[^*\\n]+(?<!\\s)\\*(?![\\*A-Za-z0-9])")) { ts, m in
+        Rule(regex: r("(?<![\\*A-Za-z0-9])\\*(?!\\s)[^*\\n]+(?<!\\s)\\*(?![\\*A-Za-z0-9])")) { ts, m, _ in
             addFontTrait(.italic, to: ts, in: m.range)
         },
-        Rule(regex: r("(?<![A-Za-z0-9_])_(?!\\s)[^_\\n]+(?<!\\s)_(?![A-Za-z0-9_])")) { ts, m in
+        Rule(regex: r("(?<![A-Za-z0-9_])_(?!\\s)[^_\\n]+(?<!\\s)_(?![A-Za-z0-9_])")) { ts, m, _ in
             addFontTrait(.italic, to: ts, in: m.range)
         },
-        Rule(regex: r("`[^`\\n]+`")) { ts, m in
+        Rule(regex: r("`[^`\\n]+`")) { ts, m, _ in
             ts.addAttribute(.backgroundColor, value: Theme.codeBackgroundColor, range: m.range)
         },
-        Rule(regex: r("~~(?!\\s)[^~\\n]+?(?<!\\s)~~")) { ts, m in
+        Rule(regex: r("~~(?!\\s)[^~\\n]+?(?<!\\s)~~")) { ts, m, _ in
             ts.addAttribute(.strikethroughStyle, value: NSUnderlineStyle.single.rawValue, range: m.range)
         },
-        Rule(regex: r("\\[([^\\]\\n]+)\\]\\(([^)\\n]+)\\)")) { ts, m in
+        Rule(regex: r("\\[([^\\]\\n]+)\\]\\(([^)\\n]+)\\)")) { ts, m, _ in
             let label = m.range(at: 1)
             let url = m.range(at: 2)
             if label.location != NSNotFound {
@@ -129,17 +165,19 @@ private enum MarkdownRules {
                 ts.addAttribute(.foregroundColor, value: Theme.mutedColor, range: url)
             }
         },
-        Rule(regex: r("^[ \\t]*[-*+][ \\t]+", options: [.anchorsMatchLines])) { ts, m in
-            ts.addAttribute(.foregroundColor, value: Theme.accentColor, range: m.range)
+        Rule(regex: r("^[ \\t]*[-*+][ \\t]+", options: [.anchorsMatchLines])) { ts, m, map in
+            let level = map.governingLevel(at: m.range.location)
+            ts.addAttribute(.foregroundColor, value: Theme.headingColor(level: level), range: m.range)
         },
-        Rule(regex: r("^[ \\t]*\\d+[.)][ \\t]+", options: [.anchorsMatchLines])) { ts, m in
-            ts.addAttribute(.foregroundColor, value: Theme.accentColor, range: m.range)
+        Rule(regex: r("^[ \\t]*\\d+[.)][ \\t]+", options: [.anchorsMatchLines])) { ts, m, map in
+            let level = map.governingLevel(at: m.range.location)
+            ts.addAttribute(.foregroundColor, value: Theme.headingColor(level: level), range: m.range)
         },
-        Rule(regex: r("^[ \\t]*>.*$", options: [.anchorsMatchLines])) { ts, m in
+        Rule(regex: r("^[ \\t]*>.*$", options: [.anchorsMatchLines])) { ts, m, _ in
             ts.addAttribute(.foregroundColor, value: Theme.mutedColor, range: m.range)
             addFontTrait(.italic, to: ts, in: m.range)
         },
-        Rule(regex: r("^[ \\t]*(-{3,}|\\*{3,}|_{3,})[ \\t]*$", options: [.anchorsMatchLines])) { ts, m in
+        Rule(regex: r("^[ \\t]*(-{3,}|\\*{3,}|_{3,})[ \\t]*$", options: [.anchorsMatchLines])) { ts, m, _ in
             ts.addAttribute(.foregroundColor, value: Theme.mutedColor, range: m.range)
         }
     ]
@@ -159,7 +197,7 @@ private enum MarkdownRules {
         }
     }
 
-    static func applyHighlighting(to ts: NSTextStorage, in range: NSRange, fencedSpans: [NSRange]) {
+    static func applyHighlighting(to ts: NSTextStorage, in range: NSRange, fencedSpans: [NSRange], sectionMap: SectionMap) {
         guard range.length > 0 else { return }
 
         ts.removeAttribute(.font, range: range)
@@ -184,7 +222,7 @@ private enum MarkdownRules {
             rule.regex.enumerateMatches(in: source, options: [], range: range) { match, _, _ in
                 guard let m = match else { return }
                 if intersectsAny(m.range, ranges: fencedSpans) { return }
-                rule.apply(ts, m)
+                rule.apply(ts, m, sectionMap)
             }
         }
     }

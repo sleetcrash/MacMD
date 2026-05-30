@@ -79,7 +79,7 @@ The editor autosaves in the background. If the app quits unexpectedly, reopening
 
 As you type, MacMD styles these markdown constructs live:
 
-    # Heading 1 through ###### Heading 6   → bold, accent color, sized per level
+    # Heading 1 through ###### Heading 6   → bold, theme color, sized per level
     **bold** and __bold__                  → bold
     *italic* and _italic_                  → italic
     ***bold italic***                      → bold + italic compose correctly
@@ -91,10 +91,10 @@ As you type, MacMD styles these markdown constructs live:
                                               tilde fences both work; a fence can
                                               only be closed by the same marker)
     [link label](https://example.com)      → label underlined in link color, URL muted
-    - unordered, * and + also valid        → marker in accent color
-    1. ordered list, 1) also valid         → marker in accent color
-    - [ ] todo                             → bracket accent; click to toggle
-    - [x] done                             → bracket accent + body strike-through
+    - unordered, * and + also valid        → marker inherits its section's heading color
+    1. ordered list, 1) also valid         → marker inherits its section's heading color
+    - [ ] todo                             → bracket inherits section color; click to toggle
+    - [x] done                             → bracket inherits section color + body strike-through
     > blockquote                           → muted + italic, composes with bold inside
     ---                                    → muted
 
@@ -186,8 +186,19 @@ Upload all four to the GitHub release page. Most users prefer the DMG; the zip i
         social-preview.png
       dist/                       (gitignored) release artifacts go here
 
+## Theming
+
+Open Settings (Cmd-,) to color your headings:
+
+- **Mode** — Light, Dark, or System (follows macOS).
+- **Scheme** — Default (no color, the out-of-box default), Unified (one color for every heading level), or Standard (three colors: H1, H2, H3, with H4–H6 inheriting H3).
+- **Theme** — preset palettes (RGB, CMY(K), and four EVA palettes for Standard; eight single colors for Unified), or a custom palette you name and save. Each color is tuned for both light and dark.
+- **Size** — the editor font size (also on the View menu: Cmd-+, Cmd--, Cmd-0).
+
+List markers inherit the color of the heading section they sit under. Body text always uses the adaptive label color. With the Default scheme, headings are bold and sized but not colored.
+
 ## Known intentional limits
 
-No live rendered preview pane. No toolbar. No theming UI. No word count, export to HTML, or front-matter handling. The goal is "simple like TextEdit, but for markdown"; anything beyond that is out of scope.
+No live rendered preview pane. No toolbar. No word count, export to HTML, or front-matter handling. The goal is "simple like TextEdit, but for markdown"; anything beyond that is out of scope.
 
 No multi-cursor editing (NSTextView supports it; MacMD preserves only the primary selection through external text updates). No outline pane, no file browser.
