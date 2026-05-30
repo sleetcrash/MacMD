@@ -30,6 +30,10 @@ struct ThemePreview: View {
                 Text("list item").font(bodyFont).foregroundColor(bodyColor)
             }
             heading("### Subsection", level: 3)
+            HStack(spacing: 0) {
+                Text("1. ").font(bodyFont.weight(.bold)).foregroundColor(headingColor(level: 3))
+                Text("ordered item").font(bodyFont).foregroundColor(bodyColor)
+            }
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
