@@ -110,14 +110,13 @@ struct ModeControl: View {
     ]
     var body: some View {
         HStack(spacing: 0) {
-            ForEach(Array(items.enumerated()), id: \.offset) { index, item in
+            ForEach(Array(items.enumerated()), id: \.offset) { _, item in
                 let selected = appearanceRaw == item.mode.rawValue
                 Image(systemName: item.icon)
                     .font(.system(size: 13))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(selected ? Color.accentColor : Color(nsColor: .textBackgroundColor))
                     .foregroundStyle(selected ? Color.white : Color.primary)
-                    .overlay(index == 0 ? nil : Divider(), alignment: .leading)
                     .contentShape(Rectangle())
                     .onTapGesture { appearanceRaw = item.mode.rawValue }
                     .accessibilityLabel(item.label)
