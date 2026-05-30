@@ -4,6 +4,9 @@ import AppKit
 struct MarkdownTextView: NSViewRepresentable {
     @Binding var text: String
     var fontSize: CGFloat
+    var coloring: Coloring
+    var palette: Palette?
+    var appearance: AppAppearance
 
     func makeCoordinator() -> Coordinator {
         Coordinator(text: $text)
@@ -11,6 +14,7 @@ struct MarkdownTextView: NSViewRepresentable {
 
     func makeNSView(context: Context) -> NSScrollView {
         Theme.setEditorFontSize(fontSize)
+        Theme.setActiveTheme(coloring: coloring, palette: palette)
         let scrollView = ClickableTextView.scrollableClickableTextView()
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = false
@@ -75,6 +79,11 @@ struct MarkdownTextView: NSViewRepresentable {
         context.coordinator.textView = textView
         context.coordinator.loadInitial(text: text)
 
+        let initialAppearance = appearance
+        DispatchQueue.main.async { [weak textView] in
+            textView?.window?.appearance = initialAppearance.nsAppearance
+        }
+
         return scrollView
     }
 
@@ -83,6 +92,10 @@ struct MarkdownTextView: NSViewRepresentable {
         if Theme.setEditorFontSize(fontSize) {
             context.coordinator.applyFontChange(to: textView)
         }
+        if Theme.setActiveTheme(coloring: coloring, palette: palette) {
+            context.coordinator.applyThemeChange(to: textView)
+        }
+        textView.window?.appearance = appearance.nsAppearance
         if textView.string != text {
             context.coordinator.replace(textView: textView, with: text)
         }
@@ -143,6 +156,11 @@ struct MarkdownTextView: NSViewRepresentable {
             } else {
                 highlighter.rehighlightAll(ts)
             }
+        }
+
+        func applyThemeChange(to textView: NSTextView) {
+            guard let ts = textView.textStorage, !highlighter.isDisabled else { return }
+            highlighter.rehighlightAll(ts)
         }
 
         func textDidChange(_ notification: Notification) {
