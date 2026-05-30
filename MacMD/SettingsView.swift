@@ -24,10 +24,8 @@ struct SettingsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(spacing: 14) {
-                // Mode placeholder (Task 12)
-                Color(nsColor: .controlBackgroundColor)
+                ModeControl(appearanceRaw: $appearanceRaw)
                     .frame(width: modeWidth, height: rowHeight)
-                    .overlay(Rectangle().strokeBorder(Color.black.opacity(0.22), lineWidth: 1))
                 SizeCombo(fontSize: $fontSize)
                     .frame(width: segWidth, height: rowHeight)
             }
@@ -47,6 +45,38 @@ struct SettingsView: View {
         }
         .padding(20)
         .frame(width: 354)
+    }
+}
+
+/// Icon-only Light / Dark / System segmented control. Sun = Light, moon = Dark,
+/// laptop = System. Sharp corners, the selected segment filled blue (#3478F6).
+struct ModeControl: View {
+    @Binding var appearanceRaw: String
+
+    private let items: [(mode: AppAppearance, icon: String, label: String)] = [
+        (.light, "sun.max", "Light"),
+        (.dark, "moon.fill", "Dark"),
+        (.system, "laptopcomputer", "System"),
+    ]
+    private let selectedBlue = Color(red: 0x34 / 255, green: 0x78 / 255, blue: 0xF6 / 255)
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(Array(items.enumerated()), id: \.offset) { index, item in
+                let selected = appearanceRaw == item.mode.rawValue
+                Image(systemName: item.icon)
+                    .font(.system(size: 13))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(selected ? selectedBlue : Color(nsColor: .textBackgroundColor))
+                    .foregroundStyle(selected ? Color.white : Color.primary)
+                    .overlay(index == 0 ? nil : Divider(), alignment: .leading)
+                    .contentShape(Rectangle())
+                    .onTapGesture { appearanceRaw = item.mode.rawValue }
+                    .accessibilityLabel(item.label)
+                    .accessibilityAddTraits(selected ? .isSelected : [])
+            }
+        }
+        .overlay(Rectangle().strokeBorder(Color.black.opacity(0.22), lineWidth: 1))
     }
 }
 
