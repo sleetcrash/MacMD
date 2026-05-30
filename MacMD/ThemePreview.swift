@@ -10,7 +10,7 @@ struct ThemePreview: View {
     let palette: Palette?
     let appearance: AppAppearance
 
-    private var dark: Bool {
+    @MainActor private var dark: Bool {
         switch appearance {
         case .light: return false
         case .dark: return true

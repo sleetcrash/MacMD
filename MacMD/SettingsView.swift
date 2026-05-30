@@ -276,6 +276,7 @@ struct LabeledField<Content: View>: View {
                     .tracking(0.6)
                     .foregroundStyle(.secondary)
                     .opacity(hovering ? 0.55 : 0)
+                    .animation(.easeInOut(duration: 0.15), value: hovering)
                     .offset(y: -14)
                     .allowsHitTesting(false)
             }
