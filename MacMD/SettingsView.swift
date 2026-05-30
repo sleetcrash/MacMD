@@ -192,10 +192,10 @@ struct ThemeBoxLabel: View {
     }
 }
 
-/// The Theme selector. Shows the static box label and, on click, pops a NATIVE
-/// AppKit menu directly below the box — so it behaves exactly like the Scheme
-/// dropdown (a real connected dropdown), while still showing each theme's color
-/// swatches as a menu-item image (SwiftUI's own Menu can't render those).
+/// The Theme selector. Shows the static box label and, on click, pops a fully
+/// opaque native menu directly below the box — connected like a real dropdown,
+/// showing each theme's color swatches in the row (SwiftUI's own Menu can't
+/// render multi-color images, and its menu is translucent).
 struct ThemeMenu: View {
     let coloring: Coloring
     @Binding var themeId: String
@@ -208,6 +208,19 @@ struct ThemeMenu: View {
         ThemeSettings.resolvePalette(coloring: coloring, themeId: themeId, customs: customs)
     }
 
+    private func entries() -> [MenuEntry] {
+        var rows: [MenuEntry] = ColorTheming.presets(for: coloring).map { preset in
+            MenuEntry(title: preset.name, image: MenuSwatch.image(for: preset)) { themeId = preset.id }
+        }
+        let mine = customs.filter { $0.scheme == coloring }
+        for (index, custom) in mine.enumerated() {
+            rows.append(MenuEntry(title: custom.name, image: MenuSwatch.image(for: custom),
+                                  separatorBefore: index == 0) { themeId = custom.id })
+        }
+        rows.append(MenuEntry(title: "Custom+…", image: nil, separatorBefore: true, action: onCustom))
+        return rows
+    }
+
     var body: some View {
         Button { pop = true } label: {
             ThemeBoxLabel(palette: currentPalette)
@@ -215,21 +228,52 @@ struct ThemeMenu: View {
         .buttonStyle(.plain)
         .disabled(coloring == .off)
         .overlay(
-            ThemeMenuPopper(pop: $pop, coloring: coloring, themeId: $themeId,
-                            customs: customs, onCustom: onCustom)
+            OpaqueMenuPopper(pop: $pop, entries: entries)
                 .allowsHitTesting(false)
         )
     }
 }
 
-/// Hosts a tiny anchor NSView the size of the Theme box and, when `pop` flips
-/// true, pops a native NSMenu just below it. The menu items carry swatch images.
-struct ThemeMenuPopper: NSViewRepresentable {
+/// One row in an opaque dropdown: a title, an optional leading swatch image, and
+/// the action to run when chosen. `separatorBefore` inserts a divider row above.
+struct MenuEntry {
+    let title: String
+    let image: NSImage?
+    var separatorBefore: Bool = false
+    let action: () -> Void
+}
+
+/// Draws a theme's light | dark swatch trios as a single menu-row image.
+enum MenuSwatch {
+    static func image(for p: Palette) -> NSImage {
+        let sw: CGFloat = 12, gap: CGFloat = 2, sep: CGFloat = 6
+        let n = p.slots.count
+        let trio = CGFloat(n) * sw + CGFloat(max(0, n - 1)) * gap
+        let width = max(1, trio + sep + trio)
+        let img = NSImage(size: NSSize(width: width, height: sw))
+        img.lockFocus()
+        var x: CGFloat = 0
+        for s in p.slots {
+            s.nsLight.setFill(); NSBezierPath(rect: NSRect(x: x, y: 0, width: sw, height: sw)).fill(); x += sw + gap
+        }
+        x = trio + sep
+        for s in p.slots {
+            s.nsDark.setFill(); NSBezierPath(rect: NSRect(x: x, y: 0, width: sw, height: sw)).fill(); x += sw + gap
+        }
+        img.unlockFocus()
+        img.isTemplate = false
+        return img
+    }
+}
+
+/// Hosts a tiny anchor view sized to its box and, when `pop` flips true, pops a
+/// native menu just below it. Every row is an `OpaqueMenuRow`, so the menu reads
+/// as solid instead of the system's translucent material — the whole reason for
+/// the custom rows. The anchor's `window` is also forced opaque so the menu's
+/// inset and corners don't show through either.
+struct OpaqueMenuPopper: NSViewRepresentable {
     @Binding var pop: Bool
-    let coloring: Coloring
-    @Binding var themeId: String
-    let customs: [Palette]
-    let onCustom: () -> Void
+    let entries: () -> [MenuEntry]
 
     func makeNSView(context: Context) -> NSView {
         let v = FlippedAnchorView()
@@ -238,15 +282,11 @@ struct ThemeMenuPopper: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {
-        let c = context.coordinator
-        c.coloring = coloring
-        c.customs = customs
-        c.onSelect = { themeId = $0 }
-        c.onCustom = onCustom
+        context.coordinator.entries = entries
         if pop {
             DispatchQueue.main.async {
                 pop = false
-                c.showMenu()
+                context.coordinator.showMenu()
             }
         }
     }
@@ -259,84 +299,156 @@ struct ThemeMenuPopper: NSViewRepresentable {
 
     final class Coordinator: NSObject {
         weak var anchor: NSView?
-        var coloring: Coloring = .off
-        var customs: [Palette] = []
-        var onSelect: (String) -> Void = { _ in }
-        var onCustom: () -> Void = {}
+        var entries: () -> [MenuEntry] = { [] }
+        private var actions: [() -> Void] = []
+        private var fired = false
 
         func showMenu() {
             guard let anchor else { return }
+            let rows = entries()
+            actions = rows.map(\.action)
+            fired = false
+
             let menu = NSMenu()
             menu.autoenablesItems = false
-            for preset in ColorTheming.presets(for: coloring) {
-                menu.addItem(makeItem(name: preset.name, id: preset.id, palette: preset))
-            }
-            let mine = customs.filter { $0.scheme == coloring }
-            if !mine.isEmpty {
-                menu.addItem(.separator())
-                for custom in mine {
-                    menu.addItem(makeItem(name: custom.name, id: custom.id, palette: custom))
+            let width = max(anchor.bounds.width, 1)
+
+            for (index, row) in rows.enumerated() {
+                if row.separatorBefore {
+                    let sep = NSMenuItem()
+                    sep.isEnabled = false
+                    sep.view = OpaqueMenuRow(kind: .separator, title: "", image: nil, width: width)
+                    menu.addItem(sep)
                 }
+                let item = NSMenuItem(title: row.title, action: #selector(pick(_:)), keyEquivalent: "")
+                item.target = self
+                item.tag = index
+                let view = OpaqueMenuRow(kind: .item, title: row.title, image: row.image, width: width)
+                view.onClick = { [weak self] in self?.fire(index) }
+                item.view = view
+                menu.addItem(item)
             }
-            menu.addItem(.separator())
-            let customItem = NSMenuItem(title: "Custom+…", action: #selector(pickCustom), keyEquivalent: "")
-            customItem.target = self
-            menu.addItem(customItem)
 
             // Pop just below the box (anchor view is flipped: y = height is its bottom edge).
-            menu.minimumWidth = anchor.bounds.width
+            menu.minimumWidth = width
             menu.popUp(positioning: nil, at: NSPoint(x: 0, y: anchor.bounds.height + 2), in: anchor)
         }
 
-        private func makeItem(name: String, id: String, palette: Palette) -> NSMenuItem {
-            let item = NSMenuItem(title: name, action: #selector(pick(_:)), keyEquivalent: "")
-            item.target = self
-            item.representedObject = id
-            item.image = Coordinator.swatchImage(for: palette)
-            return item
-        }
+        // Keyboard activation routes here; mouse clicks route through the row's
+        // onClick. Both funnel into `fire`, which runs each choice at most once.
+        @objc private func pick(_ sender: NSMenuItem) { fire(sender.tag) }
 
-        @objc private func pick(_ sender: NSMenuItem) {
-            if let id = sender.representedObject as? String { onSelect(id) }
-        }
-        @objc private func pickCustom() { onCustom() }
-
-        static func swatchImage(for p: Palette) -> NSImage {
-            let sw: CGFloat = 12, gap: CGFloat = 2, sep: CGFloat = 6
-            let n = p.slots.count
-            let trio = CGFloat(n) * sw + CGFloat(max(0, n - 1)) * gap
-            let width = max(1, trio + sep + trio)
-            let img = NSImage(size: NSSize(width: width, height: sw))
-            img.lockFocus()
-            var x: CGFloat = 0
-            for s in p.slots {
-                s.nsLight.setFill(); NSBezierPath(rect: NSRect(x: x, y: 0, width: sw, height: sw)).fill(); x += sw + gap
-            }
-            x = trio + sep
-            for s in p.slots {
-                s.nsDark.setFill(); NSBezierPath(rect: NSRect(x: x, y: 0, width: sw, height: sw)).fill(); x += sw + gap
-            }
-            img.unlockFocus()
-            img.isTemplate = false
-            return img
+        private func fire(_ index: Int) {
+            guard !fired, index >= 0, index < actions.count else { return }
+            fired = true
+            actions[index]()
         }
     }
 }
 
-/// Scheme dropdown (Default / Unified / Standard). Switching scheme resets the
-/// theme selection to that scheme's first preset so the Theme box is never empty.
+/// An opaque menu row drawn by hand so the system's translucent menu material
+/// never shows through. Fills its full bounds with a solid background, draws the
+/// system accent highlight on hover/keyboard selection, and renders an optional
+/// leading swatch image plus the title. A `.separator` row draws a hairline
+/// divider on the same opaque fill.
+final class OpaqueMenuRow: NSView {
+    enum Kind { case item, separator }
+
+    private let kind: Kind
+    private let title: String
+    private let image: NSImage?
+    private var hovering = false
+    var onClick: (() -> Void)?
+
+    init(kind: Kind, title: String, image: NSImage?, width: CGFloat) {
+        self.kind = kind
+        self.title = title
+        self.image = image
+        let height: CGFloat = kind == .separator ? 11 : 22
+        super.init(frame: NSRect(x: 0, y: 0, width: max(width, 1), height: height))
+        autoresizingMask = [.width]
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    private var showsHighlight: Bool {
+        kind == .item && (hovering || (enclosingMenuItem?.isHighlighted ?? false))
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        (showsHighlight ? NSColor.selectedContentBackgroundColor : NSColor.windowBackgroundColor).setFill()
+        bounds.fill()
+
+        switch kind {
+        case .separator:
+            NSColor.separatorColor.setStroke()
+            let line = NSBezierPath()
+            line.move(to: NSPoint(x: 10, y: bounds.midY))
+            line.line(to: NSPoint(x: bounds.maxX - 10, y: bounds.midY))
+            line.lineWidth = 1
+            line.stroke()
+        case .item:
+            var x: CGFloat = 14
+            let cy = bounds.midY
+            if let image {
+                image.draw(in: NSRect(x: x, y: cy - image.size.height / 2,
+                                      width: image.size.width, height: image.size.height))
+                x += image.size.width + 8
+            }
+            let color: NSColor = showsHighlight ? .alternateSelectedControlTextColor : .labelColor
+            let text = NSAttributedString(string: title, attributes: [
+                .font: NSFont.menuFont(ofSize: 0),
+                .foregroundColor: color,
+            ])
+            let size = text.size()
+            text.draw(at: NSPoint(x: x, y: cy - size.height / 2))
+        }
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        trackingAreas.forEach(removeTrackingArea)
+        addTrackingArea(NSTrackingArea(rect: bounds,
+                                       options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+                                       owner: self))
+    }
+
+    override func mouseEntered(with event: NSEvent) { hovering = true; needsDisplay = true }
+    override func mouseExited(with event: NSEvent) { hovering = false; needsDisplay = true }
+
+    override func mouseUp(with event: NSEvent) {
+        guard kind == .item else { return }
+        enclosingMenuItem?.menu?.cancelTracking()
+        onClick?()
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        // The menu lives in its own window; force it opaque so the inset and
+        // rounded corners around the rows aren't translucent either.
+        window?.isOpaque = true
+        window?.backgroundColor = .windowBackgroundColor
+    }
+}
+
+/// Scheme dropdown (Default / Unified / Standard). Pops the same fully opaque
+/// native menu as the Theme box. Switching scheme resets the theme selection to
+/// that scheme's first preset so the Theme box is never empty.
 struct SchemeMenu: View {
     @Binding var schemeRaw: String
     @Binding var themeId: String
 
+    @State private var pop = false
     private var current: Coloring { Coloring(rawValue: schemeRaw) ?? .off }
 
+    private func entries() -> [MenuEntry] {
+        Coloring.allCases.map { c in
+            MenuEntry(title: c.displayName, image: nil) { select(c) }
+        }
+    }
+
     var body: some View {
-        Menu {
-            ForEach(Coloring.allCases, id: \.self) { c in
-                Button(c.displayName) { select(c) }
-            }
-        } label: {
+        Button { pop = true } label: {
             HStack(spacing: 0) {
                 Text(current.displayName).font(.system(size: 11)).lineLimit(1)
                 Spacer(minLength: 4)
@@ -347,9 +459,11 @@ struct SchemeMenu: View {
             .background(Color(nsColor: .textBackgroundColor))
             .overlay(Rectangle().strokeBorder(Color(nsColor: .separatorColor), lineWidth: 1))
         }
-        .menuStyle(.button)
         .buttonStyle(.plain)
-        .menuIndicator(.hidden)
+        .overlay(
+            OpaqueMenuPopper(pop: $pop, entries: entries)
+                .allowsHitTesting(false)
+        )
     }
 
     private func select(_ c: Coloring) {
