@@ -77,24 +77,29 @@ struct CustomThemeEditor: View {
             if !saved.isEmpty {
                 Divider()
                 Text("Saved").font(.system(size: 11)).foregroundStyle(.secondary)
-                ForEach(saved) { p in
-                    HStack {
-                        Button { load(p) } label: {
-                            HStack(spacing: 4) {
-                                ForEach(Array(p.slots.enumerated()), id: \.offset) { _, slot in
-                                    Swatch(color: Color(nsColor: slot.nsLight))
+                ScrollView {
+                    VStack(spacing: 6) {
+                        ForEach(saved) { p in
+                            HStack {
+                                Button { load(p) } label: {
+                                    HStack(spacing: 4) {
+                                        ForEach(Array(p.slots.enumerated()), id: \.offset) { _, slot in
+                                            Swatch(color: Color(nsColor: slot.nsLight))
+                                        }
+                                        Text(p.name).font(.system(size: 11))
+                                    }
                                 }
-                                Text(p.name).font(.system(size: 11))
+                                .buttonStyle(.plain)
+                                Spacer()
+                                Button(role: .destructive) { delete(p) } label: {
+                                    Image(systemName: "trash")
+                                }
+                                .buttonStyle(.borderless)
                             }
                         }
-                        .buttonStyle(.plain)
-                        Spacer()
-                        Button(role: .destructive) { delete(p) } label: {
-                            Image(systemName: "trash")
-                        }
-                        .buttonStyle(.borderless)
                     }
                 }
+                .frame(maxHeight: 160)
             }
 
             HStack {
@@ -151,9 +156,7 @@ struct CustomThemeEditor: View {
     }
 
     private func hex(from color: Color) -> String {
-        let ns: NSColor
-        if let cg = color.cgColor { ns = NSColor(cgColor: cg) ?? .labelColor }
-        else { ns = NSColor(color) }
+        let ns = NSColor(color)
         return (ns.usingColorSpace(.sRGB) ?? ns).hexString
     }
 }
