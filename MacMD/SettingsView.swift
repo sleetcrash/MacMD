@@ -373,6 +373,16 @@ final class OpaqueMenuRow: NSView {
         let height: CGFloat = kind == .separator ? 11 : 22
         super.init(frame: NSRect(x: 0, y: 0, width: max(width, 1), height: height))
         autoresizingMask = [.width]
+        // A custom view replaces the menu item's native rendering, so expose
+        // the row to VoiceOver explicitly (separators are decorative).
+        switch kind {
+        case .item:
+            setAccessibilityElement(true)
+            setAccessibilityRole(.menuItem)
+            setAccessibilityLabel(title)
+        case .separator:
+            setAccessibilityElement(false)
+        }
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
