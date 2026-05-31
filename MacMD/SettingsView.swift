@@ -12,6 +12,51 @@ enum Pane {
     static let muted  = Color(nsColor: .secondaryLabelColor)     // secondary labels / subheadings
 }
 
+/// Pins the host window to the live OS appearance, reapplying it whenever the
+/// system theme changes. The settings windows use this instead of
+/// `.preferredColorScheme`, which doesn't set `NSWindow.appearance` for an
+/// auxiliary `Window` scene — leaving the Pane.* semantic colors to resolve
+/// against whatever appearance a document window last forced via its editor Mode.
+struct SystemWindowAppearance: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView {
+        context.coordinator.startObserving()
+        return NSView()
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        context.coordinator.view = nsView
+        context.coordinator.apply()
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    @MainActor final class Coordinator {
+        weak var view: NSView?
+        private var token: NSObjectProtocol?
+
+        func startObserving() {
+            token = DistributedNotificationCenter.default().addObserver(
+                forName: Notification.Name("AppleInterfaceThemeChangedNotification"),
+                object: nil, queue: .main
+            ) { [weak self] _ in
+                MainActor.assumeIsolated { self?.apply() }
+            }
+        }
+
+        func apply() {
+            DispatchQueue.main.async { [weak self] in
+                guard let window = self?.view?.window else { return }
+                let dark = UserDefaults.standard.string(forKey: "AppleInterfaceStyle") == "Dark"
+                window.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
+            }
+        }
+
+        deinit {
+            if let token { DistributedNotificationCenter.default().removeObserver(token) }
+        }
+    }
+}
+
 struct SettingsView: View {
     @EnvironmentObject private var theme: ThemeController
     @EnvironmentObject private var customDraft: CustomDraft
@@ -68,10 +113,14 @@ struct SettingsView: View {
         .background(Pane.window)
         .coordinateSpace(name: Self.space)
         .onPreferenceChange(FieldFrameKey.self) { fieldFrames = $0 }
-        // Fixed dark appearance (matching the macOS color picker) regardless of
-        // the editor Mode — a constant scheme, so it never changes and the
-        // system colors above resolve consistently. The preview shows the Mode.
-        .preferredColorScheme(.dark)
+        // Follow the OS appearance (like the real system color picker),
+        // independent of the editor Mode the document windows force on
+        // themselves. `.preferredColorScheme` only sets SwiftUI's environment, not
+        // the host NSWindow.appearance, so the Pane.* semantic colors would
+        // otherwise resolve against whatever a document window last forced. Pinning
+        // the window to the live system appearance keeps this chrome tracking the
+        // OS (light in Light, dark in Dark). The preview still shows the Mode.
+        .background(SystemWindowAppearance())
         .onAppear { syncFromSaved() }
         .onChange(of: openMenu) { old, new in
             // Closing the Size dropdown without committing reverts the typed
