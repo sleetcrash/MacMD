@@ -1,9 +1,11 @@
 import SwiftUI
 import AppKit
 
-/// The Appearance window's fixed neutral mid-gray palette — deliberately neither
-/// the light nor the dark system scheme, so the window never changes with the
-/// editor Mode. (The preview pane still shows the chosen light/dark.)
+/// The Appearance window's chrome palette: semantic system colors that resolve
+/// against the window's appearance. `SystemWindowAppearance` pins the window to
+/// the OS appearance (like the system color picker), so these follow the OS —
+/// light in Light, dark in Dark — independent of the editor Mode. (The preview
+/// pane still shows the chosen Mode's light/dark.)
 enum Pane {
     static let window = Color(nsColor: .windowBackgroundColor)   // matches the system color picker
     static let field  = Color(nsColor: .textBackgroundColor)     // dark wells: boxes, dropdowns, buttons
