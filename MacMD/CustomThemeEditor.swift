@@ -160,7 +160,7 @@ struct CustomThemeEditor: View {
         .frame(width: 320)
         .foregroundStyle(Pane.text)
         .background(Pane.window)
-        .preferredColorScheme(.dark)
+        .background(SystemWindowAppearance())
         .background(PositionBesideAppearance())
         .onDisappear { draft.end() }
     }
