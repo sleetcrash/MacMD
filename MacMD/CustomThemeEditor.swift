@@ -9,6 +9,8 @@ struct CustomThemeEditor: View {
     let coloring: Coloring
     @Binding var customsData: Data
     @Binding var selectedThemeId: String
+    let appearance: AppAppearance
+    let fontSize: CGFloat
     @Environment(\.dismiss) private var dismiss
 
     @State private var name: String = ""
@@ -16,13 +18,27 @@ struct CustomThemeEditor: View {
     @State private var lights: [Color]
     @State private var darks: [Color]
 
-    init(coloring: Coloring, customsData: Binding<Data>, selectedThemeId: Binding<String>) {
+    init(coloring: Coloring, customsData: Binding<Data>, selectedThemeId: Binding<String>,
+         appearance: AppAppearance, fontSize: CGFloat) {
         self.coloring = coloring
         self._customsData = customsData
         self._selectedThemeId = selectedThemeId
+        self.appearance = appearance
+        self.fontSize = fontSize
         let count = coloring == .standard ? 3 : 1
-        _lights = State(initialValue: Array(repeating: Color.gray, count: count))
-        _darks = State(initialValue: Array(repeating: Color.gray, count: count))
+        // Default to the adaptive label color (black in light, white in dark)
+        // so the preview shows the default look until a swatch is picked.
+        _lights = State(initialValue: Array(repeating: Color.black, count: count))
+        _darks = State(initialValue: Array(repeating: Color.white, count: count))
+    }
+
+    /// A live palette of the wells as they're being edited, for the preview.
+    private var previewPalette: Palette {
+        let slots = (0..<slotCount).map { i in
+            ColorPair(light: hex(from: lights[i]), dark: hex(from: darks[i]))
+        }
+        return Palette(id: "preview", name: name.isEmpty ? "Preview" : name,
+                       scheme: coloring, slots: slots)
     }
 
     private var slotCount: Int { coloring == .standard ? 3 : 1 }
@@ -38,6 +54,10 @@ struct CustomThemeEditor: View {
         VStack(alignment: .leading, spacing: 16) {
             Text(editingId == nil ? "New \(coloring.displayName) Theme" : "Edit Theme")
                 .font(.headline)
+
+            Text("Select a swatch, then use the color picker to choose its color.")
+                .font(.system(size: 10))
+                .foregroundStyle(.secondary)
 
             Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 8) {
                 GridRow {
@@ -59,6 +79,9 @@ struct CustomThemeEditor: View {
                     }
                 }
             }
+
+            ThemePreview(coloring: coloring, palette: previewPalette,
+                         appearance: appearance, fontSize: fontSize)
 
             HStack {
                 TextField("Name", text: $name)
