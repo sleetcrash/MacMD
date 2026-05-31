@@ -12,47 +12,22 @@ enum Pane {
     static let muted  = Color(nsColor: .secondaryLabelColor)     // secondary labels / subheadings
 }
 
-/// Pins the host window to the live OS appearance, reapplying it whenever the
-/// system theme changes. The settings windows use this instead of
-/// `.preferredColorScheme`, which doesn't set `NSWindow.appearance` for an
-/// auxiliary `Window` scene — leaving the Pane.* semantic colors to resolve
-/// against whatever appearance a document window last forced via its editor Mode.
+/// Pins the host window to the OS appearance. The settings windows use this
+/// instead of `.preferredColorScheme`, which doesn't set `NSWindow.appearance`
+/// for an auxiliary `Window` scene — leaving the Pane.* semantic colors to
+/// resolve against whatever appearance a document window last forced via its
+/// editor Mode. SwiftUI re-runs `updateNSView` whenever the window's content
+/// updates, so the pin re-asserts on every interaction. (Like the sibling
+/// `PositionBesideAppearance`, the async hop covers the first pass where the view
+/// isn't attached to its window yet.)
 struct SystemWindowAppearance: NSViewRepresentable {
-    func makeNSView(context: Context) -> NSView {
-        context.coordinator.startObserving()
-        return NSView()
-    }
+    func makeNSView(context: Context) -> NSView { NSView() }
 
     func updateNSView(_ nsView: NSView, context: Context) {
-        context.coordinator.view = nsView
-        context.coordinator.apply()
-    }
-
-    func makeCoordinator() -> Coordinator { Coordinator() }
-
-    @MainActor final class Coordinator {
-        weak var view: NSView?
-        private var token: NSObjectProtocol?
-
-        func startObserving() {
-            token = DistributedNotificationCenter.default().addObserver(
-                forName: Notification.Name("AppleInterfaceThemeChangedNotification"),
-                object: nil, queue: .main
-            ) { [weak self] _ in
-                MainActor.assumeIsolated { self?.apply() }
-            }
-        }
-
-        func apply() {
-            DispatchQueue.main.async { [weak self] in
-                guard let window = self?.view?.window else { return }
-                let dark = UserDefaults.standard.string(forKey: "AppleInterfaceStyle") == "Dark"
-                window.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
-            }
-        }
-
-        deinit {
-            if let token { DistributedNotificationCenter.default().removeObserver(token) }
+        DispatchQueue.main.async {
+            guard let window = nsView.window else { return }
+            let dark = UserDefaults.standard.string(forKey: "AppleInterfaceStyle") == "Dark"
+            window.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
         }
     }
 }
@@ -103,6 +78,11 @@ struct SettingsView: View {
         || wcFontSize != theme.savedFontSize
         || wcAppearanceRaw != theme.savedAppearance.rawValue
     }
+    // A new custom theme is being edited in the Custom Theme window but hasn't been
+    // saved yet, so it has no committable id. The preview shows the live draft, but
+    // Apply/Save here would commit the previously-selected theme — so they're
+    // disabled until the draft is saved (which selects it via savedId).
+    private var draftUncommitted: Bool { customDraft.active && customDraft.editingId == nil }
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -121,7 +101,7 @@ struct SettingsView: View {
         // the window to the live system appearance keeps this chrome tracking the
         // OS (light in Light, dark in Dark). The preview still shows the Mode.
         .background(SystemWindowAppearance())
-        .onAppear { syncFromSaved() }
+        .onAppear { syncFromSaved(); reconcileThemeId() }
         .onChange(of: openMenu) { old, new in
             // Closing the Size dropdown without committing reverts the typed
             // value to the working-copy size (Google-Docs behavior).
@@ -139,6 +119,26 @@ struct SettingsView: View {
                 wcSchemeRaw = customDraft.scheme.rawValue
                 wcThemeId = id
             }
+        }
+        // A View-menu font command (Cmd-+/-/0) can change the size out from under
+        // this window. Keep the Size working copy in sync as long as the user
+        // hasn't started editing Size themselves.
+        .onChange(of: theme.fontSize) { old, new in
+            if wcFontSize == old, openMenu != .size {
+                wcFontSize = new
+                sizeText = "\(Int(new))"
+            }
+        }
+        // Deleting the selected custom in the Custom Theme window drops its id;
+        // repoint the working copy to whatever resolvePalette falls back to so the
+        // Theme box and dropdown selection stay truthful (and Save can't persist a
+        // dead id).
+        .onChange(of: customsData) { _, _ in reconcileThemeId() }
+        // Escape closes an open dropdown first, then (pressed again) dismisses the
+        // window the same way Close does — revert any unsaved Apply.
+        .onExitCommand {
+            if openMenu != nil { openMenu = nil }
+            else { theme.revertToSaved(); dismiss() }
         }
     }
 
@@ -175,14 +175,14 @@ struct SettingsView: View {
                                 fontSize: wcFontSize, appearance: wcAppearance)
                 }
                     .buttonStyle(SquareButtonStyle())
-                    .disabled(!applyDirty)
+                    .disabled(!applyDirty || draftUncommitted)
                 Button("Save") {
                     theme.save(coloring: wcColoring, themeId: wcThemeId,
                                fontSize: wcFontSize, appearance: wcAppearance)
                     dismiss()
                 }
                     .buttonStyle(SquareButtonStyle())
-                    .disabled(!saveDirty)
+                    .disabled(!saveDirty || draftUncommitted)
                     .keyboardShortcut(.defaultAction)
             }
         }
@@ -208,6 +208,7 @@ struct SettingsView: View {
                 Spacer(minLength: 4)
                 Image(systemName: "chevron.down").font(.system(size: 8)).opacity(0.5)
                     .rotationEffect(.degrees(openMenu == .scheme ? 180 : 0))
+                    .animation(.easeInOut(duration: 0.15), value: openMenu == .scheme)
             }
             .padding(.horizontal, 7)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -271,13 +272,16 @@ struct SettingsView: View {
     private func pickTheme(_ id: String) { wcThemeId = id; openMenu = nil }
 
     private func pickScheme(_ c: Coloring) {
+        defer { openMenu = nil }
+        // Re-picking the scheme you're already on keeps the chosen theme; only a
+        // real scheme change resets to that scheme's default palette.
+        guard c != wcColoring else { return }
         wcSchemeRaw = c.rawValue
         switch c {
         case .off: break
         case .standard: wcThemeId = ColorTheming.defaultStandardId
         case .unified: wcThemeId = ColorTheming.defaultUnifiedId
         }
-        openMenu = nil
     }
 
     private func pickSize(_ s: Int) {
@@ -292,6 +296,15 @@ struct SettingsView: View {
         wcFontSize = theme.savedFontSize
         wcAppearanceRaw = theme.savedAppearance.rawValue
         sizeText = "\(Int(theme.savedFontSize))"
+    }
+
+    /// If the selected theme id no longer resolves to itself (e.g. the custom it
+    /// pointed at was deleted), repoint the working copy to whatever the resolver
+    /// falls back to, so the Theme box label and the dropdown's selected highlight
+    /// match what is actually drawn.
+    private func reconcileThemeId() {
+        guard wcColoring != .off, let resolved = wcPalette, resolved.id != wcThemeId else { return }
+        wcThemeId = resolved.id
     }
 
 }
@@ -391,21 +404,27 @@ private struct DropdownRow: View {
     }
 
     @ViewBuilder private func row<C: View>(@ViewBuilder _ content: () -> C) -> some View {
-        HStack(spacing: 0, content: content)
-            .padding(.horizontal, 10)
-            .frame(height: 24)
-            .frame(maxWidth: .infinity)
-            .background(rowBackground)
-            .contentShape(Rectangle())
-            // Continuous hover tracks the cursor directly (snappier than the
-            // enter/exit latency of .onHover, which felt laggy).
-            .onContinuousHover { phase in
-                switch phase {
-                case .active: hovering = true
-                case .ended: hovering = false
-                }
+        // A real Button (not a bare onTapGesture) so each row is keyboard-
+        // focusable and VoiceOver announces it as a button with its selected state.
+        Button { item.action?() } label: {
+            HStack(spacing: 0, content: content)
+                .padding(.horizontal, 10)
+                .frame(height: 24)
+                .frame(maxWidth: .infinity)
+                .background(rowBackground)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(item.action == nil)
+        .accessibilityAddTraits(item.selected ? .isSelected : [])
+        // Continuous hover tracks the cursor directly (snappier than the
+        // enter/exit latency of .onHover, which felt laggy).
+        .onContinuousHover { phase in
+            switch phase {
+            case .active: hovering = true
+            case .ended: hovering = false
             }
-            .onTapGesture { item.action?() }
+        }
     }
 
     private var rowBackground: Color {
@@ -446,29 +465,31 @@ struct ModeControl: View {
         HStack(spacing: 0) {
             ForEach(Array(items.enumerated()), id: \.offset) { _, item in
                 let selected = appearanceRaw == item.mode.rawValue
-                Image(systemName: item.icon)
-                    .font(.system(size: 13))
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background {
-                        // Selected reads as pressed-in (recessed darker surface +
-                        // top inner shadow); the unselected segments get a subtle
-                        // raised/lighter tint. The light-vs-dark pairing gives the
-                        // selection real contrast in dark mode (where "darker on
-                        // near-black" alone is invisible) without using an accent.
-                        if selected {
-                            Rectangle().fill(
-                                Color.black.opacity(0.28)
-                                    .shadow(.inner(color: .black.opacity(0.55), radius: 3, y: 1.5))
-                            )
-                        } else {
-                            Rectangle().fill(Color.white.opacity(0.10))
+                Button { appearanceRaw = item.mode.rawValue } label: {
+                    Image(systemName: item.icon)
+                        .font(.system(size: 13))
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background {
+                            // Selected reads as pressed-in (recessed darker surface +
+                            // top inner shadow); the unselected segments get a subtle
+                            // raised/lighter tint. The light-vs-dark pairing gives the
+                            // selection real contrast in dark mode (where "darker on
+                            // near-black" alone is invisible) without using an accent.
+                            if selected {
+                                Rectangle().fill(
+                                    Color.black.opacity(0.28)
+                                        .shadow(.inner(color: .black.opacity(0.55), radius: 3, y: 1.5))
+                                )
+                            } else {
+                                Rectangle().fill(Color.white.opacity(0.10))
+                            }
                         }
-                    }
-                    .foregroundStyle(selected ? Pane.text : Pane.muted)
-                    .contentShape(Rectangle())
-                    .onTapGesture { appearanceRaw = item.mode.rawValue }
-                    .accessibilityLabel(item.label)
-                    .accessibilityAddTraits(selected ? .isSelected : [])
+                        .foregroundStyle(selected ? Pane.text : Pane.muted)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(item.label)
+                .accessibilityAddTraits(selected ? .isSelected : [])
             }
         }
         .background(Pane.field)
@@ -542,6 +563,7 @@ struct ThemeBoxLabel: View {
                 .opacity(0.5)
                 .padding(.leading, 8)
                 .rotationEffect(.degrees(isOpen ? 180 : 0))
+                .animation(.easeInOut(duration: 0.15), value: isOpen)
         }
         .padding(.horizontal, 10)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
