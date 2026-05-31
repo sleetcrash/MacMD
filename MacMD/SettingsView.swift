@@ -5,18 +5,18 @@ import AppKit
 /// the light nor the dark system scheme, so the window never changes with the
 /// editor Mode. (The preview pane still shows the chosen light/dark.)
 enum Pane {
-    static let window = Color(white: 0.50)   // mid-gray window + content background
-    static let field  = Color(white: 0.22)   // dark wells: boxes, dropdowns, buttons
-    static let border = Color(white: 0.64)   // light hairline borders
-    static let text   = Color(white: 0.97)   // values, icons, titles
-    static let muted  = Color(white: 0.82)   // secondary labels / subheadings
-
-    static let windowNSColor = NSColor(white: 0.50, alpha: 1)
+    static let window = Color(nsColor: .windowBackgroundColor)   // matches the system color picker
+    static let field  = Color(nsColor: .textBackgroundColor)     // dark wells: boxes, dropdowns, buttons
+    static let border = Color(nsColor: .separatorColor)          // hairline borders
+    static let text   = Color(nsColor: .labelColor)              // values, icons, titles
+    static let muted  = Color(nsColor: .secondaryLabelColor)     // secondary labels / subheadings
 }
 
 struct SettingsView: View {
     @EnvironmentObject private var theme: ThemeController
+    @EnvironmentObject private var customDraft: CustomDraft
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openWindow) private var openWindow
     @AppStorage(ThemeSettings.customsKey) private var customsData = Data()
 
     // Working copy — edits here don't reach the document until Apply/Save.
@@ -25,7 +25,6 @@ struct SettingsView: View {
     @State private var wcFontSize = Double(FontSize.standard)
     @State private var wcAppearanceRaw = AppAppearance.system.rawValue
     @State private var sizeText = ""
-    @State private var showingCustomEditor = false
 
     // Which dropdown (if any) is open, and the on-screen frame of each trigger
     // box so the in-window dropdown can sit flush beneath it.
@@ -69,10 +68,10 @@ struct SettingsView: View {
         .background(Pane.window)
         .coordinateSpace(name: Self.space)
         .onPreferenceChange(FieldFrameKey.self) { fieldFrames = $0 }
-        // The Appearance window keeps a FIXED neutral mid-gray look regardless of
-        // the editor Mode — syncing it to the applied light/dark caused a string
-        // of mismatch bugs. The preview pane still shows the chosen Mode.
-        .background(NeutralPaneWindow())
+        // Fixed dark appearance (matching the macOS color picker) regardless of
+        // the editor Mode — a constant scheme, so it never changes and the
+        // system colors above resolve consistently. The preview shows the Mode.
+        .preferredColorScheme(.dark)
         .onAppear { syncFromSaved() }
         .onChange(of: openMenu) { old, new in
             // Closing the Size dropdown without committing reverts the typed
@@ -85,10 +84,12 @@ struct SettingsView: View {
             theme.revertToSaved()
             syncFromSaved()
         }
-        .sheet(isPresented: $showingCustomEditor) {
-            CustomThemeEditor(coloring: wcColoring, customsData: $customsData,
-                              selectedThemeId: $wcThemeId, appearance: wcAppearance,
-                              fontSize: CGFloat(wcFontSize))
+        // When the Custom Theme window saves a palette, select it here.
+        .onChange(of: customDraft.savedId) { _, id in
+            if let id {
+                wcSchemeRaw = customDraft.scheme.rawValue
+                wcThemeId = id
+            }
         }
     }
 
@@ -112,7 +113,8 @@ struct SettingsView: View {
                     schemeBox.frame(width: segWidth, height: rowHeight)
                 }
             }
-            ThemePreview(coloring: wcColoring, palette: wcPalette,
+            ThemePreview(coloring: customDraft.active ? customDraft.scheme : wcColoring,
+                         palette: customDraft.active ? customDraft.palette : wcPalette,
                          appearance: wcAppearance, fontSize: CGFloat(wcFontSize))
                 .frame(maxWidth: .infinity)
             HStack(spacing: 10) {
@@ -199,7 +201,8 @@ struct SettingsView: View {
             }
             rows.append(DropdownItem(id: "custom.plus", kind: .customPlus(wcColoring)) {
                 openMenu = nil
-                showingCustomEditor = true
+                customDraft.begin(scheme: wcColoring)
+                openWindow(id: CustomThemeScene.id)
             })
             return rows
         case .scheme:
@@ -242,23 +245,6 @@ struct SettingsView: View {
         sizeText = "\(Int(theme.savedFontSize))"
     }
 
-}
-
-/// Pins the host window to the neutral mid-gray pane look: a dark base appearance
-/// (so the title text/traffic-light area read correctly) with a mid-gray window
-/// background and a transparent title bar that blends into the content. Uses the
-/// view's own `window`, so it always targets the Appearance window.
-struct NeutralPaneWindow: NSViewRepresentable {
-    func makeNSView(context: Context) -> NSView { NSView() }
-
-    func updateNSView(_ nsView: NSView, context: Context) {
-        DispatchQueue.main.async {
-            guard let w = nsView.window else { return }
-            w.appearance = NSAppearance(named: .darkAqua)
-            w.backgroundColor = Pane.windowNSColor
-            w.titlebarAppearsTransparent = true
-        }
-    }
 }
 
 // MARK: - Dropdown plumbing
