@@ -5,13 +5,13 @@ import AppKit
 /// the light nor the dark system scheme, so the window never changes with the
 /// editor Mode. (The preview pane still shows the chosen light/dark.)
 enum Pane {
-    static let window = Color(white: 0.42)   // window + content background
-    static let field  = Color(white: 0.30)   // boxes, dropdowns, buttons
-    static let border = Color(white: 0.55)   // hairline borders
-    static let text   = Color(white: 0.96)   // values, icons, titles
-    static let muted  = Color(white: 0.72)   // secondary labels / subheadings
+    static let window = Color(white: 0.50)   // mid-gray window + content background
+    static let field  = Color(white: 0.22)   // dark wells: boxes, dropdowns, buttons
+    static let border = Color(white: 0.64)   // light hairline borders
+    static let text   = Color(white: 0.97)   // values, icons, titles
+    static let muted  = Color(white: 0.82)   // secondary labels / subheadings
 
-    static let windowNSColor = NSColor(white: 0.42, alpha: 1)
+    static let windowNSColor = NSColor(white: 0.50, alpha: 1)
 }
 
 struct SettingsView: View {
@@ -43,7 +43,17 @@ struct SettingsView: View {
     private var wcPalette: Palette? {
         ThemeSettings.resolvePalette(coloring: wcColoring, themeId: wcThemeId, customs: customs)
     }
-    private var isDirty: Bool {
+    // Apply lights up when the selection differs from what the editor is
+    // currently showing (the applied/effective state), so you can always apply
+    // your choice — even if it equals the saved value. Save lights up when the
+    // selection differs from the persisted (saved) value.
+    private var applyDirty: Bool {
+        wcColoring != theme.coloring
+        || wcThemeId != theme.themeId
+        || wcFontSize != theme.fontSize
+        || wcAppearance != theme.appearance
+    }
+    private var saveDirty: Bool {
         wcSchemeRaw != theme.savedColoring.rawValue
         || wcThemeId != theme.savedThemeId
         || wcFontSize != theme.savedFontSize
@@ -114,14 +124,14 @@ struct SettingsView: View {
                                 fontSize: wcFontSize, appearance: wcAppearance)
                 }
                     .buttonStyle(SquareButtonStyle())
-                    .disabled(!isDirty)
+                    .disabled(!applyDirty)
                 Button("Save") {
                     theme.save(coloring: wcColoring, themeId: wcThemeId,
                                fontSize: wcFontSize, appearance: wcAppearance)
                     dismiss()
                 }
                     .buttonStyle(SquareButtonStyle())
-                    .disabled(!isDirty)
+                    .disabled(!saveDirty)
                     .keyboardShortcut(.defaultAction)
             }
         }
