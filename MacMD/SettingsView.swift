@@ -46,17 +46,7 @@ struct SettingsView: View {
         .coordinateSpace(name: Self.space)
         .onPreferenceChange(FieldFrameKey.self) { fieldFrames = $0 }
         .preferredColorScheme(preferredScheme)
-        .onAppear {
-            syncFromSaved()
-            // Don't let the Size text field grab focus when the window opens —
-            // AppKit makes the only text field the initial first responder.
-            // Retry across a few ticks until the window is key and it sticks.
-            for delay in [0.0, 0.15, 0.3] {
-                DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-                    NSApp.keyWindow?.makeFirstResponder(nil)
-                }
-            }
-        }
+        .onAppear { syncFromSaved() }
         .onChange(of: openMenu) { old, new in
             // Closing the Size dropdown without committing reverts the typed
             // value to the working-copy size (Google-Docs behavior).
@@ -190,7 +180,8 @@ struct SettingsView: View {
             }
         case .size:
             return SizeControl.sizes.map { s in
-                DropdownItem(id: "\(s)", kind: .text("\(s)"), selected: sizeText == "\(s)") { pickSize(s) }
+                DropdownItem(id: "\(s)", kind: .text("\(s)"), selected: sizeText == "\(s)",
+                             centered: true) { pickSize(s) }
             }
         }
     }
@@ -270,6 +261,7 @@ struct DropdownItem: Identifiable {
     let id: String
     let kind: Kind
     var selected = false
+    var centered = false
     var action: (() -> Void)? = nil
 }
 
@@ -317,8 +309,12 @@ private struct DropdownRow: View {
             }
         case .text(let title):
             row {
-                Text(title).font(.system(size: 11))
-                Spacer(minLength: 0)
+                if item.centered {
+                    Text(title).font(.system(size: 11)).frame(maxWidth: .infinity, alignment: .center)
+                } else {
+                    Text(title).font(.system(size: 11))
+                    Spacer(minLength: 0)
+                }
             }
         }
     }
@@ -330,7 +326,14 @@ private struct DropdownRow: View {
             .frame(maxWidth: .infinity)
             .background(rowBackground)
             .contentShape(Rectangle())
-            .onHover { hovering = $0 }
+            // Continuous hover tracks the cursor directly (snappier than the
+            // enter/exit latency of .onHover, which felt laggy).
+            .onContinuousHover { phase in
+                switch phase {
+                case .active: hovering = true
+                case .ended: hovering = false
+                }
+            }
             .onTapGesture { item.action?() }
     }
 
@@ -487,28 +490,40 @@ struct SizeControl: View {
     @Binding var fontSize: Double
     @Binding var text: String
     @Binding var openMenu: MenuField?
+    @State private var editing = false
     @FocusState private var focused: Bool
-    @State private var armed = false
 
     var body: some View {
-        TextField("", text: $text)
-            .textFieldStyle(.plain)
-            .multilineTextAlignment(.center)
-            .font(.system(size: 11))
-            .focused($focused)
-            .onSubmit { commit(); openMenu = nil; focused = false }
-            // Clicking the box focuses the field, which opens the dropdown. The
-            // `armed` gate ignores the spurious focus AppKit hands the field on
-            // window open, so the dropdown doesn't pop by itself.
-            .onChange(of: focused) { _, isFocused in if isFocused && armed { openMenu = .size } }
-            .onAppear { DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { armed = true } }
-            .padding(.horizontal, 6)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color(nsColor: .textBackgroundColor))
-            .overlay(Rectangle().strokeBorder(Color(nsColor: .separatorColor), lineWidth: 1))
-            .contentShape(Rectangle())
-            .reportsFrame(.size)
-            .onChange(of: fontSize) { _, newValue in text = "\(Int(newValue))" }
+        Group {
+            // Show a plain (non-focusable) label until the box is clicked, so the
+            // field can't grab focus — and the dropdown can't pop — when the
+            // window opens. Clicking swaps in the editable field.
+            if editing {
+                TextField("", text: $text)
+                    .textFieldStyle(.plain)
+                    .multilineTextAlignment(.center)
+                    .focused($focused)
+                    .onSubmit { commit(); openMenu = nil }
+            } else {
+                Text(text).frame(maxWidth: .infinity, alignment: .center)
+            }
+        }
+        .font(.system(size: 11))
+        .padding(.horizontal, 6)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(nsColor: .textBackgroundColor))
+        .overlay(Rectangle().strokeBorder(Color(nsColor: .separatorColor), lineWidth: 1))
+        .contentShape(Rectangle())
+        .onTapGesture {
+            editing = true
+            openMenu = .size
+            DispatchQueue.main.async { focused = true }
+        }
+        .reportsFrame(.size)
+        .onChange(of: fontSize) { _, newValue in text = "\(Int(newValue))" }
+        .onChange(of: openMenu) { _, new in
+            if new != .size { editing = false; focused = false }
+        }
     }
 
     private func commit() {
