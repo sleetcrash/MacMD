@@ -117,6 +117,9 @@ struct CustomThemeEditor: View {
                 Button(draft.editingId == nil ? "Save" : "Update") { save() }
                     .buttonStyle(SquareButtonStyle())
                     .disabled(!canSave)
+                    // Return commits the palette (matching Save in the Appearance
+                    // window), rather than just dismissing.
+                    .keyboardShortcut(.defaultAction)
                 if draft.editingId != nil {
                     Button("New") { resetFields() }.buttonStyle(SquareButtonStyle())
                 }
@@ -153,11 +156,11 @@ struct CustomThemeEditor: View {
                 .frame(maxHeight: 120)
             }
 
+            // Dismiss on the left, matching the Appearance window's Close button.
             HStack {
-                Spacer()
-                Button("Done") { dismiss() }
+                Button("Close") { dismiss() }
                     .buttonStyle(SquareButtonStyle())
-                    .keyboardShortcut(.defaultAction)
+                Spacer()
             }
         }
         .padding(EdgeInsets(top: 26, leading: 20, bottom: 20, trailing: 20))
