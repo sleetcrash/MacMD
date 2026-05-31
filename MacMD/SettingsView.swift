@@ -70,7 +70,8 @@ struct SettingsView: View {
         }
         .sheet(isPresented: $showingCustomEditor) {
             CustomThemeEditor(coloring: wcColoring, customsData: $customsData,
-                              selectedThemeId: $wcThemeId)
+                              selectedThemeId: $wcThemeId, appearance: wcAppearance,
+                              fontSize: CGFloat(wcFontSize))
         }
     }
 
