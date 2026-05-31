@@ -1,6 +1,19 @@
 import SwiftUI
 import AppKit
 
+/// The Appearance window's fixed neutral mid-gray palette — deliberately neither
+/// the light nor the dark system scheme, so the window never changes with the
+/// editor Mode. (The preview pane still shows the chosen light/dark.)
+enum Pane {
+    static let window = Color(white: 0.42)   // window + content background
+    static let field  = Color(white: 0.30)   // boxes, dropdowns, buttons
+    static let border = Color(white: 0.55)   // hairline borders
+    static let text   = Color(white: 0.96)   // values, icons, titles
+    static let muted  = Color(white: 0.72)   // secondary labels / subheadings
+
+    static let windowNSColor = NSColor(white: 0.42, alpha: 1)
+}
+
 struct SettingsView: View {
     @EnvironmentObject private var theme: ThemeController
     @Environment(\.dismiss) private var dismiss
@@ -43,13 +56,13 @@ struct SettingsView: View {
             dropdownLayer
         }
         .frame(width: 354)
+        .background(Pane.window)
         .coordinateSpace(name: Self.space)
         .onPreferenceChange(FieldFrameKey.self) { fieldFrames = $0 }
-        // The Appearance window keeps a FIXED dark appearance regardless of the
-        // editor Mode — trying to sync it to the applied light/dark caused a
-        // string of mismatch bugs. The preview pane still shows the chosen Mode;
-        // only the window chrome is fixed.
-        .background(FixedWindowAppearance())
+        // The Appearance window keeps a FIXED neutral mid-gray look regardless of
+        // the editor Mode — syncing it to the applied light/dark caused a string
+        // of mismatch bugs. The preview pane still shows the chosen Mode.
+        .background(NeutralPaneWindow())
         .onAppear { syncFromSaved() }
         .onChange(of: openMenu) { old, new in
             // Closing the Size dropdown without committing reverts the typed
@@ -113,6 +126,7 @@ struct SettingsView: View {
             }
         }
         .padding(EdgeInsets(top: 26, leading: 20, bottom: 20, trailing: 20))
+        .foregroundStyle(Pane.text)
     }
 
     // MARK: - Trigger boxes
@@ -136,8 +150,8 @@ struct SettingsView: View {
             }
             .padding(.horizontal, 7)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color(nsColor: .textBackgroundColor))
-            .overlay(Rectangle().strokeBorder(Color(nsColor: .separatorColor), lineWidth: 1))
+            .background(Pane.field)
+            .overlay(Rectangle().strokeBorder(Pane.border, lineWidth: 1))
         }
         .buttonStyle(.plain)
         .reportsFrame(.scheme)
@@ -220,16 +234,19 @@ struct SettingsView: View {
 
 }
 
-/// Pins the host window to a fixed dark appearance so the Appearance window
-/// never changes with the editor Mode (the preview pane shows the Mode instead).
-/// Uses the view's own `window`, so it always targets the Appearance window.
-struct FixedWindowAppearance: NSViewRepresentable {
+/// Pins the host window to the neutral mid-gray pane look: a dark base appearance
+/// (so the title text/traffic-light area read correctly) with a mid-gray window
+/// background and a transparent title bar that blends into the content. Uses the
+/// view's own `window`, so it always targets the Appearance window.
+struct NeutralPaneWindow: NSViewRepresentable {
     func makeNSView(context: Context) -> NSView { NSView() }
 
     func updateNSView(_ nsView: NSView, context: Context) {
-        let dark = NSAppearance(named: .darkAqua)
         DispatchQueue.main.async {
-            if nsView.window?.appearance != dark { nsView.window?.appearance = dark }
+            guard let w = nsView.window else { return }
+            w.appearance = NSAppearance(named: .darkAqua)
+            w.backgroundColor = Pane.windowNSColor
+            w.titlebarAppearsTransparent = true
         }
     }
 }
@@ -284,8 +301,9 @@ struct InlineDropdown: View {
         VStack(spacing: 0) {
             ForEach(items) { DropdownRow(item: $0) }
         }
-        .background(Color(nsColor: .textBackgroundColor))
-        .overlay(Rectangle().strokeBorder(Color(nsColor: .separatorColor), lineWidth: 1))
+        .background(Pane.field)
+        .overlay(Rectangle().strokeBorder(Pane.border, lineWidth: 1))
+        .foregroundStyle(Pane.text)
     }
 }
 
@@ -298,7 +316,7 @@ private struct DropdownRow: View {
         case .header(let title):
             Text(title.uppercased())
                 .font(.system(size: 9)).tracking(0.6)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Pane.muted)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 10)
                 .padding(.top, 7).padding(.bottom, 3)
@@ -346,8 +364,8 @@ private struct DropdownRow: View {
     }
 
     private var rowBackground: Color {
-        if hovering { return Color.primary.opacity(0.12) }
-        if item.selected { return Color.primary.opacity(0.07) }
+        if hovering { return Color.white.opacity(0.16) }
+        if item.selected { return Color.white.opacity(0.10) }
         return .clear
     }
 
@@ -394,22 +412,22 @@ struct ModeControl: View {
                         // near-black" alone is invisible) without using an accent.
                         if selected {
                             Rectangle().fill(
-                                Color.black.opacity(0.22)
-                                    .shadow(.inner(color: .black.opacity(0.5), radius: 3, y: 1.5))
+                                Color.black.opacity(0.28)
+                                    .shadow(.inner(color: .black.opacity(0.55), radius: 3, y: 1.5))
                             )
                         } else {
-                            Rectangle().fill(Color.white.opacity(0.07))
+                            Rectangle().fill(Color.white.opacity(0.10))
                         }
                     }
-                    .foregroundStyle(selected ? Color.primary : Color.secondary)
+                    .foregroundStyle(selected ? Pane.text : Pane.muted)
                     .contentShape(Rectangle())
                     .onTapGesture { appearanceRaw = item.mode.rawValue }
                     .accessibilityLabel(item.label)
                     .accessibilityAddTraits(selected ? .isSelected : [])
             }
         }
-        .background(Color(nsColor: .textBackgroundColor))
-        .overlay(Rectangle().strokeBorder(Color(nsColor: .separatorColor), lineWidth: 1))
+        .background(Pane.field)
+        .overlay(Rectangle().strokeBorder(Pane.border, lineWidth: 1))
     }
 }
 
@@ -441,14 +459,11 @@ struct SquareButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 12))
+            .foregroundStyle(Pane.text)
             .padding(.horizontal, 14)
             .frame(height: 26)
-            .background(
-                configuration.isPressed
-                    ? Color(nsColor: .selectedControlColor)
-                    : Color(nsColor: .textBackgroundColor)
-            )
-            .overlay(Rectangle().strokeBorder(Color(nsColor: .separatorColor), lineWidth: 1))
+            .background(configuration.isPressed ? Color(white: 0.40) : Pane.field)
+            .overlay(Rectangle().strokeBorder(Pane.border, lineWidth: 1))
             .opacity(isEnabled ? 1.0 : 0.4)
             .contentShape(Rectangle())
     }
@@ -485,8 +500,8 @@ struct ThemeBoxLabel: View {
         }
         .padding(.horizontal, 10)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(nsColor: .textBackgroundColor))
-        .overlay(Rectangle().strokeBorder(Color(nsColor: .separatorColor), lineWidth: 1))
+        .background(Pane.field)
+        .overlay(Rectangle().strokeBorder(Pane.border, lineWidth: 1))
     }
 }
 
@@ -522,8 +537,8 @@ struct SizeControl: View {
         .font(.system(size: 11))
         .padding(.horizontal, 6)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(nsColor: .textBackgroundColor))
-        .overlay(Rectangle().strokeBorder(Color(nsColor: .separatorColor), lineWidth: 1))
+        .background(Pane.field)
+        .overlay(Rectangle().strokeBorder(Pane.border, lineWidth: 1))
         .contentShape(Rectangle())
         .onTapGesture {
             editing = true
@@ -562,7 +577,7 @@ struct LabeledField<Content: View>: View {
                 Text(label.uppercased())
                     .font(.system(size: 9))
                     .tracking(0.6)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Pane.muted)
                     .opacity(hovering ? 0.55 : 0)
                     .animation(.easeInOut(duration: 0.15), value: hovering)
                     .offset(y: -14)
