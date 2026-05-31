@@ -4,6 +4,7 @@ import AppKit
 @main
 struct MacMDApp: App {
     @StateObject private var themeController = ThemeController()
+    @StateObject private var customDraft = CustomDraft()
 
     var body: some Scene {
         DocumentGroup(newDocument: MarkdownDocument()) { file in
@@ -53,6 +54,14 @@ struct MacMDApp: App {
         Window("Appearance", id: AppearanceScene.id) {
             SettingsView()
                 .environmentObject(themeController)
+                .environmentObject(customDraft)
+        }
+        .windowResizability(.contentSize)
+        .defaultPosition(.center)
+
+        Window("Custom Theme", id: CustomThemeScene.id) {
+            CustomThemeEditor()
+                .environmentObject(customDraft)
         }
         .windowResizability(.contentSize)
         .defaultPosition(.center)
