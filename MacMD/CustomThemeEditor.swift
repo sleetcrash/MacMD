@@ -79,14 +79,7 @@ struct CustomThemeEditor: View {
     @AppStorage(ThemeSettings.customsKey) private var customsData = Data()
     @Environment(\.dismiss) private var dismiss
 
-    // Grid geometry. The Name field's right edge lines up with the last swatch
-    // by matching the grid's measured width (`gridWidth`); `rowWidth` is only the
-    // pre-measurement fallback.
-    private let labelCol: CGFloat = 36
     private let wellSize: CGFloat = 24
-    private let hSpacing: CGFloat = 12
-    private var rowWidth: CGFloat { labelCol + CGFloat(draft.slotCount) * (hSpacing + wellSize) }
-    @State private var gridWidth: CGFloat = 0
 
     private var slotLabels: [String] { draft.scheme == .standard ? ["H1", "H2", "H3"] : ["Color"] }
     private var canSave: Bool { !draft.name.trimmingCharacters(in: .whitespaces).isEmpty }
@@ -101,43 +94,51 @@ struct CustomThemeEditor: View {
                 .foregroundStyle(Pane.muted)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Grid(alignment: .leading, horizontalSpacing: hSpacing, verticalSpacing: 8) {
+            // One swatch row laid out like the Appearance theme box: light trio │
+            // dark trio, with a sun (left) and moon (right) marking which is which.
+            // Heading labels sit centered above each swatch; the Name box spans the
+            // whole row, from the sun edge to the moon edge.
+            Grid(alignment: .center, horizontalSpacing: 6, verticalSpacing: 8) {
                 GridRow {
-                    Text("").frame(width: labelCol)
+                    Text("")
                     ForEach(0..<draft.slotCount, id: \.self) { i in
-                        Text(slotLabels[i]).font(.system(size: 11)).foregroundStyle(Pane.muted)
-                            .frame(width: wellSize, alignment: .center)
+                        Text(slotLabels[i]).font(.system(size: 10)).foregroundStyle(Pane.muted)
                     }
+                    Text("")
+                    ForEach(0..<draft.slotCount, id: \.self) { i in
+                        Text(slotLabels[i]).font(.system(size: 10)).foregroundStyle(Pane.muted)
+                    }
+                    Text("")
                 }
                 GridRow {
-                    Text("Light").font(.system(size: 11)).frame(width: labelCol, alignment: .leading)
+                    Image(systemName: "sun.max").font(.system(size: 12)).foregroundStyle(Pane.muted)
+                        .accessibilityLabel("Light")
                     ForEach(0..<draft.slotCount, id: \.self) { i in
                         SquareColorWell(color: $draft.lights[i], size: wellSize)
                             .accessibilityLabel("\(slotLabels[i]) light color")
                     }
-                }
-                GridRow {
-                    Text("Dark").font(.system(size: 11)).frame(width: labelCol, alignment: .leading)
+                    Text("|").opacity(0.35)
                     ForEach(0..<draft.slotCount, id: \.self) { i in
                         SquareColorWell(color: $draft.darks[i], size: wellSize)
                             .accessibilityLabel("\(slotLabels[i]) dark color")
                     }
+                    Image(systemName: "moon.fill").font(.system(size: 12)).foregroundStyle(Pane.muted)
+                        .accessibilityLabel("Dark")
+                }
+                GridRow {
+                    TextField("Name", text: $draft.name)
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 11))
+                        .padding(.horizontal, 8)
+                        .frame(height: 26)
+                        .frame(maxWidth: .infinity)
+                        .background(Pane.field)
+                        .overlay(Rectangle().strokeBorder(Pane.border, lineWidth: 1))
+                        .onChange(of: draft.name) { _, v in if v.count > 10 { draft.name = String(v.prefix(10)) } }
+                        .padding(.top, 6)
+                        .gridCellColumns(draft.slotCount * 2 + 3)
                 }
             }
-            .background(GeometryReader { geo in
-                Color.clear.preference(key: GridWidthKey.self, value: geo.size.width)
-            })
-            .onPreferenceChange(GridWidthKey.self) { gridWidth = $0 }
-
-            // Name box ends in line with the rightmost swatch (the grid's width).
-            TextField("Name", text: $draft.name)
-                .textFieldStyle(.plain)
-                .font(.system(size: 11))
-                .padding(.horizontal, 8)
-                .frame(width: gridWidth > 0 ? gridWidth : rowWidth, height: 26)
-                .background(Pane.field)
-                .overlay(Rectangle().strokeBorder(Pane.border, lineWidth: 1))
-                .onChange(of: draft.name) { _, v in if v.count > 10 { draft.name = String(v.prefix(10)) } }
 
             // Close (left) / Apply / Save (right) — matches the Appearance window.
             HStack(spacing: 10) {
@@ -206,13 +207,6 @@ struct CustomThemeEditor: View {
         draft.editingId = id
         return id
     }
-}
-
-/// Publishes the swatch grid's measured width so the Name field can match it
-/// exactly (its right edge then lines up with the last swatch).
-private struct GridWidthKey: PreferenceKey {
-    static let defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
 }
 
 /// A sharp-edged square color well that matches the dropdown swatches: a flat
