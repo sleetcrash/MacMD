@@ -379,15 +379,18 @@ struct ModeControl: View {
                     .font(.system(size: 13))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background {
-                        // Selected reads as pressed-in: a recessed darker surface
-                        // with a top inner shadow (depth, not a colored highlight).
-                        // Black tint keeps "pressed = darker" consistent in light
-                        // and dark mode; the others stay flat / raised.
+                        // Selected reads as pressed-in (recessed darker surface +
+                        // top inner shadow); the unselected segments get a subtle
+                        // raised/lighter tint. The light-vs-dark pairing gives the
+                        // selection real contrast in dark mode (where "darker on
+                        // near-black" alone is invisible) without using an accent.
                         if selected {
                             Rectangle().fill(
-                                Color.black.opacity(0.12)
-                                    .shadow(.inner(color: .black.opacity(0.38), radius: 3, y: 1.5))
+                                Color.black.opacity(0.22)
+                                    .shadow(.inner(color: .black.opacity(0.5), radius: 3, y: 1.5))
                             )
+                        } else {
+                            Rectangle().fill(Color.white.opacity(0.07))
                         }
                     }
                     .foregroundStyle(selected ? Color.primary : Color.secondary)
