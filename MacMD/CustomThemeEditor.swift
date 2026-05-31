@@ -212,8 +212,9 @@ struct CustomThemeEditor: View {
 }
 
 /// Positions the Custom Theme window (once) just left of the Appearance window,
-/// so that window's live preview stays visible while editing. (Appearance is set
-/// by `.preferredColorScheme(.dark)`, matching the system color picker.)
+/// so that window's live preview stays visible while editing. (Both windows pin
+/// their appearance to the OS via `SystemWindowAppearance`, matching the system
+/// color picker.)
 struct PositionBesideAppearance: NSViewRepresentable {
     func makeNSView(context: Context) -> NSView { NSView() }
     func makeCoordinator() -> Coordinator { Coordinator() }
