@@ -85,6 +85,7 @@ struct SettingsView: View {
                     NSApp.keyWindow?.makeFirstResponder(nil)
                 }
         )
+        .preferredColorScheme(preferredScheme)
         .onAppear {
             syncFromSaved()
             // Don't let the Size text field grab focus when the window opens —
@@ -108,6 +109,17 @@ struct SettingsView: View {
         wcFontSize = theme.savedFontSize
         wcAppearanceRaw = theme.savedAppearance.rawValue
     }
+
+    /// Make the Appearance window (and the menus it pops) render in the chosen
+    /// Mode, so it previews light/dark like the editor instead of always
+    /// following the system appearance.
+    private var preferredScheme: ColorScheme? {
+        switch wcAppearance {
+        case .system: return nil
+        case .light: return .light
+        case .dark: return .dark
+        }
+    }
 }
 
 /// Icon-only Light / Dark / System segmented control. Binds the working copy,
@@ -128,14 +140,26 @@ struct ModeControl: View {
                 Image(systemName: item.icon)
                     .font(.system(size: 13))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(selected ? Color.accentColor : Color(nsColor: .textBackgroundColor))
-                    .foregroundStyle(selected ? Color.white : Color.primary)
+                    .background {
+                        // Selected reads as pressed-in: a recessed darker surface
+                        // with a top inner shadow (depth, not a colored highlight).
+                        // Black tint keeps "pressed = darker" consistent in light
+                        // and dark mode; the others stay flat / raised.
+                        if selected {
+                            Rectangle().fill(
+                                Color.black.opacity(0.12)
+                                    .shadow(.inner(color: .black.opacity(0.38), radius: 3, y: 1.5))
+                            )
+                        }
+                    }
+                    .foregroundStyle(selected ? Color.primary : Color.secondary)
                     .contentShape(Rectangle())
                     .onTapGesture { appearanceRaw = item.mode.rawValue }
                     .accessibilityLabel(item.label)
                     .accessibilityAddTraits(selected ? .isSelected : [])
             }
         }
+        .background(Color(nsColor: .textBackgroundColor))
         .overlay(Rectangle().strokeBorder(Color(nsColor: .separatorColor), lineWidth: 1))
     }
 }
