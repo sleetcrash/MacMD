@@ -38,7 +38,9 @@ struct ThemePreview: View {
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(dark ? Color(red: 0x1E / 255, green: 0x1E / 255, blue: 0x1E / 255) : Color.white)
-        .overlay(Rectangle().strokeBorder(Color.black.opacity(0.12), lineWidth: 1))
+        // Border contrasts against the preview's own background, not the window:
+        // a black hairline vanishes on the dark preview, so flip to white there.
+        .overlay(Rectangle().strokeBorder((dark ? Color.white : Color.black).opacity(0.15), lineWidth: 1))
     }
 
     // Mirrors the editor's font scheme so the preview shows the chosen size:

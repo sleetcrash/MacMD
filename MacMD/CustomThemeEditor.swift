@@ -91,6 +91,7 @@ struct CustomThemeEditor: View {
                         ColorPicker("", selection: $draft.lights[i], supportsOpacity: false)
                             .labelsHidden()
                             .clipShape(Rectangle())
+                            .accessibilityLabel("\(slotLabels[i]) light color")
                     }
                 }
                 GridRow {
@@ -99,6 +100,7 @@ struct CustomThemeEditor: View {
                         ColorPicker("", selection: $draft.darks[i], supportsOpacity: false)
                             .labelsHidden()
                             .clipShape(Rectangle())
+                            .accessibilityLabel("\(slotLabels[i]) dark color")
                     }
                 }
             }
@@ -137,11 +139,13 @@ struct CustomThemeEditor: View {
                                     }
                                 }
                                 .buttonStyle(.plain)
+                                .accessibilityLabel("Edit \(p.name)")
                                 Spacer()
                                 Button { delete(p) } label: {
                                     Image(systemName: "trash").font(.system(size: 11))
                                 }
                                 .buttonStyle(.plain)
+                                .accessibilityLabel("Delete \(p.name)")
                             }
                         }
                     }
@@ -162,6 +166,7 @@ struct CustomThemeEditor: View {
         .background(Pane.window)
         .background(SystemWindowAppearance())
         .background(PositionBesideAppearance())
+        .onExitCommand { dismiss() }
         .onDisappear { draft.end() }
     }
 
