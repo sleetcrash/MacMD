@@ -45,7 +45,10 @@ struct SettingsView: View {
         .frame(width: 354)
         .coordinateSpace(name: Self.space)
         .onPreferenceChange(FieldFrameKey.self) { fieldFrames = $0 }
-        .preferredColorScheme(preferredScheme)
+        // Drive the window's NSAppearance directly (System → nil = follow OS).
+        // `.preferredColorScheme(nil)` fails to revert a previously-forced
+        // light/dark window, which left the control boxes stuck in the old mode.
+        .background(WindowAppearanceSetter(appearance: theme.appearance))
         .onAppear { syncFromSaved() }
         .onChange(of: openMenu) { old, new in
             // Closing the Size dropdown without committing reverts the typed
@@ -214,14 +217,22 @@ struct SettingsView: View {
         sizeText = "\(Int(theme.savedFontSize))"
     }
 
-    /// Render the Appearance window (and the menus it pops) in the *applied*
-    /// Mode — the same transactional state the editor uses — so it only flips
-    /// light/dark on Apply/Save, not on every Mode toggle.
-    private var preferredScheme: ColorScheme? {
-        switch theme.appearance {
-        case .system: return nil
-        case .light: return .light
-        case .dark: return .dark
+}
+
+/// Sets the host window's NSAppearance from the *applied* Mode (the transactional
+/// `theme.appearance`), so the window — and the dynamic control colors inside it —
+/// only change on Apply/Save, and System reliably reverts to following the OS.
+/// Uses the view's own `window`, so it always targets the Appearance window;
+/// `.preferredColorScheme(nil)` failed to revert a previously-forced appearance.
+struct WindowAppearanceSetter: NSViewRepresentable {
+    let appearance: AppAppearance
+
+    func makeNSView(context: Context) -> NSView { NSView() }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        let target = appearance.nsAppearance
+        DispatchQueue.main.async {
+            if nsView.window?.appearance != target { nsView.window?.appearance = target }
         }
     }
 }
