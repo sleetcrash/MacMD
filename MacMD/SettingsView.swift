@@ -110,11 +110,13 @@ struct SettingsView: View {
         wcAppearanceRaw = theme.savedAppearance.rawValue
     }
 
-    /// Make the Appearance window (and the menus it pops) render in the chosen
-    /// Mode, so it previews light/dark like the editor instead of always
-    /// following the system appearance.
+    /// Render the Appearance window (and the menus it pops) in the *applied*
+    /// Mode — the same transactional state the editor uses — so it only flips
+    /// light/dark on Apply/Save, not on every Mode toggle. Toggling Mode updates
+    /// the preview pane only (which reads the working copy); the window chrome
+    /// follows along when the change is applied.
     private var preferredScheme: ColorScheme? {
-        switch wcAppearance {
+        switch theme.appearance {
         case .system: return nil
         case .light: return .light
         case .dark: return .dark
