@@ -45,10 +45,11 @@ struct SettingsView: View {
         .frame(width: 354)
         .coordinateSpace(name: Self.space)
         .onPreferenceChange(FieldFrameKey.self) { fieldFrames = $0 }
-        // Drive the window's NSAppearance directly (System → nil = follow OS).
-        // `.preferredColorScheme(nil)` fails to revert a previously-forced
-        // light/dark window, which left the control boxes stuck in the old mode.
-        .background(WindowAppearanceSetter(appearance: theme.appearance))
+        // The Appearance window keeps a FIXED dark appearance regardless of the
+        // editor Mode — trying to sync it to the applied light/dark caused a
+        // string of mismatch bugs. The preview pane still shows the chosen Mode;
+        // only the window chrome is fixed.
+        .background(FixedWindowAppearance())
         .onAppear { syncFromSaved() }
         .onChange(of: openMenu) { old, new in
             // Closing the Size dropdown without committing reverts the typed
@@ -219,20 +220,16 @@ struct SettingsView: View {
 
 }
 
-/// Sets the host window's NSAppearance from the *applied* Mode (the transactional
-/// `theme.appearance`), so the window — and the dynamic control colors inside it —
-/// only change on Apply/Save, and System reliably reverts to following the OS.
-/// Uses the view's own `window`, so it always targets the Appearance window;
-/// `.preferredColorScheme(nil)` failed to revert a previously-forced appearance.
-struct WindowAppearanceSetter: NSViewRepresentable {
-    let appearance: AppAppearance
-
+/// Pins the host window to a fixed dark appearance so the Appearance window
+/// never changes with the editor Mode (the preview pane shows the Mode instead).
+/// Uses the view's own `window`, so it always targets the Appearance window.
+struct FixedWindowAppearance: NSViewRepresentable {
     func makeNSView(context: Context) -> NSView { NSView() }
 
     func updateNSView(_ nsView: NSView, context: Context) {
-        let target = appearance.nsAppearance
+        let dark = NSAppearance(named: .darkAqua)
         DispatchQueue.main.async {
-            if nsView.window?.appearance != target { nsView.window?.appearance = target }
+            if nsView.window?.appearance != dark { nsView.window?.appearance = dark }
         }
     }
 }
