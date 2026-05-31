@@ -52,6 +52,8 @@ struct SettingsView: View {
     // box so the in-window dropdown can sit flush beneath it.
     @State private var openMenu: MenuField?
     @State private var fieldFrames: [MenuField: CGRect] = [:]
+    // The custom theme awaiting a delete confirmation (from a dropdown trash icon).
+    @State private var pendingDelete: Palette?
 
     static let space = "settingsMenu"
     private let wideWidth: CGFloat = 225
@@ -90,6 +92,7 @@ struct SettingsView: View {
         ZStack(alignment: .topLeading) {
             content
             dropdownLayer
+            if let p = pendingDelete { deleteConfirmation(p) }
         }
         .frame(width: 354)
         .background(Pane.window)
@@ -139,9 +142,51 @@ struct SettingsView: View {
         // Escape closes an open dropdown first, then (pressed again) dismisses the
         // window the same way Close does — revert any unsaved Apply.
         .onExitCommand {
-            if openMenu != nil { openMenu = nil }
+            if pendingDelete != nil { pendingDelete = nil }
+            else if openMenu != nil { openMenu = nil }
             else { theme.revertToSaved(); dismiss() }
         }
+    }
+
+    // MARK: - Delete confirmation
+
+    /// A modal card styled exactly like this window (Pane chrome, sharp edges,
+    /// square buttons) confirming deletion of a custom theme. Cancel / red Delete.
+    @ViewBuilder private func deleteConfirmation(_ p: Palette) -> some View {
+        ZStack {
+            Color.black.opacity(0.45)
+                .contentShape(Rectangle())
+                .onTapGesture { pendingDelete = nil }
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Delete “\(p.name)”?")
+                    .font(.system(size: 13, weight: .semibold))
+                Text("This permanently removes the custom theme and can’t be undone.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(Pane.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: 10) {
+                    Button("Cancel") { pendingDelete = nil }
+                        .buttonStyle(SquareButtonStyle())
+                    Spacer()
+                    Button("Delete") { confirmDelete(p) }
+                        .buttonStyle(SquareButtonStyle(tint: Self.deleteRed))
+                }
+            }
+            .padding(20)
+            .frame(width: 260)
+            .background(Pane.window)
+            .overlay(Rectangle().strokeBorder(Pane.border, lineWidth: 1))
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    static let deleteRed = Color(red: 0.80, green: 0.25, blue: 0.27)
+
+    private func confirmDelete(_ p: Palette) {
+        var all = ThemeSettings.decodeCustoms(customsData)
+        all.removeAll { $0.id == p.id }
+        customsData = ThemeSettings.encodeCustoms(all)   // onChange(of:) reconciles wcThemeId
+        pendingDelete = nil
     }
 
     private var content: some View {
@@ -242,29 +287,42 @@ struct SettingsView: View {
         switch field {
         case .theme:
             var rows = ColorTheming.presets(for: wcColoring).map { p in
-                DropdownItem(id: p.id, kind: .palette(p), selected: p.id == wcThemeId) { pickTheme(p.id) }
+                DropdownItem(id: p.id, kind: .palette(p), selected: p.id == wcThemeId,
+                             action: { pickTheme(p.id) })
             }
             let mine = customs.filter { $0.scheme == wcColoring }
             if !mine.isEmpty {
                 rows.append(DropdownItem(id: "hdr.custom", kind: .header("Custom")))
                 rows.append(contentsOf: mine.map { p in
-                    DropdownItem(id: p.id, kind: .palette(p), selected: p.id == wcThemeId) { pickTheme(p.id) }
+                    DropdownItem(
+                        id: p.id, kind: .palette(p), selected: p.id == wcThemeId,
+                        action: { pickTheme(p.id) },
+                        onEdit: {
+                            openMenu = nil
+                            customDraft.beginEditing(p)
+                            openWindow(id: CustomThemeScene.id)
+                        },
+                        onDelete: {
+                            openMenu = nil
+                            pendingDelete = p
+                        })
                 })
             }
-            rows.append(DropdownItem(id: "custom.plus", kind: .customPlus(wcColoring)) {
+            rows.append(DropdownItem(id: "custom.plus", kind: .customPlus(wcColoring), action: {
                 openMenu = nil
                 customDraft.begin(scheme: wcColoring)
                 openWindow(id: CustomThemeScene.id)
-            })
+            }))
             return rows
         case .scheme:
             return Coloring.allCases.map { c in
-                DropdownItem(id: c.rawValue, kind: .text(c.displayName), selected: c == wcColoring) { pickScheme(c) }
+                DropdownItem(id: c.rawValue, kind: .text(c.displayName), selected: c == wcColoring,
+                             action: { pickScheme(c) })
             }
         case .size:
             return SizeControl.sizes.map { s in
                 DropdownItem(id: "\(s)", kind: .text("\(s)"), selected: sizeText == "\(s)",
-                             centered: true) { pickSize(s) }
+                             centered: true, action: { pickSize(s) })
             }
         }
     }
@@ -348,6 +406,9 @@ struct DropdownItem: Identifiable {
     var selected = false
     var centered = false
     var action: (() -> Void)? = nil
+    // Custom palette rows only — drive the trailing pencil / trash icons.
+    var onEdit: (() -> Void)? = nil
+    var onDelete: (() -> Void)? = nil
 }
 
 /// A seamless in-window dropdown: a flush list of rows the exact width of its
@@ -381,12 +442,7 @@ private struct DropdownRow: View {
                 .padding(.horizontal, 10)
                 .padding(.top, 7).padding(.bottom, 3)
         case .palette(let p):
-            row {
-                Text(p.name).font(.system(size: 11)).lineLimit(1)
-                Spacer(minLength: 8)
-                swatchTrio(light: p.slots.map { Color(nsColor: $0.nsLight) },
-                           dark: p.slots.map { Color(nsColor: $0.nsDark) })
-            }
+            paletteRow(p)
         case .customPlus(let scheme):
             row {
                 Text("Custom+").font(.system(size: 11))
@@ -401,6 +457,57 @@ private struct DropdownRow: View {
                     Text(title).font(.system(size: 11))
                     Spacer(minLength: 0)
                 }
+            }
+        }
+    }
+
+    // Reserved trailing area, so swatches stay aligned whether or not a row has
+    // the edit/trash icons (built-in themes leave this space empty).
+    private let iconSlot: CGFloat = 36
+
+    /// A palette row: a select button (name + swatches) plus a trailing slot
+    /// holding edit + trash for custom themes (empty for built-ins).
+    private func paletteRow(_ p: Palette) -> some View {
+        HStack(spacing: 0) {
+            Button { item.action?() } label: {
+                HStack(spacing: 0) {
+                    Text(p.name).font(.system(size: 11)).lineLimit(1)
+                    Spacer(minLength: 8)
+                    swatchTrio(light: p.slots.map { Color(nsColor: $0.nsLight) },
+                               dark: p.slots.map { Color(nsColor: $0.nsDark) })
+                }
+                .frame(maxWidth: .infinity)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityAddTraits(item.selected ? .isSelected : [])
+
+            HStack(spacing: 6) {
+                if item.onEdit != nil || item.onDelete != nil {
+                    Button { item.onEdit?() } label: {
+                        Image(systemName: "pencil").font(.system(size: 10))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Edit \(p.name)")
+                    Button { item.onDelete?() } label: {
+                        Image(systemName: "trash").font(.system(size: 10))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Delete \(p.name)")
+                }
+            }
+            .frame(width: iconSlot, alignment: .trailing)
+            .foregroundStyle(Pane.muted)
+        }
+        .padding(.horizontal, 10)
+        .frame(height: 24)
+        .frame(maxWidth: .infinity)
+        .background(rowBackground)
+        .contentShape(Rectangle())
+        .onContinuousHover { phase in
+            switch phase {
+            case .active: hovering = true
+            case .ended: hovering = false
             }
         }
     }
@@ -523,17 +630,24 @@ struct EmptySwatch: View {
 /// Sharp-cornered bordered button matching the other Settings controls.
 struct SquareButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
+    /// Optional fill (e.g. red for a destructive Delete); nil = the neutral well.
+    var tint: Color? = nil
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 12))
-            .foregroundStyle(Pane.text)
+            .foregroundStyle(tint == nil ? Pane.text : .white)
             .padding(.horizontal, 14)
             .frame(height: 26)
-            .background(configuration.isPressed ? Color(white: 0.40) : Pane.field)
-            .overlay(Rectangle().strokeBorder(Pane.border, lineWidth: 1))
+            .background(fill(pressed: configuration.isPressed))
+            .overlay(Rectangle().strokeBorder(tint ?? Pane.border, lineWidth: 1))
             .opacity(isEnabled ? 1.0 : 0.4)
             .contentShape(Rectangle())
+    }
+
+    private func fill(pressed: Bool) -> Color {
+        if let tint { return pressed ? tint.opacity(0.75) : tint }
+        return pressed ? Color(white: 0.40) : Pane.field
     }
 }
 
