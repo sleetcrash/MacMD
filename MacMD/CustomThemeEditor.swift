@@ -15,8 +15,10 @@ final class CustomDraft: ObservableObject {
     @Published var scheme: Coloring = .standard
     @Published var name = ""
     @Published var editingId: String?
-    @Published var lights: [Color] = [.black]
-    @Published var darks: [Color] = [.white]
+    // Default to the standard scheme's three slots so the initial state is
+    // self-consistent (scheme → slotCount → array counts) before begin/beginEditing.
+    @Published var lights: [Color] = [.black, .black, .black]
+    @Published var darks: [Color] = [.white, .white, .white]
     /// Set to the id just saved/applied, so the Appearance window can select it.
     @Published var savedId: String?
 
@@ -84,6 +86,9 @@ struct CustomThemeEditor: View {
     static let deleteRed = Color(red: 0.80, green: 0.25, blue: 0.27)
 
     private var slotLabels: [String] { draft.scheme == .standard ? ["H1", "H2", "H3"] : ["Color"] }
+    // The slot count that is safe to index across every per-slot array, guarding
+    // renders during a scheme change (or any momentarily inconsistent state).
+    private var safeCount: Int { min(draft.lights.count, draft.darks.count, slotLabels.count) }
     private var canSave: Bool { !draft.name.trimmingCharacters(in: .whitespaces).isEmpty }
 
     var body: some View {
@@ -124,11 +129,11 @@ struct CustomThemeEditor: View {
             Grid(alignment: .center, horizontalSpacing: 6, verticalSpacing: 8) {
                 GridRow {
                     Text("")
-                    ForEach(0..<draft.slotCount, id: \.self) { i in
+                    ForEach(0..<safeCount, id: \.self) { i in
                         Text(slotLabels[i]).font(.system(size: 10)).foregroundStyle(Pane.muted)
                     }
                     Text("")
-                    ForEach(0..<draft.slotCount, id: \.self) { i in
+                    ForEach(0..<safeCount, id: \.self) { i in
                         Text(slotLabels[i]).font(.system(size: 10)).foregroundStyle(Pane.muted)
                     }
                     Text("")
@@ -136,12 +141,12 @@ struct CustomThemeEditor: View {
                 GridRow {
                     Image(systemName: "sun.max").font(.system(size: 12)).foregroundStyle(Pane.muted)
                         .accessibilityLabel("Light")
-                    ForEach(0..<draft.slotCount, id: \.self) { i in
+                    ForEach(0..<safeCount, id: \.self) { i in
                         SquareColorWell(color: $draft.lights[i], size: wellSize)
                             .accessibilityLabel("\(slotLabels[i]) light color")
                     }
                     Text("|").opacity(0.35)
-                    ForEach(0..<draft.slotCount, id: \.self) { i in
+                    ForEach(0..<safeCount, id: \.self) { i in
                         SquareColorWell(color: $draft.darks[i], size: wellSize)
                             .accessibilityLabel("\(slotLabels[i]) dark color")
                     }
@@ -160,7 +165,7 @@ struct CustomThemeEditor: View {
                         .overlay(Rectangle().strokeBorder(Pane.border, lineWidth: 1))
                         .onChange(of: draft.name) { _, v in if v.count > 10 { draft.name = String(v.prefix(10)) } }
                         .padding(.top, 6)
-                        .gridCellColumns(draft.slotCount * 2 + 1)   // L1 … D3 (the swatches)
+                        .gridCellColumns(safeCount * 2 + 1)   // L1 … D3 (the swatches)
                     Color.clear.gridCellUnsizedAxes([.horizontal, .vertical])   // moon column
                 }
             }
