@@ -2,13 +2,21 @@
 
 All notable changes to MacMD will be documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.2.0] - 2026-05-31
 
 ### Added
-- Section-color theming in Settings (Cmd-,): choose a coloring Scheme (Default / Unified / Standard), a Theme (preset palettes, single colors, or saved customs), an appearance Mode (Light / Dark / System), and the editor font Size. List markers inherit the color of the heading section above them, and a live preview shows the result. Custom palettes can be created, named (up to 10 characters), edited, and deleted, each with separate light and dark colors per slot.
+- **Editor commands.** Find (Cmd-F), Find and Replace (Cmd-Opt-F), Find Next / Previous (Cmd-G / Cmd-Shift-G), and Use Selection for Find (Cmd-E). Print (Cmd-P). Bold (Cmd-B) and Italic (Cmd-I) wrap or unwrap the selection. Smart list continuation: pressing Return on a list item starts the next marker, and renumbers ordered lists.
+- **Appearance window** (Format ▸ Appearance, Cmd-,). Pick a coloring **Scheme** (Default / Unified / Standard), a **Theme** (preset palettes, single colors, or your saved customs), an appearance **Mode** (Light / Dark / System), and the editor font **Size** — with a live preview. Heading levels get distinct colors and list markers inherit the color of the heading section above them. The window follows the OS light/dark appearance like the system color picker.
+- **Custom themes.** Create, name (up to 10 characters), edit, and delete your own palettes, each with separate light and dark colors per slot, in a dedicated Custom Theme window that live-drives the preview. Changes Apply to the open document and Save persists them app-wide.
 
 ### Changed
-- Headings and list markers are no longer colored with the system accent color by default. The new out-of-box **Default** scheme renders headings in the adaptive label color (bold and sized only); pick a theme in Settings to color them. Existing users will see plain headings until they choose a theme.
+- Headings and list markers are no longer colored with the system accent color by default. The new out-of-box **Default** scheme renders headings in the adaptive label color (bold and sized only); pick a theme in the Appearance window to color them. Existing users will see plain headings until they choose a theme.
+- The font-size control moved from the old stepper into the Appearance window's Size box (the View-menu Cmd-+/-/0 commands still work).
+
+### Fixed
+- Custom Theme color swatches now open the color picker when clicked. They previously did nothing because the swatch hid its control in a way that swallowed the click.
+- A selected row's highlight in the Theme dropdown no longer bleeds under the scrollbar.
+- Fixed a crash when opening the Custom Theme editor.
 
 ## [1.1.2] - 2026-05-28
 
