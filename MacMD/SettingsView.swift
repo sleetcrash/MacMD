@@ -52,8 +52,6 @@ struct SettingsView: View {
     // box so the in-window dropdown can sit flush beneath it.
     @State private var openMenu: MenuField?
     @State private var fieldFrames: [MenuField: CGRect] = [:]
-    // The custom theme awaiting a delete confirmation (from a dropdown trash icon).
-    @State private var pendingDelete: Palette?
 
     static let space = "settingsMenu"
     private let wideWidth: CGFloat = 225
@@ -92,7 +90,6 @@ struct SettingsView: View {
         ZStack(alignment: .topLeading) {
             content
             dropdownLayer
-            if let p = pendingDelete { deleteConfirmation(p) }
         }
         .frame(width: 354)
         .background(Pane.window)
@@ -142,51 +139,9 @@ struct SettingsView: View {
         // Escape closes an open dropdown first, then (pressed again) dismisses the
         // window the same way Close does — revert any unsaved Apply.
         .onExitCommand {
-            if pendingDelete != nil { pendingDelete = nil }
-            else if openMenu != nil { openMenu = nil }
+            if openMenu != nil { openMenu = nil }
             else { theme.revertToSaved(); dismiss() }
         }
-    }
-
-    // MARK: - Delete confirmation
-
-    /// A modal card styled exactly like this window (Pane chrome, sharp edges,
-    /// square buttons) confirming deletion of a custom theme. Cancel / red Delete.
-    @ViewBuilder private func deleteConfirmation(_ p: Palette) -> some View {
-        ZStack {
-            Color.black.opacity(0.45)
-                .contentShape(Rectangle())
-                .onTapGesture { pendingDelete = nil }
-            VStack(alignment: .leading, spacing: 16) {
-                Text("Delete “\(p.name)”?")
-                    .font(.system(size: 13, weight: .semibold))
-                Text("This permanently removes the custom theme and can’t be undone.")
-                    .font(.system(size: 11))
-                    .foregroundStyle(Pane.muted)
-                    .fixedSize(horizontal: false, vertical: true)
-                HStack(spacing: 10) {
-                    Button("Cancel") { pendingDelete = nil }
-                        .buttonStyle(SquareButtonStyle())
-                    Spacer()
-                    Button("Delete") { confirmDelete(p) }
-                        .buttonStyle(SquareButtonStyle(tint: Self.deleteRed))
-                }
-            }
-            .padding(20)
-            .frame(width: 260)
-            .background(Pane.window)
-            .overlay(Rectangle().strokeBorder(Pane.border, lineWidth: 1))
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    static let deleteRed = Color(red: 0.80, green: 0.25, blue: 0.27)
-
-    private func confirmDelete(_ p: Palette) {
-        var all = ThemeSettings.decodeCustoms(customsData)
-        all.removeAll { $0.id == p.id }
-        customsData = ThemeSettings.encodeCustoms(all)   // onChange(of:) reconciles wcThemeId
-        pendingDelete = nil
     }
 
     private var content: some View {
@@ -300,10 +255,6 @@ struct SettingsView: View {
                             openMenu = nil
                             customDraft.beginEditing(p)
                             openWindow(id: CustomThemeScene.id)
-                        },
-                        onDelete: {
-                            openMenu = nil
-                            pendingDelete = p
                         })
                 })
             }
@@ -405,9 +356,8 @@ struct DropdownItem: Identifiable {
     var selected = false
     var centered = false
     var action: (() -> Void)? = nil
-    // Custom palette rows only — drive the trailing pencil / trash icons.
+    // Custom palette rows only — drives the trailing pencil (edit) icon.
     var onEdit: (() -> Void)? = nil
-    var onDelete: (() -> Void)? = nil
 }
 
 /// A seamless in-window dropdown: a flush list of rows the exact width of its
@@ -424,13 +374,23 @@ struct InlineDropdown: View {
     /// The list ends well above the buttons (a clear gap before the window
     /// bottom); a longer list scrolls within this height.
     static let maxHeight: CGFloat = 156
+    private static let scrollSpace = "dropdownScroll"
 
-    private var height: CGFloat {
-        let content = items.reduce(CGFloat(0)) { acc, item in
+    @State private var scrollOffset: CGFloat = 0
+
+    private var contentHeight: CGFloat {
+        items.reduce(CGFloat(0)) { acc, item in
             if case .header = item.kind { return acc + Self.headerHeight }
             return acc + Self.rowHeight
         }
-        return min(content, Self.maxHeight)
+    }
+    private var height: CGFloat { min(contentHeight, Self.maxHeight) }
+    private var scrollable: Bool { contentHeight > Self.maxHeight + 0.5 }
+    private var thumbHeight: CGFloat { max(28, height * height / contentHeight) }
+    private var thumbOffset: CGFloat {
+        let maxScroll = contentHeight - height
+        guard maxScroll > 0 else { return 0 }
+        return min(1, max(0, scrollOffset / maxScroll)) * (height - thumbHeight)
     }
 
     var body: some View {
@@ -438,29 +398,37 @@ struct InlineDropdown: View {
             VStack(spacing: 0) {
                 ForEach(items) { DropdownRow(item: $0) }
             }
-            .background(PersistentScroller())
+            .background(GeometryReader { geo in
+                Color.clear.preference(key: ScrollOffsetKey.self,
+                                       value: -geo.frame(in: .named(Self.scrollSpace)).minY)
+            })
         }
-        .scrollBounceBehavior(.basedOnSize)
+        .coordinateSpace(name: Self.scrollSpace)
+        .scrollIndicators(.hidden)
         .frame(height: height)
         .background(Pane.field)
-        .overlay(Rectangle().strokeBorder(Pane.border, lineWidth: 1))
+        // A custom floating scroll indicator: always visible when the list
+        // scrolls, drawn over the content so it never pushes the rows.
+        .overlay(alignment: .topTrailing) {
+            if scrollable {
+                RoundedRectangle(cornerRadius: 2.5)
+                    .fill(Color.primary.opacity(0.35))
+                    .frame(width: 5, height: thumbHeight)
+                    .offset(y: thumbOffset)
+                    .padding(.trailing, 2)
+            }
+        }
+        .overlay(Rectangle().strokeBorder(Color.primary.opacity(0.3), lineWidth: 1))
         .foregroundStyle(Pane.text)
+        .onPreferenceChange(ScrollOffsetKey.self) { scrollOffset = max(0, $0) }
     }
 }
 
-/// Forces the dropdown's vertical scroll bar to stay visible (legacy, non-
-/// autohiding), regardless of the system "Show scroll bars" preference, so a long
-/// theme list always shows a scrollbar.
-private struct PersistentScroller: NSViewRepresentable {
-    func makeNSView(context: Context) -> NSView { NSView() }
-    func updateNSView(_ nsView: NSView, context: Context) {
-        DispatchQueue.main.async {
-            guard let scrollView = nsView.enclosingScrollView else { return }
-            scrollView.hasVerticalScroller = true
-            scrollView.autohidesScrollers = false
-            scrollView.scrollerStyle = .legacy
-        }
-    }
+/// Tracks the dropdown's scroll position so the custom scroll indicator can
+/// follow it.
+private struct ScrollOffsetKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
 }
 
 private struct DropdownRow: View {
@@ -496,12 +464,13 @@ private struct DropdownRow: View {
         }
     }
 
-    // Reserved trailing area, so swatches stay aligned whether or not a row has
-    // the edit/trash icons (built-in themes leave this space empty).
-    private let iconSlot: CGFloat = 36
+    // Reserved trailing area for the edit icon — matched to the trigger box's
+    // chevron area so a row's swatches line up with the selected-theme swatches.
+    private let iconSlot: CGFloat = 16
 
-    /// A palette row: a select button (name + swatches) plus a trailing slot
-    /// holding edit + trash for custom themes (empty for built-ins).
+    /// A palette row: a select button (name + swatches) plus a trailing edit icon
+    /// for custom themes (built-ins reserve the same space empty, so swatches stay
+    /// aligned across every row).
     private func paletteRow(_ p: Palette) -> some View {
         HStack(spacing: 0) {
             Button { item.action?() } label: {
@@ -517,21 +486,16 @@ private struct DropdownRow: View {
             .buttonStyle(.plain)
             .accessibilityAddTraits(item.selected ? .isSelected : [])
 
-            HStack(spacing: 6) {
-                if item.onEdit != nil || item.onDelete != nil {
-                    Button { item.onEdit?() } label: {
+            ZStack(alignment: .trailing) {
+                Color.clear.frame(width: iconSlot, height: 1)   // always reserve the slot
+                if let onEdit = item.onEdit {
+                    Button { onEdit() } label: {
                         Image(systemName: "pencil").font(.system(size: 10))
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Edit \(p.name)")
-                    Button { item.onDelete?() } label: {
-                        Image(systemName: "trash").font(.system(size: 10))
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Delete \(p.name)")
                 }
             }
-            .frame(width: iconSlot, alignment: .trailing)
             .foregroundStyle(Pane.muted)
         }
         .padding(.horizontal, 10)

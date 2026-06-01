@@ -80,11 +80,34 @@ struct CustomThemeEditor: View {
     @Environment(\.dismiss) private var dismiss
 
     private let wellSize: CGFloat = 24
+    @State private var showDeleteConfirm = false
+    static let deleteRed = Color(red: 0.80, green: 0.25, blue: 0.27)
 
     private var slotLabels: [String] { draft.scheme == .standard ? ["H1", "H2", "H3"] : ["Color"] }
     private var canSave: Bool { !draft.name.trimmingCharacters(in: .whitespaces).isEmpty }
 
     var body: some View {
+        ZStack {
+            editor
+            if showDeleteConfirm { deleteConfirmation }
+        }
+        .frame(width: 354)   // matches the Appearance window; fits Delete/Close/Apply/Save
+        .background(Pane.window)
+        .background(SystemWindowAppearance())
+        .background(PositionBesideAppearance())
+        .onExitCommand {
+            if showDeleteConfirm { showDeleteConfirm = false } else { dismiss() }
+        }
+        .onDisappear {
+            draft.end()
+            // Close the color picker and hand focus back to the Appearance
+            // window (not the document) however this window was dismissed.
+            NSColorPanel.shared.orderOut(nil)
+            NSApp.windows.first { $0.title == "Appearance" }?.makeKeyAndOrderFront(nil)
+        }
+    }
+
+    private var editor: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text(draft.editingId == nil ? "New Custom Theme" : "Edit Custom Theme")
                 .font(.system(size: 12, weight: .semibold))
@@ -97,7 +120,7 @@ struct CustomThemeEditor: View {
             // One swatch row laid out like the Appearance theme box: light trio │
             // dark trio, with a sun (left) and moon (right) marking which is which.
             // Heading labels sit centered above each swatch; the Name box spans the
-            // whole row, from the sun edge to the moon edge.
+            // swatch columns, lining up with the first and last swatch.
             Grid(alignment: .center, horizontalSpacing: 6, verticalSpacing: 8) {
                 GridRow {
                     Text("")
@@ -126,6 +149,7 @@ struct CustomThemeEditor: View {
                         .accessibilityLabel("Dark")
                 }
                 GridRow {
+                    Color.clear.gridCellUnsizedAxes([.horizontal, .vertical])   // sun column
                     TextField("Name", text: $draft.name)
                         .textFieldStyle(.plain)
                         .font(.system(size: 11))
@@ -136,12 +160,18 @@ struct CustomThemeEditor: View {
                         .overlay(Rectangle().strokeBorder(Pane.border, lineWidth: 1))
                         .onChange(of: draft.name) { _, v in if v.count > 10 { draft.name = String(v.prefix(10)) } }
                         .padding(.top, 6)
-                        .gridCellColumns(draft.slotCount * 2 + 3)
+                        .gridCellColumns(draft.slotCount * 2 + 1)   // L1 … D3 (the swatches)
+                    Color.clear.gridCellUnsizedAxes([.horizontal, .vertical])   // moon column
                 }
             }
 
-            // Close (left) / Apply / Save (right) — matches the Appearance window.
+            // Delete (red, only when editing a saved theme) / Close on the left;
+            // Apply / Save on the right — matches the Appearance window.
             HStack(spacing: 10) {
+                if draft.editingId != nil {
+                    Button("Delete") { showDeleteConfirm = true }
+                        .buttonStyle(SquareButtonStyle(tint: Self.deleteRed))
+                }
                 Button("Close") { dismiss() }
                     .buttonStyle(SquareButtonStyle())
                 Spacer()
@@ -155,22 +185,53 @@ struct CustomThemeEditor: View {
             }
         }
         .padding(EdgeInsets(top: 26, leading: 20, bottom: 20, trailing: 20))
-        .frame(width: 320)
         .foregroundStyle(Pane.text)
-        .background(Pane.window)
-        .background(SystemWindowAppearance())
-        .background(PositionBesideAppearance())
-        .onExitCommand { dismiss() }
-        .onDisappear {
-            draft.end()
-            // Close the color picker and hand focus back to the Appearance
-            // window (not the document) however this window was dismissed.
-            NSColorPanel.shared.orderOut(nil)
-            NSApp.windows.first { $0.title == "Appearance" }?.makeKeyAndOrderFront(nil)
+    }
+
+    /// A modal card styled like this window (Pane chrome, sharp edges, square
+    /// buttons) confirming deletion. Cancel / red Delete.
+    private var deleteConfirmation: some View {
+        ZStack {
+            Color.black.opacity(0.45)
+                .contentShape(Rectangle())
+                .onTapGesture { showDeleteConfirm = false }
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Delete “\(draft.name)”?")
+                    .font(.system(size: 13, weight: .semibold))
+                Text("This permanently removes the custom theme and can’t be undone.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(Pane.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: 10) {
+                    Button("Cancel") { showDeleteConfirm = false }
+                        .buttonStyle(SquareButtonStyle())
+                    Spacer()
+                    Button("Delete") { performDelete() }
+                        .buttonStyle(SquareButtonStyle(tint: Self.deleteRed))
+                }
+            }
+            .padding(20)
+            .frame(width: 260)
+            .background(Pane.window)
+            .overlay(Rectangle().strokeBorder(Pane.border, lineWidth: 1))
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .foregroundStyle(Pane.text)
     }
 
     // MARK: - Actions
+
+    /// Remove the saved custom and close. The Appearance window repoints its
+    /// selection via its `onChange(of: customsData)` if it was showing this one.
+    private func performDelete() {
+        if let id = draft.editingId {
+            var all = ThemeSettings.decodeCustoms(customsData)
+            all.removeAll { $0.id == id }
+            customsData = ThemeSettings.encodeCustoms(all)
+        }
+        showDeleteConfirm = false
+        dismiss()
+    }
 
     /// Apply the custom theme to the live document and keep editing — transient,
     /// exactly like the Appearance window's Apply. Persists the palette so it is
