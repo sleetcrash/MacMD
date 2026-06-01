@@ -114,4 +114,41 @@ final class ThemeControllerTests: XCTestCase {
         c.apply(coloring: .off, themeId: "std.rgb", fontSize: 1, appearance: .system)
         XCTAssertEqual(c.fontSize, Double(FontSize.minimum))
     }
+
+    // MARK: - CustomDraft slot-count invariant
+    //
+    // The Custom Theme editor indexes per-slot arrays by `0..<slotCount`, so the
+    // light/dark arrays must always have exactly `slotCount` elements — otherwise
+    // the editor crashes with an out-of-bounds read (regression: the default draft
+    // had scheme=standard, slotCount 3, but single-element arrays).
+
+    func testCustomDraftDefaultIsSlotConsistent() {
+        let draft = CustomDraft()
+        XCTAssertEqual(draft.lights.count, draft.slotCount)
+        XCTAssertEqual(draft.darks.count, draft.slotCount)
+    }
+
+    func testCustomDraftBeginKeepsSlotCountsConsistent() {
+        let draft = CustomDraft()
+        draft.begin(scheme: .standard)
+        XCTAssertEqual(draft.lights.count, 3)
+        XCTAssertEqual(draft.darks.count, 3)
+        draft.begin(scheme: .unified)
+        XCTAssertEqual(draft.lights.count, 1)
+        XCTAssertEqual(draft.darks.count, 1)
+    }
+
+    func testCustomDraftBeginEditingMatchesPaletteSlots() {
+        let draft = CustomDraft()
+        let standard = Palette(id: "c1", name: "S", scheme: .standard, slots: [
+            ColorPair(light: "#111111", dark: "#222222"),
+            ColorPair(light: "#333333", dark: "#444444"),
+            ColorPair(light: "#555555", dark: "#666666"),
+        ])
+        draft.begin(scheme: .unified)          // start mismatched (1 slot)
+        draft.beginEditing(standard)           // load a 3-slot standard palette
+        XCTAssertEqual(draft.slotCount, 3)
+        XCTAssertEqual(draft.lights.count, 3)
+        XCTAssertEqual(draft.darks.count, 3)
+    }
 }
