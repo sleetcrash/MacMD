@@ -275,26 +275,72 @@ struct CustomThemeEditor: View {
     }
 }
 
-/// A sharp-edged square color well that matches the dropdown swatches: a flat
-/// color square with a nearly-invisible system `ColorPicker` layered on top to
-/// open the color panel on click and write the binding. (`ColorPicker` on its
-/// own renders a rounded well that `.clipShape(Rectangle())` does not fully
-/// square on macOS, so the visible square is drawn separately.)
+/// A sharp, square color well. SwiftUI's `ColorPicker` always draws a rounded
+/// system swatch, and the prior approach hid it under a near-zero SwiftUI
+/// `.opacity` — which drops the control out of SwiftUI hit-testing, so clicks
+/// fell through to the square behind it and the panel never opened. Instead we
+/// draw the square ourselves and overlay a real `NSColorWell`: AppKit hit-testing
+/// ignores a view's `alphaValue`, so the well stays clickable while invisible,
+/// and AppKit handles opening the shared color panel, exclusive activation, and
+/// reporting the chosen color.
 struct SquareColorWell: View {
     @Binding var color: Color
     var size: CGFloat = 24
 
     var body: some View {
-        ZStack {
-            Rectangle().fill(color)
-            ColorPicker("", selection: $color, supportsOpacity: false)
-                .labelsHidden()
-                .scaleEffect(1.4)   // enlarge the hit area to cover the square
-                .opacity(0.02)      // keep it interactive but visually absent
+        Rectangle()
+            .fill(color)
+            .frame(width: size, height: size)
+            .overlay(Rectangle().strokeBorder(Color(white: 0.47).opacity(0.5), lineWidth: 1))
+            .overlay(ColorWellBridge(color: $color))
+    }
+}
+
+/// An invisible AppKit `NSColorWell` layered over `SquareColorWell`'s square,
+/// bridging the chosen color to a SwiftUI binding. Used in place of `ColorPicker`
+/// so the visible control can be a true square and stay reliably clickable.
+private struct ColorWellBridge: NSViewRepresentable {
+    @Binding var color: Color
+
+    func makeCoordinator() -> Coordinator { Coordinator(color: $color) }
+
+    func makeNSView(context: Context) -> NSColorWell {
+        let well = PanelColorWell()
+        well.alphaValue = 0.02            // invisible, but AppKit still hit-tests it
+        well.color = NSColor(color)
+        well.target = context.coordinator
+        well.action = #selector(Coordinator.colorChanged(_:))
+        return well
+    }
+
+    func updateNSView(_ well: NSColorWell, context: Context) {
+        context.coordinator.color = $color
+        // Reflect external binding changes (e.g. loading a saved palette) without
+        // re-firing the action — a programmatic `color` set doesn't trigger it.
+        let ns = NSColor(color)
+        if well.color.hexString != ns.hexString { well.color = ns }
+    }
+
+    @MainActor final class Coordinator: NSObject {
+        var color: Binding<Color>
+        init(color: Binding<Color>) { self.color = color }
+        @objc func colorChanged(_ sender: NSColorWell) {
+            // Force opaque: custom theme colors persist as opaque hex, so a
+            // translucent pick would make the live preview (which keeps alpha)
+            // disagree with what's actually saved. Pin alpha to 1 at the source.
+            color.wrappedValue = Color(nsColor: sender.color.withAlphaComponent(1))
         }
-        .frame(width: size, height: size)
-        .clipShape(Rectangle())
-        .overlay(Rectangle().strokeBorder(Color(white: 0.47).opacity(0.5), lineWidth: 1))
+    }
+}
+
+/// An `NSColorWell` that hides the shared panel's opacity slider (custom theme
+/// colors persist as opaque hex) and activates exclusively, so only one well
+/// drives the panel at a time. `showsAlpha` is set after `super.activate`, since
+/// activation configures the shared panel.
+private final class PanelColorWell: NSColorWell {
+    override func activate(_ exclusive: Bool) {
+        super.activate(true)
+        NSColorPanel.shared.showsAlpha = false
     }
 }
 

@@ -407,8 +407,18 @@ struct InlineDropdown: View {
         .scrollIndicators(.hidden)
         .frame(height: height)
         .background(Pane.field)
+        // An opaque gutter masking the scrollbar lane with the dropdown's own
+        // background, so a selected/hovered row's full-width highlight stops
+        // cleanly just left of the thumb instead of bleeding under it. The 9pt
+        // width clears the row content (inset 10pt), so swatch alignment is
+        // unchanged.
+        .overlay(alignment: .trailing) {
+            if scrollable {
+                Pane.field.frame(width: 9).frame(maxHeight: .infinity)
+            }
+        }
         // A custom floating scroll indicator: always visible when the list
-        // scrolls, drawn over the content so it never pushes the rows.
+        // scrolls, drawn over the gutter so it never pushes the rows.
         .overlay(alignment: .topTrailing) {
             if scrollable {
                 RoundedRectangle(cornerRadius: 2.5)
