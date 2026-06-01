@@ -278,7 +278,6 @@ struct SettingsView: View {
                 .onTapGesture { openMenu = nil; NSApp.keyWindow?.makeFirstResponder(nil) }
             InlineDropdown(items: items(for: field))
                 .frame(width: frame.width, alignment: .topLeading)
-                .fixedSize(horizontal: false, vertical: true)
                 .offset(x: frame.minX, y: frame.maxY)
         }
     }
@@ -417,14 +416,50 @@ struct DropdownItem: Identifiable {
 /// inherits the window's light/dark Mode.
 struct InlineDropdown: View {
     let items: [DropdownItem]
+    /// Row metrics (matching DropdownRow) so the list can size itself to its
+    /// content without measuring — a measured height inside a ScrollView never
+    /// settles reliably.
+    static let rowHeight: CGFloat = 24
+    static let headerHeight: CGFloat = 21
+    /// The list ends well above the buttons (a clear gap before the window
+    /// bottom); a longer list scrolls within this height.
+    static let maxHeight: CGFloat = 156
+
+    private var height: CGFloat {
+        let content = items.reduce(CGFloat(0)) { acc, item in
+            if case .header = item.kind { return acc + Self.headerHeight }
+            return acc + Self.rowHeight
+        }
+        return min(content, Self.maxHeight)
+    }
 
     var body: some View {
-        VStack(spacing: 0) {
-            ForEach(items) { DropdownRow(item: $0) }
+        ScrollView {
+            VStack(spacing: 0) {
+                ForEach(items) { DropdownRow(item: $0) }
+            }
+            .background(PersistentScroller())
         }
+        .scrollBounceBehavior(.basedOnSize)
+        .frame(height: height)
         .background(Pane.field)
         .overlay(Rectangle().strokeBorder(Pane.border, lineWidth: 1))
         .foregroundStyle(Pane.text)
+    }
+}
+
+/// Forces the dropdown's vertical scroll bar to stay visible (legacy, non-
+/// autohiding), regardless of the system "Show scroll bars" preference, so a long
+/// theme list always shows a scrollbar.
+private struct PersistentScroller: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView { NSView() }
+    func updateNSView(_ nsView: NSView, context: Context) {
+        DispatchQueue.main.async {
+            guard let scrollView = nsView.enclosingScrollView else { return }
+            scrollView.hasVerticalScroller = true
+            scrollView.autohidesScrollers = false
+            scrollView.scrollerStyle = .legacy
+        }
     }
 }
 
