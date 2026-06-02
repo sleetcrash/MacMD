@@ -34,6 +34,54 @@ struct SystemWindowAppearance: NSViewRepresentable {
     }
 }
 
+/// Pure geometry for keeping a window on screen. macOS frame autosave can
+/// restore an auxiliary `Window` partway off the screen edge (the more so after
+/// heavy reposition churn); this nudges a frame back fully inside `visible`
+/// (a screen's `visibleFrame`, which already excludes the menu bar and Dock).
+/// A frame already inside `visible` is returned unchanged, so a position the
+/// user deliberately dragged to still sticks. A frame larger than the visible
+/// area on an axis is pinned to that axis's leading edge — top for Y — so the
+/// title bar stays reachable. Coordinates are AppKit's (origin bottom-left).
+enum WindowPlacement {
+    static func onScreen(_ frame: CGRect, in visible: CGRect) -> CGRect {
+        if visible.contains(frame) { return frame }
+        var f = frame
+        if f.width >= visible.width {
+            f.origin.x = visible.minX
+        } else {
+            f.origin.x = min(max(f.minX, visible.minX), visible.maxX - f.width)
+        }
+        if f.height >= visible.height {
+            f.origin.y = visible.maxY - f.height   // keep the title bar (top) on screen
+        } else {
+            f.origin.y = min(max(f.minY, visible.minY), visible.maxY - f.height)
+        }
+        return f
+    }
+}
+
+/// Pulls the host window fully on screen the first time it attaches, using
+/// `WindowPlacement.onScreen`. Applied to the Appearance window (and reused by
+/// `PositionBesideAppearance` for the Custom Theme window). Runs once per
+/// attachment — a frame the user later drags somewhere on-screen is left alone.
+struct KeepOnScreen: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView { NSView() }
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        guard !context.coordinator.done else { return }
+        DispatchQueue.main.async {
+            guard let window = nsView.window else { return }
+            context.coordinator.done = true
+            guard let visible = (window.screen ?? NSScreen.main)?.visibleFrame else { return }
+            let fixed = WindowPlacement.onScreen(window.frame, in: visible)
+            if fixed != window.frame { window.setFrame(fixed, display: true) }
+        }
+    }
+
+    final class Coordinator { var done = false }
+}
+
 struct SettingsView: View {
     @EnvironmentObject private var theme: ThemeController
     @EnvironmentObject private var customDraft: CustomDraft
@@ -103,6 +151,10 @@ struct SettingsView: View {
         // the window to the live system appearance keeps this chrome tracking the
         // OS (light in Light, dark in Dark). The preview still shows the Mode.
         .background(SystemWindowAppearance())
+        // macOS frame autosave can restore this auxiliary window partway off the
+        // screen edge; pull it back fully on screen on open (a dragged on-screen
+        // position is left untouched).
+        .background(KeepOnScreen())
         .onAppear { syncFromSaved(); reconcileThemeId() }
         .onChange(of: openMenu) { old, new in
             // Closing the Size dropdown without committing reverts the typed

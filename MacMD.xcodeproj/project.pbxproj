@@ -23,6 +23,7 @@
 		F200000000000000000000B3 /* ColorThemingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000B3 /* ColorThemingTests.swift */; };
 		F200000000000000000000B4 /* SectionMap.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000B4 /* SectionMap.swift */; };
 		F200000000000000000000B5 /* SectionMapTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000B5 /* SectionMapTests.swift */; };
+		F200000000000000000000C8 /* AppearanceInteractionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000C8 /* AppearanceInteractionTests.swift */; };
 		F200000000000000000000B6 /* ThemeSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000B6 /* ThemeSettings.swift */; };
 		F200000000000000000000B7 /* ThemeSettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000B7 /* ThemeSettingsTests.swift */; };
 		F200000000000000000000B8 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000B8 /* SettingsView.swift */; };
@@ -61,6 +62,7 @@
 		F100000000000000000000B3 /* ColorThemingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorThemingTests.swift; sourceTree = "<group>"; };
 		F100000000000000000000B4 /* SectionMap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionMap.swift; sourceTree = "<group>"; };
 		F100000000000000000000B5 /* SectionMapTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionMapTests.swift; sourceTree = "<group>"; };
+		F100000000000000000000C8 /* AppearanceInteractionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppearanceInteractionTests.swift; sourceTree = "<group>"; };
 		F100000000000000000000B6 /* ThemeSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeSettings.swift; sourceTree = "<group>"; };
 		F100000000000000000000B7 /* ThemeSettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeSettingsTests.swift; sourceTree = "<group>"; };
 		F100000000000000000000B8 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
@@ -132,6 +134,7 @@
 				F100000000000000000000B1 /* EditingCommandsTests.swift */,
 				F100000000000000000000B3 /* ColorThemingTests.swift */,
 				F100000000000000000000B5 /* SectionMapTests.swift */,
+				F100000000000000000000C8 /* AppearanceInteractionTests.swift */,
 				F100000000000000000000B7 /* ThemeSettingsTests.swift */,
 				F100000000000000000000BC /* ThemeControllerTests.swift */,
 			);
@@ -272,6 +275,7 @@
 				F200000000000000000000B1 /* EditingCommandsTests.swift in Sources */,
 				F200000000000000000000B3 /* ColorThemingTests.swift in Sources */,
 				F200000000000000000000B5 /* SectionMapTests.swift in Sources */,
+				F200000000000000000000C8 /* AppearanceInteractionTests.swift in Sources */,
 				F200000000000000000000B7 /* ThemeSettingsTests.swift in Sources */,
 				F200000000000000000000BC /* ThemeControllerTests.swift in Sources */,
 			);
