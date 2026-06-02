@@ -2,6 +2,12 @@
 
 All notable changes to MacMD will be documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] - 2026-06-01
+
+### Fixed
+- The Appearance and Custom Theme windows no longer open partly off the edge of the screen. A position you drag them to is still remembered.
+- The Theme and Scheme dropdowns respond to the keyboard again: arrow keys move the highlight (and scroll it into view) and Return chooses the highlighted item. Highlighting the row under the pointer is also more responsive.
+
 ## [1.2.0] - 2026-05-31
 
 ### Added
