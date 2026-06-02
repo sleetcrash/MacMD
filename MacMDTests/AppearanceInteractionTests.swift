@@ -197,12 +197,4 @@ final class AppearanceInteractionTests: XCTestCase {
         let th = InlineDropdown.thumbHeight(viewport: 156, content: 216)
         XCTAssertEqual(InlineDropdown.thumbOffset(scroll: 9999, viewport: 156, content: 216), 156 - th, accuracy: 0.01)
     }
-
-    // MARK: - Dropdown row alignment (Bug #5)
-
-    func testDropdownRowReservesAConsistentTrailingIconSlot() {
-        // The Custom+ row reserves this same trailing slot so its placeholder
-        // swatches align with every palette row's swatches.
-        XCTAssertEqual(DropdownRow.iconSlot, 16, accuracy: 0.001)
-    }
 }

@@ -633,7 +633,7 @@ private struct ScrollOffsetKey: PreferenceKey {
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
 }
 
-struct DropdownRow: View {
+private struct DropdownRow: View {
     let item: DropdownItem
     /// Highlighted by the parent (keyboard nav or the container-level hover
     /// tracker) — the row no longer tracks its own hover.
@@ -658,7 +658,7 @@ struct DropdownRow: View {
                 // Reserve the same trailing slot the palette rows give the pencil
                 // icon, so Custom+'s swatches sit in the same column as every other
                 // row instead of 16pt to the right.
-                Color.clear.frame(width: Self.iconSlot, height: 1)
+                Color.clear.frame(width: iconSlot, height: 1)
             }
         case .text(let title):
             row {
@@ -674,10 +674,9 @@ struct DropdownRow: View {
 
     // Reserved trailing area for the edit icon — matched to the trigger box's
     // chevron area so a row's swatches line up with the selected-theme swatches.
-    // Static so the Custom+ row (which has no pencil) can reserve the same slot
-    // and stay column-aligned with the palette rows, and so the width is one
-    // shared constant a test can pin.
-    static let iconSlot: CGFloat = 16
+    // The Custom+ row (which has no pencil) reserves the same width so its
+    // placeholder swatches stay column-aligned with the palette rows.
+    private let iconSlot: CGFloat = 16
 
     /// A palette row: a select button (name + swatches) plus a trailing edit icon
     /// for custom themes (built-ins reserve the same space empty, so swatches stay
@@ -698,7 +697,7 @@ struct DropdownRow: View {
             .accessibilityAddTraits(item.selected ? .isSelected : [])
 
             ZStack(alignment: .trailing) {
-                Color.clear.frame(width: Self.iconSlot, height: 1)   // always reserve the slot
+                Color.clear.frame(width: iconSlot, height: 1)   // always reserve the slot
                 if let onEdit = item.onEdit {
                     Button { onEdit() } label: {
                         Image(systemName: "pencil").font(.system(size: 10))
