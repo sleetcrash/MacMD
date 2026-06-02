@@ -137,4 +137,72 @@ final class AppearanceInteractionTests: XCTestCase {
         XCTAssertNil(InlineDropdown.rowIndex(atContentY: 32, items: items))   // in the header band
         XCTAssertEqual(InlineDropdown.rowIndex(atContentY: 50, items: items), 2)
     }
+
+    // MARK: - InlineDropdown height snapping (Bug #2)
+
+    func testSnappedHeightReturnsFullContentWhenItFitsUnderCeiling() {
+        let items = [textItem("a"), textItem("b"), textItem("c")]   // 3 * 24 = 72
+        XCTAssertEqual(InlineDropdown.snappedHeight(items: items, ceiling: 204), 72, accuracy: 0.001)
+    }
+
+    func testSnappedHeightSnapsDownToAWholeRowNeverMidRow() {
+        // 9 rows = 216; ceiling 204 must snap to 8 full rows = 192, not 204.
+        let items = (0..<9).map { textItem("r\($0)") }
+        XCTAssertEqual(InlineDropdown.snappedHeight(items: items, ceiling: 204), 192, accuracy: 0.001)
+    }
+
+    func testSnappedHeightLandsOnARowBoundaryWhenAHeaderIsPresent() {
+        // 6 rows(144) + header(21) + 3 rows(72) = 237 content.
+        // Boundaries: 24,48,72,96,120,144,165(after hdr),189,213,237. Ceiling 204 -> 189.
+        var items = (0..<6).map { textItem("p\($0)") }
+        items.append(headerItem("hdr"))
+        items += (0..<3).map { textItem("c\($0)") }
+        XCTAssertEqual(InlineDropdown.snappedHeight(items: items, ceiling: 204), 189, accuracy: 0.001)
+    }
+
+    func testSnappedHeightGuardsTheOldMidRowClipRegression() {
+        // The old fixed cap 156 sliced row 7 in half (6.5 rows). Snapping a 7-row
+        // list under a 156 ceiling must land on 144 (6 whole rows), never 156.
+        let items = (0..<7).map { textItem("r\($0)") }   // 168 content
+        let h = InlineDropdown.snappedHeight(items: items, ceiling: 156)
+        XCTAssertEqual(h, 144, accuracy: 0.001)
+        XCTAssertEqual(h.truncatingRemainder(dividingBy: InlineDropdown.rowHeight), 0, accuracy: 0.001)
+    }
+
+    func testSnappedHeightShowsAtLeastOneRowForATinyCeiling() {
+        let items = [textItem("a"), textItem("b")]
+        XCTAssertEqual(InlineDropdown.snappedHeight(items: items, ceiling: 10), 24, accuracy: 0.001)
+    }
+
+    // MARK: - InlineDropdown scroll-thumb math (Bug #1)
+
+    func testThumbTravelsAsAListScrolls() {
+        // A viewport (156) shorter than its content (216) scrolls; maxScroll = 60.
+        let th = InlineDropdown.thumbHeight(viewport: 156, content: 216)
+        XCTAssertEqual(InlineDropdown.thumbOffset(scroll: 0, viewport: 156, content: 216), 0, accuracy: 0.001)
+        XCTAssertGreaterThan(InlineDropdown.thumbOffset(scroll: 30, viewport: 156, content: 216), 0)   // not static mid-scroll
+        XCTAssertEqual(InlineDropdown.thumbOffset(scroll: 60, viewport: 156, content: 216), 156 - th, accuracy: 0.01)
+    }
+
+    func testThumbOffsetIsZeroWhenContentFits() {
+        // A non-scrolling list (viewport == content) keeps the thumb pinned at 0.
+        XCTAssertEqual(InlineDropdown.thumbOffset(scroll: 50, viewport: 72, content: 72), 0, accuracy: 0.001)
+    }
+
+    func testThumbHeightHasAMinimumFloor() {
+        XCTAssertEqual(InlineDropdown.thumbHeight(viewport: 156, content: 100000), 28, accuracy: 0.001)
+    }
+
+    func testThumbOffsetClampsBeyondMaxScroll() {
+        let th = InlineDropdown.thumbHeight(viewport: 156, content: 216)
+        XCTAssertEqual(InlineDropdown.thumbOffset(scroll: 9999, viewport: 156, content: 216), 156 - th, accuracy: 0.01)
+    }
+
+    // MARK: - Dropdown row alignment (Bug #5)
+
+    func testDropdownRowReservesAConsistentTrailingIconSlot() {
+        // The Custom+ row reserves this same trailing slot so its placeholder
+        // swatches align with every palette row's swatches.
+        XCTAssertEqual(DropdownRow.iconSlot, 16, accuracy: 0.001)
+    }
 }
