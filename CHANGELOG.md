@@ -2,6 +2,19 @@
 
 All notable changes to MacMD will be documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.2] - 2026-06-02
+
+### Fixed
+- The scrollbar in the font-size and theme dropdowns now follows the list as you scroll, instead of staying still.
+- The Theme dropdown is tall enough to show the whole list, including your saved custom themes and Custom+, without cutting off the bottom row.
+- The Custom+ row's placeholder swatches now line up with the other themes in the dropdown.
+- In the Custom Theme builder, the swatch you're editing now shows a selection box around it.
+- Closing the Appearance window now also closes the Custom Theme builder and the color picker, instead of leaving them open behind it.
+- A custom theme you just created now takes effect on the open document as soon as you choose it in the Appearance window (previously it could need a relaunch to show up).
+
+### Changed
+- The Custom Theme builder no longer has its own Apply button. Build and name your palette there and Save it, then choose it in the Appearance window to apply it, the same way you pick any other theme. The Appearance window's preview updates live while you edit.
+
 ## [1.2.1] - 2026-06-01
 
 ### Fixed
