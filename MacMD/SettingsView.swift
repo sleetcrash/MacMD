@@ -283,7 +283,8 @@ struct SettingsView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .contentShape(Rectangle())
                 .onTapGesture { openMenu = nil; NSApp.keyWindow?.makeFirstResponder(nil) }
-            InlineDropdown(items: items(for: field))
+            InlineDropdown(items: items(for: field), keyboardNav: field != .size)
+                .id(field)
                 .frame(width: frame.width, alignment: .topLeading)
                 .offset(x: frame.minX, y: frame.maxY)
         }
@@ -418,6 +419,10 @@ struct DropdownItem: Identifiable {
 /// inherits the window's light/dark Mode.
 struct InlineDropdown: View {
     let items: [DropdownItem]
+    /// Theme/Scheme dropdowns handle arrow-key / Return nav; the Size dropdown
+    /// leaves the keys to its text field, so it opts out. (Escape stays on the
+    /// SettingsView `.onExitCommand` path, which closes the open dropdown.)
+    var keyboardNav = true
     /// Row metrics (matching DropdownRow) so the list can size itself to its
     /// content without measuring — a measured height inside a ScrollView never
     /// settles reliably.
@@ -429,12 +434,49 @@ struct InlineDropdown: View {
     private static let scrollSpace = "dropdownScroll"
 
     @State private var scrollOffset: CGFloat = 0
+    /// The highlighted row — driven by BOTH keyboard nav and mouse hover, so the
+    /// two share one highlight instead of fighting. nil = nothing highlighted.
+    @State private var activeIndex: Int?
+    @State private var keyMonitor: Any?
+
+    /// The height of a single row by kind.
+    private static func height(for item: DropdownItem) -> CGFloat {
+        if case .header = item.kind { return headerHeight }
+        return rowHeight
+    }
+
+    /// The next selectable row index from `current` moving by `step` (+1 = down,
+    /// -1 = up), skipping headers / non-selectable rows (action == nil) and
+    /// clamping at the ends (no wrap). With no `current`, returns the first
+    /// (down) or last (up) selectable row.
+    static func nextSelectable(from current: Int?, step: Int, items: [DropdownItem]) -> Int? {
+        let selectable = items.indices.filter { items[$0].action != nil }
+        guard !selectable.isEmpty else { return nil }
+        guard let current, let pos = selectable.firstIndex(of: current) else {
+            return step > 0 ? selectable.first : selectable.last
+        }
+        let next = pos + (step > 0 ? 1 : -1)
+        guard next >= 0, next < selectable.count else { return current }   // clamp
+        return selectable[next]
+    }
+
+    /// The selectable row at a vertical offset within the scrolled content, or
+    /// nil if the offset lands on a header or outside the list — turns a single
+    /// container-level hover location into the highlighted row (one tracking
+    /// area instead of one per row, which the 2019 Intel MBP handles far better).
+    static func rowIndex(atContentY y: CGFloat, items: [DropdownItem]) -> Int? {
+        guard y >= 0 else { return nil }
+        var top: CGFloat = 0
+        for i in items.indices {
+            let h = height(for: items[i])
+            if y >= top && y < top + h { return items[i].action != nil ? i : nil }
+            top += h
+        }
+        return nil
+    }
 
     private var contentHeight: CGFloat {
-        items.reduce(CGFloat(0)) { acc, item in
-            if case .header = item.kind { return acc + Self.headerHeight }
-            return acc + Self.rowHeight
-        }
+        items.reduce(CGFloat(0)) { $0 + Self.height(for: $1) }
     }
     private var height: CGFloat { min(contentHeight, Self.maxHeight) }
     private var scrollable: Bool { contentHeight > Self.maxHeight + 0.5 }
@@ -446,43 +488,98 @@ struct InlineDropdown: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                ForEach(items) { DropdownRow(item: $0) }
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(spacing: 0) {
+                    ForEach(Array(items.enumerated()), id: \.element.id) { idx, item in
+                        DropdownRow(item: item, isActive: activeIndex == idx)
+                    }
+                }
+                .background(GeometryReader { geo in
+                    Color.clear.preference(key: ScrollOffsetKey.self,
+                                           value: -geo.frame(in: .named(Self.scrollSpace)).minY)
+                })
             }
-            .background(GeometryReader { geo in
-                Color.clear.preference(key: ScrollOffsetKey.self,
-                                       value: -geo.frame(in: .named(Self.scrollSpace)).minY)
-            })
+            .coordinateSpace(name: Self.scrollSpace)
+            .scrollIndicators(.hidden)
+            .frame(height: height)
+            .background(Pane.field)
+            // One container-level hover tracker maps the pointer to a row, instead
+            // of a tracking area per row — far snappier on the 2019 Intel MBP — and
+            // writes the SAME activeIndex the keyboard does, so mouse and keyboard
+            // share a single highlight.
+            .onContinuousHover(coordinateSpace: .local) { phase in
+                switch phase {
+                case .active(let loc): activeIndex = Self.rowIndex(atContentY: loc.y + scrollOffset, items: items)
+                case .ended: activeIndex = nil
+                }
+            }
+            // An opaque gutter masking the scrollbar lane with the dropdown's own
+            // background, so a selected/hovered row's full-width highlight stops
+            // cleanly just left of the thumb instead of bleeding under it. The 9pt
+            // width clears the row content (inset 10pt), so swatch alignment is
+            // unchanged.
+            .overlay(alignment: .trailing) {
+                if scrollable {
+                    Pane.field.frame(width: 9).frame(maxHeight: .infinity).allowsHitTesting(false)
+                }
+            }
+            // A custom floating scroll indicator: always visible when the list
+            // scrolls, drawn over the gutter so it never pushes the rows.
+            .overlay(alignment: .topTrailing) {
+                if scrollable {
+                    RoundedRectangle(cornerRadius: 2.5)
+                        .fill(Color.primary.opacity(0.35))
+                        .frame(width: 5, height: thumbHeight)
+                        .offset(y: thumbOffset)
+                        .padding(.trailing, 2)
+                        .allowsHitTesting(false)
+                }
+            }
+            .overlay(Rectangle().strokeBorder(Color.primary.opacity(0.3), lineWidth: 1).allowsHitTesting(false))
+            .foregroundStyle(Pane.text)
+            .onPreferenceChange(ScrollOffsetKey.self) { scrollOffset = max(0, $0) }
+            .onAppear {
+                guard keyboardNav else { return }
+                activeIndex = items.firstIndex(where: { $0.selected })
+                    ?? Self.nextSelectable(from: nil, step: 1, items: items)
+                installKeyMonitor(proxy)
+            }
+            .onDisappear { removeKeyMonitor() }
         }
-        .coordinateSpace(name: Self.scrollSpace)
-        .scrollIndicators(.hidden)
-        .frame(height: height)
-        .background(Pane.field)
-        // An opaque gutter masking the scrollbar lane with the dropdown's own
-        // background, so a selected/hovered row's full-width highlight stops
-        // cleanly just left of the thumb instead of bleeding under it. The 9pt
-        // width clears the row content (inset 10pt), so swatch alignment is
-        // unchanged.
-        .overlay(alignment: .trailing) {
-            if scrollable {
-                Pane.field.frame(width: 9).frame(maxHeight: .infinity)
+    }
+
+    /// Move the keyboard highlight and scroll it into view.
+    private func move(_ step: Int, _ proxy: ScrollViewProxy) {
+        guard let next = Self.nextSelectable(from: activeIndex, step: step, items: items) else { return }
+        activeIndex = next
+        proxy.scrollTo(items[next].id, anchor: .center)
+    }
+
+    // Arrow / Return / Escape are driven by a local key monitor rather than
+    // SwiftUI focus: `@FocusState` on this transient overlay (opened, closed, and
+    // reopened from the same trigger) failed to re-take focus on reopen, so the
+    // keys silently stopped working the second time. A local monitor is
+    // deterministic. It is scoped to the Appearance window (so it never steals
+    // keys from a document window) and torn down when the dropdown closes.
+    private func installKeyMonitor(_ proxy: ScrollViewProxy) {
+        guard keyMonitor == nil else { return }
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            guard NSApp.keyWindow?.title == "Appearance" else { return event }
+            switch event.keyCode {
+            case 126: move(-1, proxy); return nil          // Up
+            case 125: move(1, proxy); return nil           // Down
+            case 36, 76:                                   // Return / Enter
+                if let i = activeIndex, let act = items[i].action { act(); return nil }
+                return event
+            default: return event                          // Escape etc. → onExitCommand
             }
         }
-        // A custom floating scroll indicator: always visible when the list
-        // scrolls, drawn over the gutter so it never pushes the rows.
-        .overlay(alignment: .topTrailing) {
-            if scrollable {
-                RoundedRectangle(cornerRadius: 2.5)
-                    .fill(Color.primary.opacity(0.35))
-                    .frame(width: 5, height: thumbHeight)
-                    .offset(y: thumbOffset)
-                    .padding(.trailing, 2)
-            }
-        }
-        .overlay(Rectangle().strokeBorder(Color.primary.opacity(0.3), lineWidth: 1))
-        .foregroundStyle(Pane.text)
-        .onPreferenceChange(ScrollOffsetKey.self) { scrollOffset = max(0, $0) }
+    }
+
+    private func removeKeyMonitor() {
+        if let keyMonitor { NSEvent.removeMonitor(keyMonitor) }
+        keyMonitor = nil
     }
 }
 
@@ -495,7 +592,9 @@ private struct ScrollOffsetKey: PreferenceKey {
 
 private struct DropdownRow: View {
     let item: DropdownItem
-    @State private var hovering = false
+    /// Highlighted by the parent (keyboard nav or the container-level hover
+    /// tracker) — the row no longer tracks its own hover.
+    var isActive = false
 
     var body: some View {
         switch item.kind {
@@ -565,12 +664,6 @@ private struct DropdownRow: View {
         .frame(maxWidth: .infinity)
         .background(rowBackground)
         .contentShape(Rectangle())
-        .onContinuousHover { phase in
-            switch phase {
-            case .active: hovering = true
-            case .ended: hovering = false
-            }
-        }
     }
 
     @ViewBuilder private func row<C: View>(@ViewBuilder _ content: () -> C) -> some View {
@@ -587,18 +680,10 @@ private struct DropdownRow: View {
         .buttonStyle(.plain)
         .disabled(item.action == nil)
         .accessibilityAddTraits(item.selected ? .isSelected : [])
-        // Continuous hover tracks the cursor directly (snappier than the
-        // enter/exit latency of .onHover, which felt laggy).
-        .onContinuousHover { phase in
-            switch phase {
-            case .active: hovering = true
-            case .ended: hovering = false
-            }
-        }
     }
 
     private var rowBackground: Color {
-        if hovering { return Color.white.opacity(0.16) }
+        if isActive { return Color.white.opacity(0.16) }
         if item.selected { return Color.white.opacity(0.10) }
         return .clear
     }
