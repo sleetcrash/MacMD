@@ -68,4 +68,73 @@ final class AppearanceInteractionTests: XCTestCase {
         let fixed = WindowPlacement.onScreen(f, in: dockVisible)
         XCTAssertEqual(fixed.minY, dockVisible.minY, accuracy: 0.001)
     }
+
+    // MARK: - InlineDropdown keyboard / hover index math
+
+    private func textItem(_ id: String) -> DropdownItem {
+        DropdownItem(id: id, kind: .text(id), action: {})
+    }
+    private func headerItem(_ id: String) -> DropdownItem {
+        DropdownItem(id: id, kind: .header(id))   // action == nil → non-selectable
+    }
+
+    func testNextSelectableStartsAtFirstWhenNoCurrentMovingDown() {
+        let items = [textItem("a"), textItem("b"), textItem("c")]
+        XCTAssertEqual(InlineDropdown.nextSelectable(from: nil, step: 1, items: items), 0)
+    }
+
+    func testNextSelectableStartsAtLastWhenNoCurrentMovingUp() {
+        let items = [textItem("a"), textItem("b"), textItem("c")]
+        XCTAssertEqual(InlineDropdown.nextSelectable(from: nil, step: -1, items: items), 2)
+    }
+
+    func testNextSelectableMovesDownThenClampsAtTheEnd() {
+        let items = [textItem("a"), textItem("b"), textItem("c")]
+        XCTAssertEqual(InlineDropdown.nextSelectable(from: 0, step: 1, items: items), 1)
+        XCTAssertEqual(InlineDropdown.nextSelectable(from: 2, step: 1, items: items), 2)   // clamp
+    }
+
+    func testNextSelectableMovesUpThenClampsAtTheStart() {
+        let items = [textItem("a"), textItem("b"), textItem("c")]
+        XCTAssertEqual(InlineDropdown.nextSelectable(from: 2, step: -1, items: items), 1)
+        XCTAssertEqual(InlineDropdown.nextSelectable(from: 0, step: -1, items: items), 0)   // clamp
+    }
+
+    func testNextSelectableSkipsHeaders() {
+        // a(0) | header(1) | b(2)
+        let items = [textItem("a"), headerItem("hdr"), textItem("b")]
+        XCTAssertEqual(InlineDropdown.nextSelectable(from: 0, step: 1, items: items), 2)
+        XCTAssertEqual(InlineDropdown.nextSelectable(from: 2, step: -1, items: items), 0)
+    }
+
+    func testNextSelectableSkipsALeadingHeaderForTheInitialDown() {
+        let items = [headerItem("hdr"), textItem("a"), textItem("b")]
+        XCTAssertEqual(InlineDropdown.nextSelectable(from: nil, step: 1, items: items), 1)
+    }
+
+    func testNextSelectableReturnsNilWhenNothingSelectable() {
+        XCTAssertNil(InlineDropdown.nextSelectable(from: nil, step: 1, items: [headerItem("h")]))
+        XCTAssertNil(InlineDropdown.nextSelectable(from: nil, step: 1, items: []))
+    }
+
+    func testRowIndexMapsContentYToTheRowAtThatOffset() {
+        // three 24pt rows: a 0..24, b 24..48, c 48..72
+        let items = [textItem("a"), textItem("b"), textItem("c")]
+        XCTAssertEqual(InlineDropdown.rowIndex(atContentY: 10, items: items), 0)
+        XCTAssertEqual(InlineDropdown.rowIndex(atContentY: 30, items: items), 1)
+        XCTAssertEqual(InlineDropdown.rowIndex(atContentY: 60, items: items), 2)
+    }
+
+    func testRowIndexReturnsNilOutsideTheContent() {
+        let items = [textItem("a"), textItem("b")]
+        XCTAssertNil(InlineDropdown.rowIndex(atContentY: -5, items: items))
+        XCTAssertNil(InlineDropdown.rowIndex(atContentY: 999, items: items))
+    }
+
+    func testRowIndexReturnsNilOverANonSelectableHeader() {
+        // a(24) 0..24, header(21) 24..45, b(24) 45..69
+        let items = [textItem("a"), headerItem("hdr"), textItem("b")]
+        XCTAssertNil(InlineDropdown.rowIndex(atContentY: 32, items: items))   // in the header band
+        XCTAssertEqual(InlineDropdown.rowIndex(atContentY: 50, items: items), 2)
+    }
 }
