@@ -6,9 +6,16 @@ struct DocumentView: View {
     @AppStorage(ThemeSettings.customsKey) private var customsData = Data()
 
     private var palette: Palette? {
-        ThemeSettings.resolvePalette(coloring: theme.coloring,
-                                     themeId: theme.themeId,
-                                     customs: ThemeSettings.decodeCustoms(customsData))
+        // Resolve against the freshly-persisted customs read straight from
+        // UserDefaults, not this window's @AppStorage copy: for a DocumentGroup
+        // scene that copy can lag a custom just saved in the Appearance/Custom
+        // window, which made applying a brand-new custom fall back to a preset
+        // until relaunch. Touching `customsData` keeps this view re-rendering when
+        // @AppStorage *does* observe a change (e.g. editing the applied theme).
+        _ = customsData
+        return ThemeSettings.resolvePalette(coloring: theme.coloring,
+                                            themeId: theme.themeId,
+                                            customs: ThemeSettings.savedCustoms())
     }
 
     var body: some View {

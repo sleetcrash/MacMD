@@ -62,7 +62,6 @@ struct MacMDApp: App {
         Window("Custom Theme", id: CustomThemeScene.id) {
             CustomThemeEditor()
                 .environmentObject(customDraft)
-                .environmentObject(themeController)
         }
         .windowResizability(.contentSize)
         .defaultPosition(.center)

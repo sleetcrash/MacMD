@@ -166,6 +166,12 @@ struct SettingsView: View {
             // any unsaved Apply and snaps the document back to the saved theme.
             theme.revertToSaved()
             syncFromSaved()
+            // Cascade: the Custom Theme builder and the system color picker are
+            // satellites of this window — never leave them orphaned when it closes.
+            // (The builder's own onDisappear only re-focuses "Appearance" while it
+            // is still visible, so this can't resurrect a closing window.)
+            NSApp.windows.first { $0.title == "Custom Theme" }?.close()
+            NSColorPanel.shared.close()
         }
         // When the Custom Theme window saves a palette, select it here.
         .onChange(of: customDraft.savedId) { _, id in
@@ -428,9 +434,11 @@ struct InlineDropdown: View {
     /// settles reliably.
     static let rowHeight: CGFloat = 24
     static let headerHeight: CGFloat = 21
-    /// The list ends well above the buttons (a clear gap before the window
-    /// bottom); a longer list scrolls within this height.
-    static let maxHeight: CGFloat = 156
+    /// The list must end above the window's bottom buttons (a clear gap before the
+    /// window bottom). The actual cap is this ceiling snapped DOWN to a whole row
+    /// (see `snappedHeight`), so the bottom visible row is never sliced in half; a
+    /// taller list scrolls within it.
+    static let ceiling: CGFloat = 204
     private static let scrollSpace = "dropdownScroll"
 
     @State private var scrollOffset: CGFloat = 0
@@ -475,17 +483,46 @@ struct InlineDropdown: View {
         return nil
     }
 
+    /// The largest height <= `ceiling` that ends exactly on a row boundary of
+    /// `items`, so the bottom visible row is always whole. If the whole list fits
+    /// under `ceiling`, returns the full content height (no scroll). Never returns
+    /// less than the first row. (A flat cap can't do this: a 21pt header shifts the
+    /// row boundaries off the 24pt grid, so a fixed number re-clips a later row.)
+    static func snappedHeight(items: [DropdownItem], ceiling: CGFloat) -> CGFloat {
+        let content = items.reduce(CGFloat(0)) { $0 + height(for: $1) }
+        if content <= ceiling { return content }
+        var top: CGFloat = 0
+        var lastBoundary: CGFloat = 0
+        for item in items {
+            let next = top + height(for: item)
+            if next <= ceiling { lastBoundary = next; top = next } else { break }
+        }
+        return lastBoundary > 0 ? lastBoundary : (items.first.map { height(for: $0) } ?? 0)
+    }
+
+    /// The scroll thumb's height for a `viewport` over `content` (floored at 28pt
+    /// so it stays grabbable on very long lists).
+    static func thumbHeight(viewport: CGFloat, content: CGFloat) -> CGFloat {
+        guard content > 0 else { return viewport }
+        return max(28, viewport * viewport / content)
+    }
+
+    /// The thumb's vertical offset for a scroll position, mapping [0, maxScroll]
+    /// onto the free track [0, viewport - thumbHeight].
+    static func thumbOffset(scroll: CGFloat, viewport: CGFloat, content: CGFloat) -> CGFloat {
+        let maxScroll = content - viewport
+        guard maxScroll > 0 else { return 0 }
+        let th = thumbHeight(viewport: viewport, content: content)
+        return min(1, max(0, scroll / maxScroll)) * (viewport - th)
+    }
+
     private var contentHeight: CGFloat {
         items.reduce(CGFloat(0)) { $0 + Self.height(for: $1) }
     }
-    private var height: CGFloat { min(contentHeight, Self.maxHeight) }
-    private var scrollable: Bool { contentHeight > Self.maxHeight + 0.5 }
-    private var thumbHeight: CGFloat { max(28, height * height / contentHeight) }
-    private var thumbOffset: CGFloat {
-        let maxScroll = contentHeight - height
-        guard maxScroll > 0 else { return 0 }
-        return min(1, max(0, scrollOffset / maxScroll)) * (height - thumbHeight)
-    }
+    private var height: CGFloat { Self.snappedHeight(items: items, ceiling: Self.ceiling) }
+    private var scrollable: Bool { contentHeight > height + 0.5 }
+    private var thumbHeight: CGFloat { Self.thumbHeight(viewport: height, content: contentHeight) }
+    private var thumbOffset: CGFloat { Self.thumbOffset(scroll: scrollOffset, viewport: height, content: contentHeight) }
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -500,9 +537,15 @@ struct InlineDropdown: View {
                                            value: -geo.frame(in: .named(Self.scrollSpace)).minY)
                 })
             }
-            .coordinateSpace(name: Self.scrollSpace)
             .scrollIndicators(.hidden)
             .frame(height: height)
+            // Name the FIXED viewport box (applied AFTER .frame), not the
+            // ScrollView's own content-anchored space. Measuring the scrolling
+            // content's minY against this stationary frame makes it go negative as
+            // you scroll, so ScrollOffsetKey actually changes and the thumb moves.
+            // With the name on the raw ScrollView, minY read ~0 forever -> the
+            // thumb was pinned at the top.
+            .coordinateSpace(name: Self.scrollSpace)
             .background(Pane.field)
             // One container-level hover tracker maps the pointer to a row, instead
             // of a tracking area per row — far snappier on the 2019 Intel MBP — and
@@ -612,6 +655,10 @@ private struct DropdownRow: View {
                 Text("Custom+").font(.system(size: 11))
                 Spacer(minLength: 8)
                 emptyTrio(count: scheme == .standard ? 3 : 1)
+                // Reserve the same trailing slot the palette rows give the pencil
+                // icon, so Custom+'s swatches sit in the same column as every other
+                // row instead of 16pt to the right.
+                Color.clear.frame(width: iconSlot, height: 1)
             }
         case .text(let title):
             row {
@@ -627,6 +674,8 @@ private struct DropdownRow: View {
 
     // Reserved trailing area for the edit icon — matched to the trigger box's
     // chevron area so a row's swatches line up with the selected-theme swatches.
+    // The Custom+ row (which has no pencil) reserves the same width so its
+    // placeholder swatches stay column-aligned with the palette rows.
     private let iconSlot: CGFloat = 16
 
     /// A palette row: a select button (name + swatches) plus a trailing edit icon

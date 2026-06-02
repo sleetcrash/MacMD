@@ -21,6 +21,12 @@ final class CustomDraft: ObservableObject {
     @Published var darks: [Color] = [.white, .white, .white]
     /// Set to the id just saved/applied, so the Appearance window can select it.
     @Published var savedId: String?
+    /// (side, slot) of the swatch whose color well is the active panel target, so
+    /// only that swatch draws a selection ring. nil = nothing selected.
+    @Published var selectedWell: SelectedWell?
+
+    enum Side: Equatable { case light, dark }
+    struct SelectedWell: Equatable { var side: Side; var slot: Int }
 
     var slotCount: Int { scheme == .standard ? 3 : 1 }
 
@@ -35,6 +41,7 @@ final class CustomDraft: ObservableObject {
         lights = Array(repeating: .black, count: count)
         darks = Array(repeating: .white, count: count)
         savedId = nil
+        selectedWell = nil
         active = true
     }
 
@@ -47,10 +54,11 @@ final class CustomDraft: ObservableObject {
         lights = palette.slots.map { Color(nsColor: $0.nsLight) }
         darks = palette.slots.map { Color(nsColor: $0.nsDark) }
         savedId = nil
+        selectedWell = nil
         active = true
     }
 
-    func end() { active = false }
+    func end() { active = false; selectedWell = nil }
 
     /// The in-progress palette, for the Appearance window's preview.
     var palette: Palette {
@@ -72,12 +80,12 @@ final class CustomDraft: ObservableObject {
 /// The Custom Theme editor — a separate window styled as an extension of the
 /// Appearance window (same neutral chrome, sharp edges, square buttons). It has
 /// no preview of its own; editing colors live-updates the Appearance window's
-/// preview through the shared `CustomDraft`. Apply pushes the theme to the live
-/// document (transient, like the Appearance window's Apply); Save commits it and
-/// closes; Close (or the red X) returns to the Appearance window.
+/// preview through the shared `CustomDraft`. Save commits the palette to the
+/// theme library and selects it in the Appearance window (apply it to the
+/// document from there, like any preset); Close (or the red X) returns to the
+/// Appearance window.
 struct CustomThemeEditor: View {
     @EnvironmentObject private var draft: CustomDraft
-    @EnvironmentObject private var theme: ThemeController
     @AppStorage(ThemeSettings.customsKey) private var customsData = Data()
     @Environment(\.dismiss) private var dismiss
 
@@ -96,7 +104,7 @@ struct CustomThemeEditor: View {
             editor
             if showDeleteConfirm { deleteConfirmation }
         }
-        .frame(width: 354)   // matches the Appearance window; fits Delete/Close/Apply/Save
+        .frame(width: 354)   // matches the Appearance window; fits Delete/Close/Save
         .background(Pane.window)
         .background(SystemWindowAppearance())
         .background(PositionBesideAppearance())
@@ -105,10 +113,15 @@ struct CustomThemeEditor: View {
         }
         .onDisappear {
             draft.end()
-            // Close the color picker and hand focus back to the Appearance
-            // window (not the document) however this window was dismissed.
+            // Close the color picker and hand focus back to the Appearance window
+            // (not the document) however this window was dismissed — but only if
+            // Appearance is still on screen. When Appearance is the one closing (it
+            // cascades this window shut), re-showing it here would resurrect a
+            // closing window, so skip the re-focus in that case.
             NSColorPanel.shared.orderOut(nil)
-            NSApp.windows.first { $0.title == "Appearance" }?.makeKeyAndOrderFront(nil)
+            if let appWin = NSApp.windows.first(where: { $0.title == "Appearance" }), appWin.isVisible {
+                appWin.makeKeyAndOrderFront(nil)
+            }
         }
     }
 
@@ -117,7 +130,7 @@ struct CustomThemeEditor: View {
             Text(draft.editingId == nil ? "New Custom Theme" : "Edit Custom Theme")
                 .font(.system(size: 12, weight: .semibold))
 
-            Text("Select a swatch, then use the color picker to customize your theme. View the Preview pane to see your changes. Name your theme and save.")
+            Text("Select a swatch and pick its color — the Appearance window's preview updates as you go. Name your theme and Save it, then choose it in the Appearance window to apply it to your document.")
                 .font(.system(size: 10))
                 .foregroundStyle(Pane.muted)
                 .fixedSize(horizontal: false, vertical: true)
@@ -142,13 +155,19 @@ struct CustomThemeEditor: View {
                     Image(systemName: "sun.max").font(.system(size: 12)).foregroundStyle(Pane.muted)
                         .accessibilityLabel("Light")
                     ForEach(0..<safeCount, id: \.self) { i in
-                        SquareColorWell(color: $draft.lights[i], size: wellSize)
-                            .accessibilityLabel("\(slotLabels[i]) light color")
+                        SquareColorWell(color: $draft.lights[i], size: wellSize,
+                                        isSelected: draft.selectedWell == CustomDraft.SelectedWell(side: .light, slot: i)) {
+                            draft.selectedWell = CustomDraft.SelectedWell(side: .light, slot: i)
+                        }
+                        .accessibilityLabel("\(slotLabels[i]) light color")
                     }
                     Text("|").opacity(0.35)
                     ForEach(0..<safeCount, id: \.self) { i in
-                        SquareColorWell(color: $draft.darks[i], size: wellSize)
-                            .accessibilityLabel("\(slotLabels[i]) dark color")
+                        SquareColorWell(color: $draft.darks[i], size: wellSize,
+                                        isSelected: draft.selectedWell == CustomDraft.SelectedWell(side: .dark, slot: i)) {
+                            draft.selectedWell = CustomDraft.SelectedWell(side: .dark, slot: i)
+                        }
+                        .accessibilityLabel("\(slotLabels[i]) dark color")
                     }
                     Image(systemName: "moon.fill").font(.system(size: 12)).foregroundStyle(Pane.muted)
                         .accessibilityLabel("Dark")
@@ -180,9 +199,6 @@ struct CustomThemeEditor: View {
                 Button("Close") { dismiss() }
                     .buttonStyle(SquareButtonStyle())
                 Spacer()
-                Button("Apply") { apply() }
-                    .buttonStyle(SquareButtonStyle())
-                    .disabled(!canSave)
                 Button("Save") { save() }
                     .buttonStyle(SquareButtonStyle())
                     .disabled(!canSave)
@@ -238,22 +254,13 @@ struct CustomThemeEditor: View {
         dismiss()
     }
 
-    /// Apply the custom theme to the live document and keep editing — transient,
-    /// exactly like the Appearance window's Apply. Persists the palette so it is
-    /// resolvable and appears in the dropdown.
-    private func apply() {
-        let id = persistPalette()
-        theme.apply(coloring: draft.scheme, themeId: id,
-                    fontSize: theme.fontSize, appearance: theme.appearance)
-        draft.savedId = id
-    }
-
-    /// Persist the selection, apply it, and close. `onDisappear` then dismisses
-    /// the color picker and returns focus to the Appearance window.
+    /// Persist the palette into the theme library and select it back in the
+    /// Appearance window (via `savedId`), then close. The Custom builder only
+    /// DEFINES a palette; choosing it and applying it to the document happens in
+    /// the Appearance window, like any preset. `onDisappear` dismisses the color
+    /// picker and returns focus to the Appearance window.
     private func save() {
         let id = persistPalette()
-        theme.save(coloring: draft.scheme, themeId: id,
-                   fontSize: theme.fontSize, appearance: theme.appearance)
         draft.savedId = id
         dismiss()
     }
@@ -286,13 +293,28 @@ struct CustomThemeEditor: View {
 struct SquareColorWell: View {
     @Binding var color: Color
     var size: CGFloat = 24
+    /// Draws the selection ring when this is the active (panel-target) swatch.
+    var isSelected: Bool = false
+    /// Called when this well becomes the active color-panel target (on click).
+    var onActivate: () -> Void = {}
 
     var body: some View {
         Rectangle()
             .fill(color)
             .frame(width: size, height: size)
+            // Quiet hairline on every swatch, always.
             .overlay(Rectangle().strokeBorder(Color(white: 0.47).opacity(0.5), lineWidth: 1))
-            .overlay(ColorWellBridge(color: $color))
+            // Selection ring: OUTSET so it sits just outside the swatch against the
+            // window background — which `labelColor` always contrasts with. A ring
+            // drawn ON the swatch would vanish when the swatch is near label color
+            // (e.g. a white dark-swatch in Dark mode). Neutral, no accent.
+            .overlay(
+                Rectangle()
+                    .strokeBorder(Color(nsColor: .labelColor), lineWidth: 2)
+                    .padding(-3)
+                    .opacity(isSelected ? 1 : 0)
+            )
+            .overlay(ColorWellBridge(color: $color, onActivate: onActivate))
     }
 }
 
@@ -301,6 +323,9 @@ struct SquareColorWell: View {
 /// so the visible control can be a true square and stay reliably clickable.
 private struct ColorWellBridge: NSViewRepresentable {
     @Binding var color: Color
+    /// Surfaced from `PanelColorWell.activate` so SwiftUI learns which swatch is
+    /// the active panel target and can draw its selection ring.
+    var onActivate: () -> Void = {}
 
     func makeCoordinator() -> Coordinator { Coordinator(color: $color) }
 
@@ -310,11 +335,13 @@ private struct ColorWellBridge: NSViewRepresentable {
         well.color = NSColor(color)
         well.target = context.coordinator
         well.action = #selector(Coordinator.colorChanged(_:))
+        well.onActivate = onActivate
         return well
     }
 
     func updateNSView(_ well: NSColorWell, context: Context) {
         context.coordinator.color = $color
+        (well as? PanelColorWell)?.onActivate = onActivate
         // Reflect external binding changes (e.g. loading a saved palette) without
         // re-firing the action — a programmatic `color` set doesn't trigger it.
         let ns = NSColor(color)
@@ -338,9 +365,11 @@ private struct ColorWellBridge: NSViewRepresentable {
 /// drives the panel at a time. `showsAlpha` is set after `super.activate`, since
 /// activation configures the shared panel.
 private final class PanelColorWell: NSColorWell {
+    var onActivate: () -> Void = {}
     override func activate(_ exclusive: Bool) {
-        super.activate(true)
+        super.activate(true)            // exclusive: only one well is the panel target
         NSColorPanel.shared.showsAlpha = false
+        onActivate()                    // tell SwiftUI which swatch is now selected
     }
 }
 
