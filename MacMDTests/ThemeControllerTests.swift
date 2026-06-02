@@ -151,4 +151,33 @@ final class ThemeControllerTests: XCTestCase {
         XCTAssertEqual(draft.lights.count, 3)
         XCTAssertEqual(draft.darks.count, 3)
     }
+
+    // MARK: - CustomDraft swatch selection (Bug #3)
+
+    func testCustomDraftDefaultHasNoSelectedWell() {
+        XCTAssertNil(CustomDraft().selectedWell)
+    }
+
+    func testCustomDraftSelectedWellEquatableMatchesSameSideAndSlot() {
+        XCTAssertEqual(CustomDraft.SelectedWell(side: .light, slot: 1),
+                       CustomDraft.SelectedWell(side: .light, slot: 1))
+        XCTAssertNotEqual(CustomDraft.SelectedWell(side: .light, slot: 1),
+                          CustomDraft.SelectedWell(side: .dark, slot: 1))
+        XCTAssertNotEqual(CustomDraft.SelectedWell(side: .light, slot: 0),
+                          CustomDraft.SelectedWell(side: .light, slot: 1))
+    }
+
+    func testCustomDraftEndClearsSelectedWell() {
+        let draft = CustomDraft()
+        draft.selectedWell = CustomDraft.SelectedWell(side: .dark, slot: 2)
+        draft.end()
+        XCTAssertNil(draft.selectedWell)
+    }
+
+    func testCustomDraftBeginClearsSelectedWell() {
+        let draft = CustomDraft()
+        draft.selectedWell = CustomDraft.SelectedWell(side: .light, slot: 0)
+        draft.begin(scheme: .standard)
+        XCTAssertNil(draft.selectedWell)
+    }
 }
