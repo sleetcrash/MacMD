@@ -357,9 +357,22 @@ struct PositionBesideAppearance: NSViewRepresentable {
         DispatchQueue.main.async {
             guard let w = nsView.window else { return }
             context.coordinator.positioned = true
+            let visible = (w.screen ?? NSScreen.main)?.visibleFrame
             if let appWin = NSApp.windows.first(where: { $0.title == "Appearance" && $0 !== w }) {
                 let f = appWin.frame
-                w.setFrameTopLeftPoint(NSPoint(x: f.minX - w.frame.width - 14, y: f.maxY))
+                // Prefer just-left of the Appearance window so its live preview
+                // stays visible; if that would run off the left edge, place it
+                // just-right instead.
+                var topLeft = NSPoint(x: f.minX - w.frame.width - 14, y: f.maxY)
+                if let visible, topLeft.x < visible.minX {
+                    topLeft = NSPoint(x: f.maxX + 14, y: f.maxY)
+                }
+                w.setFrameTopLeftPoint(topLeft)
+            }
+            // Final safety: pull fully on screen however it ended up placed.
+            if let visible {
+                let fixed = WindowPlacement.onScreen(w.frame, in: visible)
+                if fixed != w.frame { w.setFrame(fixed, display: true) }
             }
         }
     }
