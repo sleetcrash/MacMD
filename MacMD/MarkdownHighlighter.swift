@@ -7,6 +7,7 @@ final class MarkdownHighlighter: NSObject, @preconcurrency NSTextStorageDelegate
     var isDisabled = false
     private var lastFenceLines: [MarkdownRules.FenceLine] = []
     private var lastHeadingLines: [MarkdownRules.HeadingLine] = []
+    private var lastFrontMatter: NSRange?
 
     func textStorage(_ textStorage: NSTextStorage,
                      didProcessEditing editedMask: NSTextStorageEditActions,
@@ -24,6 +25,10 @@ final class MarkdownHighlighter: NSObject, @preconcurrency NSTextStorageDelegate
 
         let codeSpans = MarkdownRules.spansFromFences(fenceLines, fullRange: total)
 
+        let frontMatter = MarkdownRules.frontMatterSpan(in: nsString, fullRange: total)
+        let frontMatterChanged = frontMatter != lastFrontMatter
+        lastFrontMatter = frontMatter
+
         let headings: [MarkdownRules.HeadingLine] = Theme.activeColoring == .off
             ? []
             : MarkdownRules.headingLines(in: nsString, fullRange: total)
@@ -31,8 +36,8 @@ final class MarkdownHighlighter: NSObject, @preconcurrency NSTextStorageDelegate
         lastHeadingLines = headings
         let sectionMap = MarkdownRules.sectionMap(from: headings, excluding: codeSpans)
 
-        if fencesChanged || headingsChanged {
-            MarkdownRules.applyHighlighting(to: textStorage, in: total, fencedSpans: codeSpans, sectionMap: sectionMap)
+        if fencesChanged || headingsChanged || frontMatterChanged {
+            MarkdownRules.applyHighlighting(to: textStorage, in: total, fencedSpans: codeSpans, frontMatter: frontMatter, sectionMap: sectionMap)
             return
         }
 
@@ -44,7 +49,7 @@ final class MarkdownHighlighter: NSObject, @preconcurrency NSTextStorageDelegate
             targetRange = paragraph
         }
 
-        MarkdownRules.applyHighlighting(to: textStorage, in: targetRange, fencedSpans: codeSpans, sectionMap: sectionMap)
+        MarkdownRules.applyHighlighting(to: textStorage, in: targetRange, fencedSpans: codeSpans, frontMatter: frontMatter, sectionMap: sectionMap)
     }
 
     func rehighlightAll(_ textStorage: NSTextStorage) {
@@ -54,12 +59,14 @@ final class MarkdownHighlighter: NSObject, @preconcurrency NSTextStorageDelegate
         let fenceLines = MarkdownRules.fenceLines(in: nsString, fullRange: full)
         lastFenceLines = fenceLines
         let spans = MarkdownRules.spansFromFences(fenceLines, fullRange: full)
+        let frontMatter = MarkdownRules.frontMatterSpan(in: nsString, fullRange: full)
+        lastFrontMatter = frontMatter
         let headings: [MarkdownRules.HeadingLine] = Theme.activeColoring == .off
             ? []
             : MarkdownRules.headingLines(in: nsString, fullRange: full)
         lastHeadingLines = headings
         let sectionMap = MarkdownRules.sectionMap(from: headings, excluding: spans)
-        MarkdownRules.applyHighlighting(to: textStorage, in: full, fencedSpans: spans, sectionMap: sectionMap)
+        MarkdownRules.applyHighlighting(to: textStorage, in: full, fencedSpans: spans, frontMatter: frontMatter, sectionMap: sectionMap)
     }
 
     func taskCheckboxRanges(in textStorage: NSTextStorage) -> [NSRange] {
@@ -197,7 +204,7 @@ private enum MarkdownRules {
         }
     }
 
-    static func applyHighlighting(to ts: NSTextStorage, in range: NSRange, fencedSpans: [NSRange], sectionMap: SectionMap) {
+    static func applyHighlighting(to ts: NSTextStorage, in range: NSRange, fencedSpans: [NSRange], frontMatter: NSRange?, sectionMap: SectionMap) {
         guard range.length > 0 else { return }
 
         ts.removeAttribute(.font, range: range)
@@ -217,11 +224,20 @@ private enum MarkdownRules {
             }
         }
 
+        // Front matter reads as muted metadata: foreground only, no code background.
+        if let fm = frontMatter {
+            let intersect = NSIntersectionRange(fm, range)
+            if intersect.length > 0 {
+                ts.addAttribute(.foregroundColor, value: Theme.mutedColor, range: intersect)
+            }
+        }
+
+        let excluded = frontMatter.map { fencedSpans + [$0] } ?? fencedSpans
         let source = ts.string
         for rule in inlineRules {
             rule.regex.enumerateMatches(in: source, options: [], range: range) { match, _, _ in
                 guard let m = match else { return }
-                if intersectsAny(m.range, ranges: fencedSpans) { return }
+                if intersectsAny(m.range, ranges: excluded) { return }
                 rule.apply(ts, m, sectionMap)
             }
         }
@@ -272,6 +288,36 @@ private enum MarkdownRules {
     static func intersectsAny(_ range: NSRange, ranges: [NSRange]) -> Bool {
         for r in ranges where NSIntersectionRange(r, range).length > 0 { return true }
         return false
+    }
+
+    /// A leading YAML (`---`) or TOML (`+++`) front-matter block. Recognized only
+    /// when the document's first line is exactly the delimiter and a matching
+    /// closing delimiter line appears on a later line (content between the
+    /// delimiters is not validated). Returns the block span (from index 0 through
+    /// the end of the closing delimiter line) or nil.
+    static func frontMatterSpan(in nsString: NSString, fullRange: NSRange) -> NSRange? {
+        guard nsString.length > 0 else { return nil }
+        var lineStart = 0, lineEnd = 0, contentsEnd = 0
+        nsString.getLineStart(&lineStart, end: &lineEnd, contentsEnd: &contentsEnd,
+                              for: NSRange(location: 0, length: 0))
+        let firstLine = nsString.substring(with: NSRange(location: 0, length: contentsEnd))
+        let delimiter: String
+        if firstLine == "---" { delimiter = "---" }
+        else if firstLine == "+++" { delimiter = "+++" }
+        else { return nil }
+        guard lineEnd > 0, lineEnd < nsString.length else { return nil }
+        var idx = lineEnd
+        while idx < nsString.length {
+            var ls = 0, le = 0, ce = 0
+            nsString.getLineStart(&ls, end: &le, contentsEnd: &ce, for: NSRange(location: idx, length: 0))
+            let line = nsString.substring(with: NSRange(location: ls, length: ce - ls))
+            if line == delimiter {
+                return NSRange(location: 0, length: le)
+            }
+            guard le > ls else { break }
+            idx = le
+        }
+        return nil
     }
 
     static let taskListPattern: NSRegularExpression = r(
