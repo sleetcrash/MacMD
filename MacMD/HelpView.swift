@@ -20,6 +20,9 @@ struct HelpView: View {
                 section("Markdown",
                         "Headings, bold, italic, inline code, fenced code, links, lists, task lists, blockquotes, strikethrough, and horizontal rules are highlighted as you type. Front matter at the top of a file (--- for YAML or +++ for TOML) is shown as muted metadata.")
 
+                section("Spell check",
+                        "Misspelled words are underlined as you type. Manage it from Edit > Spelling and Grammar.")
+
                 section("Appearance and themes",
                         "Open Format > Appearance to set light, dark, or system appearance, the heading color scheme, and the editor font size. Adjust size quickly with Command-Plus, Command-Minus, and Command-0.")
 
@@ -36,7 +39,6 @@ struct HelpView: View {
         .background(Pane.window)
         .background(SystemWindowAppearance())
         .foregroundStyle(Pane.text)
-        .preferredColorScheme(.dark)
     }
 
     private func section(_ title: String, _ body: String) -> some View {
