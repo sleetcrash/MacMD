@@ -74,7 +74,7 @@ enum AppearanceScene {
 }
 
 /// The Format menu. Bold/Italic act on the focused editor; Appearance opens the
-/// Appearance window — this replaces both the old MacMD ▸ Settings item and the
+/// Appearance window, this replaces both the old MacMD ▸ Settings item and the
 /// former Format ▸ Appearance mode submenu. Cmd-, still opens it.
 struct FormatCommands: Commands {
     @Environment(\.openWindow) private var openWindow

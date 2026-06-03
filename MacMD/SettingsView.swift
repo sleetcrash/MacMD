@@ -3,8 +3,8 @@ import AppKit
 
 /// The Appearance window's chrome palette: semantic system colors that resolve
 /// against the window's appearance. `SystemWindowAppearance` pins the window to
-/// the OS appearance (like the system color picker), so these follow the OS —
-/// light in Light, dark in Dark — independent of the editor Mode. (The preview
+/// the OS appearance (like the system color picker), so these follow the OS,
+/// light in Light, dark in Dark, independent of the editor Mode. (The preview
 /// pane still shows the chosen Mode's light/dark.)
 enum Pane {
     static let window = Color(nsColor: .windowBackgroundColor)   // matches the system color picker
@@ -16,7 +16,7 @@ enum Pane {
 
 /// Pins the host window to the OS appearance. The settings windows use this
 /// instead of `.preferredColorScheme`, which doesn't set `NSWindow.appearance`
-/// for an auxiliary `Window` scene — leaving the Pane.* semantic colors to
+/// for an auxiliary `Window` scene, leaving the Pane.* semantic colors to
 /// resolve against whatever appearance a document window last forced via its
 /// editor Mode. SwiftUI re-runs `updateNSView` whenever the window's content
 /// updates, so the pin re-asserts on every interaction. (Like the sibling
@@ -40,7 +40,7 @@ struct SystemWindowAppearance: NSViewRepresentable {
 /// (a screen's `visibleFrame`, which already excludes the menu bar and Dock).
 /// A frame already inside `visible` is returned unchanged, so a position the
 /// user deliberately dragged to still sticks. A frame larger than the visible
-/// area on an axis is pinned to that axis's leading edge — top for Y — so the
+/// area on an axis is pinned to that axis's leading edge, top for Y, so the
 /// title bar stays reachable. Coordinates are AppKit's (origin bottom-left).
 enum WindowPlacement {
     static func onScreen(_ frame: CGRect, in visible: CGRect) -> CGRect {
@@ -63,7 +63,7 @@ enum WindowPlacement {
 /// Pulls the host window fully on screen the first time it attaches, using
 /// `WindowPlacement.onScreen`. Applied to the Appearance window (and reused by
 /// `PositionBesideAppearance` for the Custom Theme window). Runs once per
-/// attachment — a frame the user later drags somewhere on-screen is left alone.
+/// attachment, a frame the user later drags somewhere on-screen is left alone.
 struct KeepOnScreen: NSViewRepresentable {
     func makeNSView(context: Context) -> NSView { NSView() }
     func makeCoordinator() -> Coordinator { Coordinator() }
@@ -89,7 +89,7 @@ struct SettingsView: View {
     @Environment(\.openWindow) private var openWindow
     @AppStorage(ThemeSettings.customsKey) private var customsData = Data()
 
-    // Working copy — edits here don't reach the document until Apply/Save.
+    // Working copy, edits here don't reach the document until Apply/Save.
     @State private var wcSchemeRaw = Coloring.off.rawValue
     @State private var wcThemeId = ColorTheming.defaultStandardId
     @State private var wcFontSize = Double(FontSize.standard)
@@ -114,7 +114,7 @@ struct SettingsView: View {
     }
     // Apply lights up when the selection differs from what the editor is
     // currently showing (the applied/effective state), so you can always apply
-    // your choice — even if it equals the saved value. Save lights up when the
+    // your choice, even if it equals the saved value. Save lights up when the
     // selection differs from the persisted (saved) value.
     private var applyDirty: Bool {
         wcColoring != theme.coloring
@@ -130,7 +130,7 @@ struct SettingsView: View {
     }
     // A new custom theme is being edited in the Custom Theme window but hasn't been
     // saved yet, so it has no committable id. The preview shows the live draft, but
-    // Apply/Save here would commit the previously-selected theme — so they're
+    // Apply/Save here would commit the previously-selected theme, so they're
     // disabled until the draft is saved (which selects it via savedId).
     private var draftUncommitted: Bool { customDraft.active && customDraft.editingId == nil }
 
@@ -167,7 +167,7 @@ struct SettingsView: View {
             theme.revertToSaved()
             syncFromSaved()
             // Cascade: the Custom Theme builder and the system color picker are
-            // satellites of this window — never leave them orphaned when it closes.
+            // satellites of this window, never leave them orphaned when it closes.
             // (The builder's own onDisappear only re-focuses "Appearance" while it
             // is still visible, so this can't resurrect a closing window.)
             NSApp.windows.first { $0.title == "Custom Theme" }?.close()
@@ -195,7 +195,7 @@ struct SettingsView: View {
         // dead id).
         .onChange(of: customsData) { _, _ in reconcileThemeId() }
         // Escape closes an open dropdown first, then (pressed again) dismisses the
-        // window the same way Close does — revert any unsaved Apply.
+        // window the same way Close does, revert any unsaved Apply.
         .onExitCommand {
             if openMenu != nil { openMenu = nil }
             else { theme.revertToSaved(); dismiss() }
@@ -415,7 +415,7 @@ struct DropdownItem: Identifiable {
     var selected = false
     var centered = false
     var action: (() -> Void)? = nil
-    // Custom palette rows only — drives the trailing pencil (edit) icon.
+    // Custom palette rows only, drives the trailing pencil (edit) icon.
     var onEdit: (() -> Void)? = nil
 }
 
@@ -430,7 +430,7 @@ struct InlineDropdown: View {
     /// SettingsView `.onExitCommand` path, which closes the open dropdown.)
     var keyboardNav = true
     /// Row metrics (matching DropdownRow) so the list can size itself to its
-    /// content without measuring — a measured height inside a ScrollView never
+    /// content without measuring, a measured height inside a ScrollView never
     /// settles reliably.
     static let rowHeight: CGFloat = 24
     static let headerHeight: CGFloat = 21
@@ -441,7 +441,7 @@ struct InlineDropdown: View {
     static let ceiling: CGFloat = 204
 
     @State private var scrollOffset: CGFloat = 0
-    /// The highlighted row — driven by BOTH keyboard nav and mouse hover, so the
+    /// The highlighted row, driven by BOTH keyboard nav and mouse hover, so the
     /// two share one highlight instead of fighting. nil = nothing highlighted.
     @State private var activeIndex: Int?
     @State private var keyMonitor: Any?
@@ -468,7 +468,7 @@ struct InlineDropdown: View {
     }
 
     /// The selectable row at a vertical offset within the scrolled content, or
-    /// nil if the offset lands on a header or outside the list — turns a single
+    /// nil if the offset lands on a header or outside the list, turns a single
     /// container-level hover location into the highlighted row (one tracking
     /// area instead of one per row, which the 2019 Intel MBP handles far better).
     static func rowIndex(atContentY y: CGFloat, items: [DropdownItem]) -> Int? {
@@ -540,7 +540,7 @@ struct InlineDropdown: View {
             .frame(height: height)
             .background(Pane.field)
             // One container-level hover tracker maps the pointer to a row, instead
-            // of a tracking area per row — far snappier on the 2019 Intel MBP — and
+            // of a tracking area per row, far snappier on the 2019 Intel MBP, and
             // writes the SAME activeIndex the keyboard does, so mouse and keyboard
             // share a single highlight.
             .onContinuousHover(coordinateSpace: .local) { phase in
@@ -669,7 +669,7 @@ private struct ScrollObserver: NSViewRepresentable {
 private struct DropdownRow: View {
     let item: DropdownItem
     /// Highlighted by the parent (keyboard nav or the container-level hover
-    /// tracker) — the row no longer tracks its own hover.
+    /// tracker), the row no longer tracks its own hover.
     var isActive = false
 
     var body: some View {
@@ -705,7 +705,7 @@ private struct DropdownRow: View {
         }
     }
 
-    // Reserved trailing area for the edit icon — matched to the trigger box's
+    // Reserved trailing area for the edit icon, matched to the trigger box's
     // chevron area so a row's swatches line up with the selected-theme swatches.
     // The Custom+ row (which has no pencil) reserves the same width so its
     // placeholder swatches stay column-aligned with the palette rows.
@@ -844,7 +844,7 @@ struct Swatch: View {
     }
 }
 
-/// An empty 12×12 chip (outline only) — a placeholder slot for a custom theme
+/// An empty 12×12 chip (outline only), a placeholder slot for a custom theme
 /// that hasn't had a color chosen yet.
 struct EmptySwatch: View {
     var body: some View {
@@ -919,7 +919,7 @@ struct ThemeBoxLabel: View {
 /// Editable size control (Google-Docs style): a centered number field with no
 /// arrow. Clicking it opens the size dropdown with the current size highlighted;
 /// typing highlights a matching size live. The typed value only takes effect on
-/// Return — clicking away reverts to the current size (handled by SettingsView
+/// Return, clicking away reverts to the current size (handled by SettingsView
 /// when the dropdown closes).
 struct SizeControl: View {
     static let sizes = [9, 10, 11, 12, 14, 16, 18, 24, 32]
@@ -933,7 +933,7 @@ struct SizeControl: View {
     var body: some View {
         Group {
             // Show a plain (non-focusable) label until the box is clicked, so the
-            // field can't grab focus — and the dropdown can't pop — when the
+            // field can't grab focus, and the dropdown can't pop, when the
             // window opens. Clicking swaps in the editable field.
             if editing {
                 TextField("", text: $text)

@@ -92,7 +92,7 @@ struct Palette: Codable, Equatable, Identifiable {
 /// Pure theming engine: scheme → slot mapping and the preset palette library.
 enum ColorTheming {
     /// Which palette slot colors a heading of `level` under `scheme`.
-    /// nil means "no palette color" — use `labelColor` (the Default scheme).
+    /// nil means "no palette color", use `labelColor` (the Default scheme).
     /// Standard: H1→0, H2→1, H3–H6→2. Unified: always 0.
     static func slotIndex(forHeadingLevel level: Int, scheme: Coloring) -> Int? {
         switch scheme {

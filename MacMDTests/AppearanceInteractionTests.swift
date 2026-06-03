@@ -32,7 +32,7 @@ final class AppearanceInteractionTests: XCTestCase {
     }
 
     func testOnScreenPullsAFrameOffTheTopBack() {
-        // maxY past the top (menu bar) — slide down so the title bar shows.
+        // maxY past the top (menu bar), slide down so the title bar shows.
         let f = CGRect(x: 100, y: 700, width: 354, height: 400)   // maxY = 1100
         let fixed = WindowPlacement.onScreen(f, in: visible)
         XCTAssertEqual(fixed.maxY, visible.maxY, accuracy: 0.001)

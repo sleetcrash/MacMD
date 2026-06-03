@@ -30,7 +30,7 @@ All notable changes to MacMD will be documented in this file. The format is base
 
 ### Added
 - **Editor commands.** Find (Cmd-F), Find and Replace (Cmd-Opt-F), Find Next / Previous (Cmd-G / Cmd-Shift-G), and Use Selection for Find (Cmd-E). Print (Cmd-P). Bold (Cmd-B) and Italic (Cmd-I) wrap or unwrap the selection. Smart list continuation: pressing Return on a list item starts the next marker, and renumbers ordered lists.
-- **Appearance window** (Format ▸ Appearance, Cmd-,). Pick a coloring **Scheme** (Default / Unified / Standard), a **Theme** (preset palettes, single colors, or your saved customs), an appearance **Mode** (Light / Dark / System), and the editor font **Size** — with a live preview. Heading levels get distinct colors and list markers inherit the color of the heading section above them. The window follows the OS light/dark appearance like the system color picker.
+- **Appearance window** (Format ▸ Appearance, Cmd-,). Pick a coloring **Scheme** (Default / Unified / Standard), a **Theme** (preset palettes, single colors, or your saved customs), an appearance **Mode** (Light / Dark / System), and the editor font **Size**, with a live preview. Heading levels get distinct colors and list markers inherit the color of the heading section above them. The window follows the OS light/dark appearance like the system color picker.
 - **Custom themes.** Create, name (up to 10 characters), edit, and delete your own palettes, each with separate light and dark colors per slot, in a dedicated Custom Theme window that live-drives the preview. Changes Apply to the open document and Save persists them app-wide.
 
 ### Changed
