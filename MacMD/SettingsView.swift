@@ -439,7 +439,6 @@ struct InlineDropdown: View {
     /// (see `snappedHeight`), so the bottom visible row is never sliced in half; a
     /// taller list scrolls within it.
     static let ceiling: CGFloat = 204
-    private static let scrollSpace = "dropdownScroll"
 
     @State private var scrollOffset: CGFloat = 0
     /// The highlighted row — driven by BOTH keyboard nav and mouse hover, so the
@@ -532,20 +531,13 @@ struct InlineDropdown: View {
                         DropdownRow(item: item, isActive: activeIndex == idx)
                     }
                 }
-                .background(GeometryReader { geo in
-                    Color.clear.preference(key: ScrollOffsetKey.self,
-                                           value: -geo.frame(in: .named(Self.scrollSpace)).minY)
-                })
+                // A SwiftUI GeometryReader does not track a macOS ScrollView's live
+                // scroll position (the measured content frame stays put), so read the
+                // underlying NSScrollView's clip-view bounds directly instead.
+                .background(ScrollObserver { scrollOffset = max(0, $0) })
             }
             .scrollIndicators(.hidden)
             .frame(height: height)
-            // Name the FIXED viewport box (applied AFTER .frame), not the
-            // ScrollView's own content-anchored space. Measuring the scrolling
-            // content's minY against this stationary frame makes it go negative as
-            // you scroll, so ScrollOffsetKey actually changes and the thumb moves.
-            // With the name on the raw ScrollView, minY read ~0 forever -> the
-            // thumb was pinned at the top.
-            .coordinateSpace(name: Self.scrollSpace)
             .background(Pane.field)
             // One container-level hover tracker maps the pointer to a row, instead
             // of a tracking area per row — far snappier on the 2019 Intel MBP — and
@@ -581,7 +573,6 @@ struct InlineDropdown: View {
             }
             .overlay(Rectangle().strokeBorder(Color.primary.opacity(0.3), lineWidth: 1).allowsHitTesting(false))
             .foregroundStyle(Pane.text)
-            .onPreferenceChange(ScrollOffsetKey.self) { scrollOffset = max(0, $0) }
             .onAppear {
                 guard keyboardNav else { return }
                 activeIndex = items.firstIndex(where: { $0.selected })
@@ -626,11 +617,53 @@ struct InlineDropdown: View {
     }
 }
 
-/// Tracks the dropdown's scroll position so the custom scroll indicator can
-/// follow it.
-private struct ScrollOffsetKey: PreferenceKey {
-    static let defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+/// Reports the enclosing NSScrollView's vertical scroll offset to SwiftUI so the
+/// custom scroll indicator can follow it. A SwiftUI GeometryReader does not see a
+/// macOS ScrollView's live scroll (its measured content frame stays put), so this
+/// observes the underlying NSClipView's bounds directly.
+private struct ScrollObserver: NSViewRepresentable {
+    var onScroll: (CGFloat) -> Void
+
+    func makeNSView(context: Context) -> NSView {
+        let v = NSView(frame: .zero)
+        DispatchQueue.main.async { context.coordinator.attach(from: v) }
+        return v
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        context.coordinator.onScroll = onScroll
+        // Retry attach only until the observer is registered; once attached, skip
+        // the redundant re-dispatch on every scroll-driven re-render.
+        if !context.coordinator.isAttached {
+            DispatchQueue.main.async { context.coordinator.attach(from: nsView) }
+        }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator(onScroll) }
+
+    final class Coordinator: NSObject {
+        var onScroll: (CGFloat) -> Void
+        private weak var clip: NSClipView?
+        var isAttached: Bool { clip != nil }
+        init(_ onScroll: @escaping (CGFloat) -> Void) { self.onScroll = onScroll }
+
+        /// Find the enclosing NSScrollView's clip view and observe its bounds.
+        func attach(from view: NSView) {
+            guard let clip = view.enclosingScrollView?.contentView, clip !== self.clip else { return }
+            if let old = self.clip {
+                NotificationCenter.default.removeObserver(self, name: NSView.boundsDidChangeNotification, object: old)
+            }
+            self.clip = clip
+            clip.postsBoundsChangedNotifications = true
+            NotificationCenter.default.addObserver(self, selector: #selector(boundsChanged),
+                                                   name: NSView.boundsDidChangeNotification, object: clip)
+            report()
+        }
+
+        @objc private func boundsChanged() { report() }
+        private func report() { if let clip { onScroll(clip.bounds.origin.y) } }
+        deinit { NotificationCenter.default.removeObserver(self) }
+    }
 }
 
 private struct DropdownRow: View {
