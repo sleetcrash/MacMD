@@ -190,10 +190,10 @@ Upload all four to the GitHub release page. Most users prefer the DMG; the zip i
 
 Open Settings (Cmd-,) to color your headings:
 
-- **Mode** — Light, Dark, or System (follows macOS).
-- **Scheme** — Default (no color, the out-of-box default), Unified (one color for every heading level), or Standard (three colors: H1, H2, H3, with H4–H6 inheriting H3).
-- **Theme** — preset palettes (RGB, CMY(K), and four EVA palettes for Standard; eight single colors for Unified), or a custom palette you name and save. Each color is tuned for both light and dark.
-- **Size** — the editor font size (also on the View menu: Cmd-+, Cmd--, Cmd-0).
+- **Mode**: Light, Dark, or System (follows macOS).
+- **Scheme**: Default (no color, the out-of-box default), Unified (one color for every heading level), or Standard (three colors: H1, H2, H3, with H4–H6 inheriting H3).
+- **Theme**: preset palettes (RGB, CMY(K), and four EVA palettes for Standard; eight single colors for Unified), or a custom palette you name and save. Each color is tuned for both light and dark.
+- **Size**: the editor font size (also on the View menu: Cmd-+, Cmd--, Cmd-0).
 
 List markers inherit the color of the heading section they sit under. Body text always uses the adaptive label color. With the Default scheme, headings are bold and sized but not colored.
 
