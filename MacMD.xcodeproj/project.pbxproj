@@ -11,6 +11,7 @@
 		F2000000000000000000000B /* MarkdownDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000000B /* MarkdownDocument.swift */; };
 		F2000000000000000000000C /* DocumentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000000C /* DocumentView.swift */; };
 		F2000000000000000000001A /* WordCount.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000001A /* WordCount.swift */; };
+		F2000000000000000000001C /* HelpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000001C /* HelpView.swift */; };
 		F2000000000000000000000D /* MarkdownTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000000D /* MarkdownTextView.swift */; };
 		F2000000000000000000000E /* MarkdownHighlighter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000000E /* MarkdownHighlighter.swift */; };
 		F2000000000000000000000F /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000000F /* Theme.swift */; };
@@ -50,6 +51,7 @@
 		F1000000000000000000000B /* MarkdownDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownDocument.swift; sourceTree = "<group>"; };
 		F1000000000000000000000C /* DocumentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentView.swift; sourceTree = "<group>"; };
 		F1000000000000000000001A /* WordCount.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WordCount.swift; sourceTree = "<group>"; };
+		F1000000000000000000001C /* HelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelpView.swift; sourceTree = "<group>"; };
 		F1000000000000000000000D /* MarkdownTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownTextView.swift; sourceTree = "<group>"; };
 		F1000000000000000000000E /* MarkdownHighlighter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownHighlighter.swift; sourceTree = "<group>"; };
 		F1000000000000000000000F /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
@@ -112,6 +114,7 @@
 				F1000000000000000000000B /* MarkdownDocument.swift */,
 				F1000000000000000000000C /* DocumentView.swift */,
 				F1000000000000000000001A /* WordCount.swift */,
+				F1000000000000000000001C /* HelpView.swift */,
 				F1000000000000000000000D /* MarkdownTextView.swift */,
 				F1000000000000000000000E /* MarkdownHighlighter.swift */,
 				F1000000000000000000000F /* Theme.swift */,
@@ -258,6 +261,7 @@
 				F2000000000000000000000B /* MarkdownDocument.swift in Sources */,
 				F2000000000000000000000C /* DocumentView.swift in Sources */,
 				F2000000000000000000001A /* WordCount.swift in Sources */,
+				F2000000000000000000001C /* HelpView.swift in Sources */,
 				F2000000000000000000000D /* MarkdownTextView.swift in Sources */,
 				F2000000000000000000000E /* MarkdownHighlighter.swift in Sources */,
 				F2000000000000000000000F /* Theme.swift in Sources */,

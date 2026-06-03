@@ -13,7 +13,7 @@ struct MacMDApp: App {
                 .environmentObject(themeController)
         }
         .commands {
-            CommandGroup(replacing: .help) { }
+            HelpCommands()
             CommandGroup(after: .textEditing) {
                 Button("Toggle Task Checkbox") {
                     (NSApp.keyWindow?.firstResponder as? ClickableTextView)?.toggleTaskCheckbox(nil)
@@ -70,6 +70,12 @@ struct MacMDApp: App {
         }
         .windowResizability(.contentSize)
         .defaultPosition(.center)
+
+        Window("Help", id: HelpScene.id) {
+            HelpView()
+        }
+        .windowResizability(.contentSize)
+        .defaultPosition(.center)
     }
 }
 
@@ -97,6 +103,19 @@ struct FormatCommands: Commands {
             Divider()
             Button("Appearance") { openWindow(id: AppearanceScene.id) }
                 .keyboardShortcut(",", modifiers: .command)
+        }
+    }
+}
+
+/// The Help menu. A single local "MacMD Help" item that opens the bundled help
+/// window. No web links, to honor the offline-only design.
+struct HelpCommands: Commands {
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some Commands {
+        CommandGroup(replacing: .help) {
+            Button("MacMD Help") { openWindow(id: HelpScene.id) }
+                .keyboardShortcut("?", modifiers: .command)
         }
     }
 }

@@ -2,6 +2,20 @@
 
 All notable changes to MacMD will be documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.5] - 2026-06-03
+
+### Added
+- Spell check: misspelled words are now underlined as you type. Toggle it from Edit > Spelling and Grammar.
+- Front matter at the top of a file (--- for YAML or +++ for TOML) is shown as muted metadata.
+- An optional word count and reading-time estimate under the editor. Turn it on from View > Show Word Count. It is off by default.
+- A Help menu with a built-in, offline MacMD Help window.
+- Markdown files with the .mdown and .mkd extensions now open as Markdown.
+
+### Changed
+- Clearer guidance text in the Custom Theme builder, naming the light and dark heading columns.
+- The Custom Theme name field now has a Name label on its left and stretches to the window's right edge.
+- The Custom Theme window now comes to the front when it opens.
+
 ## [1.2.4] - 2026-06-02
 
 ### Changed
