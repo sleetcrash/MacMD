@@ -108,6 +108,7 @@ struct CustomThemeEditor: View {
         .background(Pane.window)
         .background(SystemWindowAppearance())
         .background(PositionBesideAppearance())
+        .background(RaiseOnOpen())
         .onExitCommand {
             if showDeleteConfirm { showDeleteConfirm = false } else { dismiss() }
         }
@@ -130,15 +131,16 @@ struct CustomThemeEditor: View {
             Text(draft.editingId == nil ? "New Custom Theme" : "Edit Custom Theme")
                 .font(.system(size: 12, weight: .semibold))
 
-            Text("Select a swatch and pick its color. The Appearance window's preview updates as you go. Name your theme and Save it, then choose it in the Appearance window to apply it to your document.")
+            Text("Pick colors for your H1, H2, and H3 headings in both light (sun) and dark (moon) appearance. The Appearance window previews each change live. Name and Save the theme, then choose it in the Appearance window to apply it to your document.")
                 .font(.system(size: 10))
                 .foregroundStyle(Pane.muted)
                 .fixedSize(horizontal: false, vertical: true)
 
             // One swatch row laid out like the Appearance theme box: light trio │
             // dark trio, with a sun (left) and moon (right) marking which is which.
-            // Heading labels sit centered above each swatch; the Name box spans the
-            // swatch columns, lining up with the first and last swatch.
+            // Heading labels sit centered above each swatch. The Name field is a
+            // separate row below the grid, a leading label plus a field that fills
+            // to the window's right content edge.
             Grid(alignment: .center, horizontalSpacing: 6, verticalSpacing: 8) {
                 GridRow {
                     Text("")
@@ -172,21 +174,21 @@ struct CustomThemeEditor: View {
                     Image(systemName: "moon.fill").font(.system(size: 12)).foregroundStyle(Pane.muted)
                         .accessibilityLabel("Dark")
                 }
-                GridRow {
-                    Color.clear.gridCellUnsizedAxes([.horizontal, .vertical])   // sun column
-                    TextField("Name", text: $draft.name)
-                        .textFieldStyle(.plain)
-                        .font(.system(size: 11))
-                        .padding(.horizontal, 8)
-                        .frame(height: 26)
-                        .frame(maxWidth: .infinity)
-                        .background(Pane.field)
-                        .overlay(Rectangle().strokeBorder(Pane.border, lineWidth: 1))
-                        .onChange(of: draft.name) { _, v in if v.count > 10 { draft.name = String(v.prefix(10)) } }
-                        .padding(.top, 6)
-                        .gridCellColumns(safeCount * 2 + 1)   // L1 … D3 (the swatches)
-                    Color.clear.gridCellUnsizedAxes([.horizontal, .vertical])   // moon column
-                }
+            }
+
+            HStack(spacing: 8) {
+                Text("Name")
+                    .font(.system(size: 10))
+                    .foregroundStyle(Pane.muted)
+                TextField("", text: $draft.name)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 11))
+                    .padding(.horizontal, 8)
+                    .frame(height: 26)
+                    .frame(maxWidth: .infinity)
+                    .background(Pane.field)
+                    .overlay(Rectangle().strokeBorder(Pane.border, lineWidth: 1))
+                    .onChange(of: draft.name) { _, v in if v.count > 10 { draft.name = String(v.prefix(10)) } }
             }
 
             // Delete (red, only when editing a saved theme) / Close on the left;
@@ -407,4 +409,24 @@ struct PositionBesideAppearance: NSViewRepresentable {
     }
 
     final class Coordinator { var positioned = false }
+}
+
+/// Raises and keys the Custom Theme window once, when it appears, so it comes to
+/// the front of the document window it was opened over. Front-on-open only (not a
+/// floating panel: a floating level would sit above the shared NSColorPanel and
+/// block color picking).
+struct RaiseOnOpen: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView { NSView() }
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        guard !context.coordinator.raised else { return }
+        DispatchQueue.main.async {
+            guard let w = nsView.window else { return }
+            context.coordinator.raised = true
+            w.makeKeyAndOrderFront(nil)
+        }
+    }
+
+    final class Coordinator { var raised = false }
 }
