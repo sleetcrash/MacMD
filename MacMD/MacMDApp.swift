@@ -5,6 +5,7 @@ import AppKit
 struct MacMDApp: App {
     @StateObject private var themeController = ThemeController()
     @StateObject private var customDraft = CustomDraft()
+    @AppStorage(WordCountPref.key) private var showWordCount = false
 
     var body: some Scene {
         DocumentGroup(newDocument: MarkdownDocument()) { file in
@@ -47,6 +48,10 @@ struct MacMDApp: App {
                     .keyboardShortcut("-", modifiers: .command)
                 Button("Actual Size") { themeController.resetFontSize() }
                     .keyboardShortcut("0", modifiers: .command)
+                Divider()
+                Button(showWordCount ? "Hide Word Count" : "Show Word Count") {
+                    WordCountPref.set(!showWordCount)
+                }
                 Divider()
             }
         }
