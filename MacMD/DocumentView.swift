@@ -18,13 +18,23 @@ struct DocumentView: View {
                                             customs: ThemeSettings.savedCustoms())
     }
 
+    @State private var showWordCount = WordCountPref.isOn
+
     var body: some View {
-        MarkdownTextView(text: $document.text,
-                         fontSize: CGFloat(theme.fontSize),
-                         coloring: theme.coloring,
-                         palette: palette,
-                         appearance: theme.appearance)
-            .frame(minWidth: 520, idealWidth: 760, minHeight: 400, idealHeight: 680)
-            .background(Color(nsColor: .textBackgroundColor))
+        VStack(spacing: 0) {
+            MarkdownTextView(text: $document.text,
+                             fontSize: CGFloat(theme.fontSize),
+                             coloring: theme.coloring,
+                             palette: palette,
+                             appearance: theme.appearance)
+                .frame(minWidth: 520, idealWidth: 760, minHeight: 400, idealHeight: 680)
+                .background(Color(nsColor: .textBackgroundColor))
+            if showWordCount {
+                WordCountBar(text: document.text)
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: WordCountPref.didChange)) { _ in
+            showWordCount = WordCountPref.isOn
+        }
     }
 }
