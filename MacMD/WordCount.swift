@@ -1,4 +1,4 @@
-import Foundation
+import SwiftUI
 
 /// Pure word and character counting for the editor's optional status bar.
 enum WordCount {
@@ -40,5 +40,51 @@ enum WordCountPref {
     static func set(_ on: Bool) {
         UserDefaults.standard.set(on, forKey: key)
         NotificationCenter.default.post(name: didChange, object: nil)
+    }
+}
+
+/// A thin, unobtrusive status bar shown under the editor when the preference is
+/// on. Recomputes the count on a 300ms debounce off the main actor.
+struct WordCountBar: View {
+    let text: String
+    @State private var stats = WordCount.Stats(words: 0, characters: 0)
+    @State private var hasComputed = false
+
+    var body: some View {
+        HStack {
+            Spacer()
+            Text(label)
+                .font(.system(size: 11))
+                .foregroundStyle(Color(nsColor: .secondaryLabelColor))
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 4)
+        .background(Color(nsColor: .windowBackgroundColor))
+        .overlay(alignment: .top) { Divider() }
+        .task(id: text) {
+            // Compute the first value eagerly so the bar never flashes "0 words"
+            // when it appears over an existing document, then debounce later edits.
+            // .task(id:) cancels and restarts this whenever `text` changes. The
+            // closure is non-throwing, so try? swallows the CancellationError that
+            // Task.sleep throws on cancellation; the isCancelled guards bail before
+            // writing so a stale in-flight result cannot overwrite a newer edit.
+            if hasComputed {
+                try? await Task.sleep(nanoseconds: 300_000_000)
+                guard !Task.isCancelled else { return }
+            }
+            let snapshot = text
+            let computed = await Task.detached { WordCount.stats(for: snapshot) }.value
+            guard !Task.isCancelled else { return }
+            stats = computed
+            hasComputed = true
+        }
+    }
+
+    private var label: String {
+        let w = stats.words
+        let wordPart = "\(w.formatted()) \(w == 1 ? "word" : "words")"
+        guard w >= 200 else { return wordPart }
+        let minutes = WordCount.readingMinutes(words: w)
+        return "\(wordPart) - about \(minutes) min read"
     }
 }
