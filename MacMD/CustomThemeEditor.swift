@@ -130,7 +130,7 @@ struct CustomThemeEditor: View {
             Text(draft.editingId == nil ? "New Custom Theme" : "Edit Custom Theme")
                 .font(.system(size: 12, weight: .semibold))
 
-            Text("Select a swatch and pick its color. The Appearance window's preview updates as you go. Name your theme and Save it, then choose it in the Appearance window to apply it to your document.")
+            Text("Pick colors for your H1, H2, and H3 headings in both light (sun) and dark (moon) appearance. The Appearance window previews each change live. Name and Save the theme, then choose it in the Appearance window to apply it to your document.")
                 .font(.system(size: 10))
                 .foregroundStyle(Pane.muted)
                 .fixedSize(horizontal: false, vertical: true)
