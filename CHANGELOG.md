@@ -2,6 +2,11 @@
 
 All notable changes to MacMD will be documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.3] - 2026-06-02
+
+### Fixed
+- The scrollbar in the font-size and theme dropdowns now follows the list as you scroll. (The 1.2.2 attempt at this did not take effect; the indicator stayed pinned at the top.)
+
 ## [1.2.2] - 2026-06-02
 
 ### Fixed
