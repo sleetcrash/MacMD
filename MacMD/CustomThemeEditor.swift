@@ -77,7 +77,7 @@ final class CustomDraft: ObservableObject {
     }
 }
 
-/// The Custom Theme editor — a separate window styled as an extension of the
+/// The Custom Theme editor, a separate window styled as an extension of the
 /// Appearance window (same neutral chrome, sharp edges, square buttons). It has
 /// no preview of its own; editing colors live-updates the Appearance window's
 /// preview through the shared `CustomDraft`. Save commits the palette to the
@@ -114,7 +114,7 @@ struct CustomThemeEditor: View {
         .onDisappear {
             draft.end()
             // Close the color picker and hand focus back to the Appearance window
-            // (not the document) however this window was dismissed — but only if
+            // (not the document) however this window was dismissed, but only if
             // Appearance is still on screen. When Appearance is the one closing (it
             // cascades this window shut), re-showing it here would resurrect a
             // closing window, so skip the re-focus in that case.
@@ -130,7 +130,7 @@ struct CustomThemeEditor: View {
             Text(draft.editingId == nil ? "New Custom Theme" : "Edit Custom Theme")
                 .font(.system(size: 12, weight: .semibold))
 
-            Text("Select a swatch and pick its color — the Appearance window's preview updates as you go. Name your theme and Save it, then choose it in the Appearance window to apply it to your document.")
+            Text("Select a swatch and pick its color. The Appearance window's preview updates as you go. Name your theme and Save it, then choose it in the Appearance window to apply it to your document.")
                 .font(.system(size: 10))
                 .foregroundStyle(Pane.muted)
                 .fixedSize(horizontal: false, vertical: true)
@@ -190,7 +190,7 @@ struct CustomThemeEditor: View {
             }
 
             // Delete (red, only when editing a saved theme) / Close on the left;
-            // Apply / Save on the right — matches the Appearance window.
+            // Apply / Save on the right, matches the Appearance window.
             HStack(spacing: 10) {
                 if draft.editingId != nil {
                     Button("Delete") { showDeleteConfirm = true }
@@ -284,7 +284,7 @@ struct CustomThemeEditor: View {
 
 /// A sharp, square color well. SwiftUI's `ColorPicker` always draws a rounded
 /// system swatch, and the prior approach hid it under a near-zero SwiftUI
-/// `.opacity` — which drops the control out of SwiftUI hit-testing, so clicks
+/// `.opacity`, which drops the control out of SwiftUI hit-testing, so clicks
 /// fell through to the square behind it and the panel never opened. Instead we
 /// draw the square ourselves and overlay a real `NSColorWell`: AppKit hit-testing
 /// ignores a view's `alphaValue`, so the well stays clickable while invisible,
@@ -305,7 +305,7 @@ struct SquareColorWell: View {
             // Quiet hairline on every swatch, always.
             .overlay(Rectangle().strokeBorder(Color(white: 0.47).opacity(0.5), lineWidth: 1))
             // Selection ring: OUTSET so it sits just outside the swatch against the
-            // window background — which `labelColor` always contrasts with. A ring
+            // window background, which `labelColor` always contrasts with. A ring
             // drawn ON the swatch would vanish when the swatch is near label color
             // (e.g. a white dark-swatch in Dark mode). Neutral, no accent.
             .overlay(
@@ -343,7 +343,7 @@ private struct ColorWellBridge: NSViewRepresentable {
         context.coordinator.color = $color
         (well as? PanelColorWell)?.onActivate = onActivate
         // Reflect external binding changes (e.g. loading a saved palette) without
-        // re-firing the action — a programmatic `color` set doesn't trigger it.
+        // re-firing the action, a programmatic `color` set doesn't trigger it.
         let ns = NSColor(color)
         if well.color.hexString != ns.hexString { well.color = ns }
     }
