@@ -137,8 +137,9 @@ struct CustomThemeEditor: View {
 
             // One swatch row laid out like the Appearance theme box: light trio │
             // dark trio, with a sun (left) and moon (right) marking which is which.
-            // Heading labels sit centered above each swatch; the Name box spans the
-            // swatch columns, lining up with the first and last swatch.
+            // Heading labels sit centered above each swatch. The Name field is a
+            // separate row below the grid, a leading label plus a field that fills
+            // to the window's right content edge.
             Grid(alignment: .center, horizontalSpacing: 6, verticalSpacing: 8) {
                 GridRow {
                     Text("")
@@ -172,21 +173,21 @@ struct CustomThemeEditor: View {
                     Image(systemName: "moon.fill").font(.system(size: 12)).foregroundStyle(Pane.muted)
                         .accessibilityLabel("Dark")
                 }
-                GridRow {
-                    Color.clear.gridCellUnsizedAxes([.horizontal, .vertical])   // sun column
-                    TextField("Name", text: $draft.name)
-                        .textFieldStyle(.plain)
-                        .font(.system(size: 11))
-                        .padding(.horizontal, 8)
-                        .frame(height: 26)
-                        .frame(maxWidth: .infinity)
-                        .background(Pane.field)
-                        .overlay(Rectangle().strokeBorder(Pane.border, lineWidth: 1))
-                        .onChange(of: draft.name) { _, v in if v.count > 10 { draft.name = String(v.prefix(10)) } }
-                        .padding(.top, 6)
-                        .gridCellColumns(safeCount * 2 + 1)   // L1 … D3 (the swatches)
-                    Color.clear.gridCellUnsizedAxes([.horizontal, .vertical])   // moon column
-                }
+            }
+
+            HStack(spacing: 8) {
+                Text("Name")
+                    .font(.system(size: 10))
+                    .foregroundStyle(Pane.muted)
+                TextField("", text: $draft.name)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 11))
+                    .padding(.horizontal, 8)
+                    .frame(height: 26)
+                    .frame(maxWidth: .infinity)
+                    .background(Pane.field)
+                    .overlay(Rectangle().strokeBorder(Pane.border, lineWidth: 1))
+                    .onChange(of: draft.name) { _, v in if v.count > 10 { draft.name = String(v.prefix(10)) } }
             }
 
             // Delete (red, only when editing a saved theme) / Close on the left;
