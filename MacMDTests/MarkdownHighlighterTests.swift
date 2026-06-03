@@ -474,4 +474,80 @@ final class MarkdownHighlighterTests: XCTestCase {
         let newBulletIndex = ("# Section\n").count
         XCTAssertEqual(color(at: newBulletIndex, in: storage)?.resolvedHexLight, "#C13F50") // H1 slot0
     }
+
+    // MARK: - Front matter
+
+    func testYamlFrontMatterBodyIsMuted() {
+        let text = "---\ntitle: Hello\n---\nBody\n"
+        let storage = highlight(text)
+        let titleIndex = (text as NSString).range(of: "title").location
+        XCTAssertEqual(color(at: titleIndex, in: storage), Theme.mutedColor)
+        let bodyIndex = (text as NSString).range(of: "Body").location
+        XCTAssertEqual(color(at: bodyIndex, in: storage), Theme.textColor)
+    }
+
+    func testTomlFrontMatterBodyIsMuted() {
+        let text = "+++\ntitle = \"Hello\"\n+++\nBody\n"
+        let storage = highlight(text)
+        let titleIndex = (text as NSString).range(of: "title").location
+        XCTAssertEqual(color(at: titleIndex, in: storage), Theme.mutedColor)
+        let bodyIndex = (text as NSString).range(of: "Body").location
+        XCTAssertEqual(color(at: bodyIndex, in: storage), Theme.textColor)
+    }
+
+    func testFrontMatterWithoutClosingIsNotMuted() {
+        let text = "---\ntitle: Hello\nBody\n"
+        let storage = highlight(text)
+        let titleIndex = (text as NSString).range(of: "title").location
+        XCTAssertEqual(color(at: titleIndex, in: storage), Theme.textColor)
+    }
+
+    func testDelimiterNotAtHeadIsNotFrontMatter() {
+        let text = "Intro\n---\ntitle: Hello\n---\n"
+        let storage = highlight(text)
+        let titleIndex = (text as NSString).range(of: "title").location
+        XCTAssertEqual(color(at: titleIndex, in: storage), Theme.textColor)
+    }
+
+    // An empty front-matter block (--- immediately followed by ---) must not
+    // bleed its muting into the body below it. (The delimiter lines are muted by
+    // the existing horizontal-rule rule regardless, so this guards the body only.)
+    func testEmptyFrontMatterDelimitersDoNotMuteBody() {
+        let text = "---\n---\nBody\n"
+        let storage = highlight(text)
+        let bodyIndex = (text as NSString).range(of: "Body").location
+        XCTAssertEqual(color(at: bodyIndex, in: storage), Theme.textColor)
+    }
+
+    func testCompletingFrontMatterRehighlights() {
+        let storage = NSTextStorage(string: "---\ntitle: Hello\nBody\n")
+        let highlighter = MarkdownHighlighter()
+        storage.delegate = highlighter
+        highlighter.rehighlightAll(storage)
+        let titleBefore = (storage.string as NSString).range(of: "title").location
+        XCTAssertEqual(color(at: titleBefore, in: storage), Theme.textColor,
+                       "No closing delimiter yet, so not front matter")
+        let bodyLoc = (storage.string as NSString).range(of: "Body").location
+        storage.beginEditing()
+        storage.replaceCharacters(in: NSRange(location: bodyLoc, length: 0), with: "---\n")
+        storage.endEditing()
+        let titleAfter = (storage.string as NSString).range(of: "title").location
+        XCTAssertEqual(color(at: titleAfter, in: storage), Theme.mutedColor,
+                       "Closing the block must re-highlight the body as muted front matter")
+    }
+
+    func testInlineRulesAreSuppressedInsideFrontMatter() {
+        let text = "---\n[link](url)\n---\nBody\n"
+        let storage = highlight(text)
+        let linkIndex = (text as NSString).range(of: "link").location
+        XCTAssertEqual(color(at: linkIndex, in: storage), Theme.mutedColor,
+                       "Inline rules must not style content inside a front-matter block")
+    }
+
+    func testFrontMatterClosingOnLastLineWithoutNewline() {
+        let text = "---\ntitle: Hello\n---"
+        let storage = highlight(text)
+        let titleIndex = (text as NSString).range(of: "title").location
+        XCTAssertEqual(color(at: titleIndex, in: storage), Theme.mutedColor)
+    }
 }
