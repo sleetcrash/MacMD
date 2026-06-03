@@ -108,6 +108,7 @@ struct CustomThemeEditor: View {
         .background(Pane.window)
         .background(SystemWindowAppearance())
         .background(PositionBesideAppearance())
+        .background(RaiseOnOpen())
         .onExitCommand {
             if showDeleteConfirm { showDeleteConfirm = false } else { dismiss() }
         }
@@ -408,4 +409,24 @@ struct PositionBesideAppearance: NSViewRepresentable {
     }
 
     final class Coordinator { var positioned = false }
+}
+
+/// Raises and keys the Custom Theme window once, when it appears, so it comes to
+/// the front of the document window it was opened over. Front-on-open only (not a
+/// floating panel: a floating level would sit above the shared NSColorPanel and
+/// block color picking).
+struct RaiseOnOpen: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView { NSView() }
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        guard !context.coordinator.raised else { return }
+        DispatchQueue.main.async {
+            guard let w = nsView.window else { return }
+            context.coordinator.raised = true
+            w.makeKeyAndOrderFront(nil)
+        }
+    }
+
+    final class Coordinator { var raised = false }
 }
