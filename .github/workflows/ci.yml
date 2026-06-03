@@ -17,6 +17,16 @@ jobs:
       - name: Check out
         uses: actions/checkout@v5
 
+      - name: Reject em dashes (house rule)
+        run: |
+          # Em dash U+2014 is the UTF-8 bytes E2 80 94. Match the bytes via a shell
+          # escape so this workflow file itself contains no literal em dash.
+          if git grep -nIF $'\xe2\x80\x94' -- .; then
+            echo "::error::Em dash found in tracked files. House rule is no em dashes."
+            exit 1
+          fi
+          echo "No em dashes found."
+
       - name: Show toolchain
         run: xcodebuild -version
 
