@@ -128,13 +128,8 @@ struct CustomThemeEditor: View {
 
     private var editor: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text(draft.editingId == nil ? "New Custom Theme" : "Edit Custom Theme")
+            Text("Custom Theme")
                 .font(.system(size: 12, weight: .semibold))
-
-            Text("Pick heading colors for light and dark mode. A Standard theme sets H1, H2, and H3 separately; a Unified theme uses one color for all headings. The Appearance window previews each change live. Name and Save the theme, then choose it in the Appearance window to apply it to your document.")
-                .font(.system(size: 10))
-                .foregroundStyle(Pane.muted)
-                .fixedSize(horizontal: false, vertical: true)
 
             // One swatch row laid out like the Appearance theme box: light trio │
             // dark trio, with a sun (left) and moon (right) marking which is which.
