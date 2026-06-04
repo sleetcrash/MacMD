@@ -2,6 +2,11 @@
 
 All notable changes to MacMD will be documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.6] - 2026-06-03
+
+### Changed
+- The Custom Theme builder and the Help window now describe both theme styles: a Standard theme sets H1, H2, and H3 colors separately, and a Unified theme uses one color for all headings.
+
 ## [1.2.5] - 2026-06-03
 
 ### Added
