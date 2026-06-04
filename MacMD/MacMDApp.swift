@@ -14,12 +14,7 @@ struct MacMDApp: App {
         }
         .commands {
             HelpCommands()
-            CommandGroup(after: .textEditing) {
-                Button("Toggle Task Checkbox") {
-                    (NSApp.keyWindow?.firstResponder as? ClickableTextView)?.toggleTaskCheckbox(nil)
-                }
-                .keyboardShortcut("l", modifiers: [.command, .shift])
-            }
+            AppSettingsCommands()
             CommandGroup(after: .pasteboard) {
                 Menu("Find") {
                     Button("Find…") { performFindAction(.showFindInterface) }
@@ -32,6 +27,20 @@ struct MacMDApp: App {
                         .keyboardShortcut("g", modifiers: [.command, .shift])
                     Button("Use Selection for Find") { performFindAction(.setSearchString) }
                         .keyboardShortcut("e", modifiers: .command)
+                }
+                Menu("Spelling and Grammar") {
+                    Button("Show Spelling and Grammar") {
+                        NSApp.sendAction(#selector(NSText.showGuessPanel(_:)), to: nil, from: nil)
+                    }
+                    .keyboardShortcut(":", modifiers: .command)
+                    Button("Check Document Now") {
+                        NSApp.sendAction(#selector(NSText.checkSpelling(_:)), to: nil, from: nil)
+                    }
+                    .keyboardShortcut(";", modifiers: .command)
+                    Divider()
+                    Button("Check Spelling While Typing") {
+                        NSApp.sendAction(#selector(NSTextView.toggleContinuousSpellChecking(_:)), to: nil, from: nil)
+                    }
                 }
             }
             CommandGroup(replacing: .printItem) {
@@ -92,12 +101,11 @@ enum AppearanceScene {
     static let id = "appearance"
 }
 
-/// The Format menu. Bold/Italic act on the focused editor; Appearance opens the
-/// Appearance window, this replaces both the old MacMD ▸ Settings item and the
-/// former Format ▸ Appearance mode submenu. Cmd-, still opens it.
+/// The Format menu: markdown emphasis (Bold, Italic, Strikethrough, Inline
+/// Code), Link, and the task-checkbox toggle, all acting on the focused editor.
+/// App preferences moved to the standard app-menu Settings… item (see
+/// `AppSettingsCommands`), so there is no longer a Format ▸ Appearance entry.
 struct FormatCommands: Commands {
-    @Environment(\.openWindow) private var openWindow
-
     var body: some Commands {
         CommandMenu("Format") {
             Button("Bold") {
@@ -108,8 +116,35 @@ struct FormatCommands: Commands {
                 (NSApp.keyWindow?.firstResponder as? ClickableTextView)?.macmdItalic(nil)
             }
             .keyboardShortcut("i", modifiers: .command)
+            Button("Strikethrough") {
+                (NSApp.keyWindow?.firstResponder as? ClickableTextView)?.macmdStrikethrough(nil)
+            }
+            .keyboardShortcut("x", modifiers: [.command, .shift])
+            Button("Inline Code") {
+                (NSApp.keyWindow?.firstResponder as? ClickableTextView)?.macmdCode(nil)
+            }
+            Button("Link…") {
+                (NSApp.keyWindow?.firstResponder as? ClickableTextView)?.macmdLink(nil)
+            }
+            .keyboardShortcut("k", modifiers: .command)
             Divider()
-            Button("Appearance") { openWindow(id: AppearanceScene.id) }
+            Button("Toggle Task Checkbox") {
+                (NSApp.keyWindow?.firstResponder as? ClickableTextView)?.toggleTaskCheckbox(nil)
+            }
+            .keyboardShortcut("l", modifiers: [.command, .shift])
+        }
+    }
+}
+
+/// The app menu's Settings… item (Cmd-,), the standard macOS home for app
+/// preferences. It opens the Appearance window, which holds MacMD's settings;
+/// this replaces the former Format ▸ Appearance entry so there is a single home.
+struct AppSettingsCommands: Commands {
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some Commands {
+        CommandGroup(replacing: .appSettings) {
+            Button("Settings…") { openWindow(id: AppearanceScene.id) }
                 .keyboardShortcut(",", modifiers: .command)
         }
     }
