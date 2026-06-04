@@ -56,6 +56,11 @@ struct MacMDApp: App {
             }
         }
 
+        // These three auxiliary windows are opened programmatically (Format ▸
+        // Appearance, Help ▸ MacMD Help, and Custom+ in the Theme dropdown), so
+        // `.commandsRemoved()` strips the open-command SwiftUI would otherwise add
+        // to the Window menu. That command duplicated the Format / Help entries and
+        // cluttered the Window menu; openWindow(id:) still opens each window.
         Window("Appearance", id: AppearanceScene.id) {
             SettingsView()
                 .environmentObject(themeController)
@@ -63,6 +68,7 @@ struct MacMDApp: App {
         }
         .windowResizability(.contentSize)
         .defaultPosition(.center)
+        .commandsRemoved()
 
         Window("Custom Theme", id: CustomThemeScene.id) {
             CustomThemeEditor()
@@ -70,12 +76,14 @@ struct MacMDApp: App {
         }
         .windowResizability(.contentSize)
         .defaultPosition(.center)
+        .commandsRemoved()
 
         Window("Help", id: HelpScene.id) {
             HelpView()
         }
         .windowResizability(.contentSize)
         .defaultPosition(.center)
+        .commandsRemoved()
     }
 }
 
