@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import ObjectiveC
 
 /// The Appearance window's chrome palette: semantic system colors that resolve
 /// against the window's appearance. `SystemWindowAppearance` pins the window to
@@ -535,6 +536,7 @@ struct InlineDropdown: View {
                 // scroll position (the measured content frame stays put), so read the
                 // underlying NSScrollView's clip-view bounds directly instead.
                 .background(ScrollObserver { scrollOffset = max(0, $0) })
+                .background(ScrollSpeedDamper())
             }
             .scrollIndicators(.hidden)
             .frame(height: height)
@@ -663,6 +665,53 @@ private struct ScrollObserver: NSViewRepresentable {
         @objc private func boundsChanged() { report() }
         private func report() { if let clip { onScroll(clip.bounds.origin.y) } }
         deinit { NotificationCenter.default.removeObserver(self) }
+    }
+}
+
+/// NSScrollView has no public scroll-speed control, and the short dropdown lists
+/// scroll faster than feels right. This subclass dampens wheel/trackpad deltas by
+/// scrolling the clip view manually at a reduced rate. It adds NO stored
+/// properties, so `ScrollSpeedDamper` can safely reclass the dropdown's
+/// SwiftUI-owned scroll view onto it at runtime (object_setClass changes no
+/// instance layout, so it stays memory-safe).
+private final class DampedScrollView: NSScrollView {
+    static let speed: CGFloat = 0.45
+    override func scrollWheel(with event: NSEvent) {
+        let clip = contentView
+        var origin = clip.bounds.origin
+        origin.y -= event.scrollingDeltaY * Self.speed
+        let maxY = max(0, (documentView?.frame.height ?? clip.bounds.height) - clip.bounds.height)
+        origin.y = min(max(0, origin.y), maxY)
+        clip.scroll(to: origin)
+        reflectScrolledClipView(clip)
+    }
+}
+
+/// Reclasses the dropdown's enclosing SwiftUI scroll view to `DampedScrollView`
+/// once it exists, so the theme, scheme, and size dropdowns (which all share
+/// InlineDropdown) scroll at the same gentler rate. Mirrors ScrollObserver's
+/// enclosing-scroll-view attach.
+private struct ScrollSpeedDamper: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView {
+        let v = NSView(frame: .zero)
+        DispatchQueue.main.async { Self.damp(from: v) }
+        return v
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        if !(nsView.enclosingScrollView is DampedScrollView) {
+            DispatchQueue.main.async { Self.damp(from: nsView) }
+        }
+    }
+
+    private static func damp(from view: NSView) {
+        guard let sv = view.enclosingScrollView, !(sv is DampedScrollView) else { return }
+        // Only reclass a plain NSScrollView. If anything has KVO-observed it, the
+        // runtime has already swapped its isa to a dynamic NSKVONotifying_ subclass;
+        // overwriting that would break KVO, so leave such an instance native.
+        let name = object_getClass(sv).map { String(cString: class_getName($0)) } ?? ""
+        guard !name.hasPrefix("NSKVONotifying_") else { return }
+        object_setClass(sv, DampedScrollView.self)
     }
 }
 
