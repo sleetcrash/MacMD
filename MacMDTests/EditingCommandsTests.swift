@@ -43,6 +43,24 @@ final class EditingCommandsTests: XCTestCase {
         XCTAssertEqual(edit.selectionAfter, NSRange(location: 0, length: 2))
     }
 
+    // MARK: - Link wrap
+
+    func testLinkWrapsSelectionAndSelectsURLPlaceholder() {
+        let text = "see docs" as NSString
+        let selection = NSRange(location: 4, length: 4) // "docs"
+        let edit = EditingCommands.linkWrap(in: text, selection: selection)
+        XCTAssertEqual(edit.range, selection)
+        XCTAssertEqual(edit.replacement, "[docs](url)")
+        XCTAssertEqual(edit.selectionAfter, NSRange(location: 11, length: 3)) // "url"
+    }
+
+    func testLinkEmptySelectionInsertsTemplateWithCaretInBrackets() {
+        let text = "" as NSString
+        let edit = EditingCommands.linkWrap(in: text, selection: NSRange(location: 0, length: 0))
+        XCTAssertEqual(edit.replacement, "[](url)")
+        XCTAssertEqual(edit.selectionAfter, NSRange(location: 1, length: 0))
+    }
+
     // MARK: - Emphasis toggle: empty selection inserts the pair, caret between
 
     func testBoldEmptySelectionInsertsPairWithCaretBetween() {
