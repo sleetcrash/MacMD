@@ -109,6 +109,7 @@ struct CustomThemeEditor: View {
         .background(SystemWindowAppearance())
         .background(PositionBesideAppearance())
         .background(RaiseOnOpen())
+        .background(FloatAboveDocument())
         .onExitCommand {
             if showDeleteConfirm { showDeleteConfirm = false } else { dismiss() }
         }
@@ -120,6 +121,7 @@ struct CustomThemeEditor: View {
             // cascades this window shut), re-showing it here would resurrect a
             // closing window, so skip the re-focus in that case.
             NSColorPanel.shared.orderOut(nil)
+            NSColorPanel.shared.level = .normal   // undo the floating level set while picking
             if let appWin = NSApp.windows.first(where: { $0.title == "Appearance" }), appWin.isVisible {
                 appWin.makeKeyAndOrderFront(nil)
             }
@@ -130,12 +132,12 @@ struct CustomThemeEditor: View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Custom Theme")
                 .font(.system(size: 12, weight: .semibold))
+                .frame(maxWidth: .infinity, alignment: .center)
 
             // One swatch row laid out like the Appearance theme box: light trio │
             // dark trio, with a sun (left) and moon (right) marking which is which.
-            // Heading labels sit centered above each swatch. The Name field is a
-            // separate row below the grid, a leading label plus a field that fills
-            // to the window's right content edge.
+            // Heading labels sit centered above each swatch; the Name field spans
+            // the swatch columns just below them. The grid and header are centered.
             Grid(alignment: .center, horizontalSpacing: 6, verticalSpacing: 8) {
                 GridRow {
                     Text("")
@@ -169,38 +171,39 @@ struct CustomThemeEditor: View {
                     Image(systemName: "moon.fill").font(.system(size: 12)).foregroundStyle(Pane.muted)
                         .accessibilityLabel("Dark")
                 }
+                GridRow {
+                    Color.clear.gridCellUnsizedAxes([.horizontal, .vertical])   // sun column
+                    TextField("Name", text: $draft.name)
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 11))
+                        .padding(.horizontal, 8)
+                        .frame(height: 26)
+                        .frame(maxWidth: .infinity)
+                        .background(Pane.field)
+                        .overlay(Rectangle().strokeBorder(Pane.border, lineWidth: 1))
+                        .onChange(of: draft.name) { _, v in if v.count > 10 { draft.name = String(v.prefix(10)) } }
+                        .padding(.top, 6)
+                        .gridCellColumns(safeCount * 2 + 1)   // L1 ... D3: spans the 6 swatches + divider
+                    Color.clear.gridCellUnsizedAxes([.horizontal, .vertical])   // moon column
+                }
             }
+            .frame(maxWidth: .infinity)
 
-            HStack(spacing: 8) {
-                Text("Name")
-                    .font(.system(size: 10))
-                    .foregroundStyle(Pane.muted)
-                TextField("", text: $draft.name)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 11))
-                    .padding(.horizontal, 8)
-                    .frame(height: 26)
-                    .frame(maxWidth: .infinity)
-                    .background(Pane.field)
-                    .overlay(Rectangle().strokeBorder(Pane.border, lineWidth: 1))
-                    .onChange(of: draft.name) { _, v in if v.count > 10 { draft.name = String(v.prefix(10)) } }
-            }
-
-            // Delete (red, only when editing a saved theme) / Close on the left;
-            // Apply / Save on the right, matches the Appearance window.
+            // Delete (red, only when editing a saved theme), Close, and Save: a
+            // uniform width, centered as a group, in both the new and edit windows.
             HStack(spacing: 10) {
                 if draft.editingId != nil {
                     Button("Delete") { showDeleteConfirm = true }
-                        .buttonStyle(SquareButtonStyle(tint: Self.deleteRed))
+                        .buttonStyle(SquareButtonStyle(tint: Self.deleteRed, width: 72))
                 }
                 Button("Close") { dismiss() }
-                    .buttonStyle(SquareButtonStyle())
-                Spacer()
+                    .buttonStyle(SquareButtonStyle(width: 72))
                 Button("Save") { save() }
-                    .buttonStyle(SquareButtonStyle())
+                    .buttonStyle(SquareButtonStyle(width: 72))
                     .disabled(!canSave)
                     .keyboardShortcut(.defaultAction)
             }
+            .frame(maxWidth: .infinity, alignment: .center)
         }
         .padding(EdgeInsets(top: 26, leading: 20, bottom: 20, trailing: 20))
         .foregroundStyle(Pane.text)
@@ -366,6 +369,10 @@ private final class PanelColorWell: NSColorWell {
     override func activate(_ exclusive: Bool) {
         super.activate(true)            // exclusive: only one well is the panel target
         NSColorPanel.shared.showsAlpha = false
+        // The Custom Theme window floats above the document; float the shared color
+        // panel to the same level so it still comes forward over the window when
+        // picking a color (otherwise the floating window would trap it behind).
+        NSColorPanel.shared.level = .floating
         onActivate()                    // tell SwiftUI which swatch is now selected
     }
 }
@@ -406,10 +413,10 @@ struct PositionBesideAppearance: NSViewRepresentable {
     final class Coordinator { var positioned = false }
 }
 
-/// Raises and keys the Custom Theme window once, when it appears, so it comes to
-/// the front of the document window it was opened over. Front-on-open only (not a
-/// floating panel: a floating level would sit above the shared NSColorPanel and
-/// block color picking).
+/// Raises and keys the Custom Theme window once, when it appears, so it takes
+/// focus over the document window it was opened over. The window is also pinned
+/// above the document by `FloatAboveDocument`; the shared color panel is floated
+/// to match (see PanelColorWell.activate) so color picking still works.
 struct RaiseOnOpen: NSViewRepresentable {
     func makeNSView(context: Context) -> NSView { NSView() }
     func makeCoordinator() -> Coordinator { Coordinator() }
