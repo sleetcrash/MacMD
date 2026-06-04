@@ -8,7 +8,10 @@ enum WordCount {
     }
 
     /// Count words via Unicode word boundaries (handles punctuation, whitespace
-    /// runs, and CJK), and characters as grapheme clusters. O(n): the caller
+    /// runs, and CJK), and characters as grapheme clusters. Ordered-list marker
+    /// numbers (`1.`, `2)`, ...) are excluded, matching Word / Pages / Docs, where
+    /// the auto-generated list number is never part of the word count; bullets
+    /// (`-`, `*`, `+`) were already excluded as punctuation. O(n): the caller
     /// debounces so this does not run on every keystroke.
     static func stats(for text: String) -> Stats {
         var words = 0
@@ -16,7 +19,37 @@ enum WordCount {
                                  options: [.byWords, .localized]) { _, _, _, _ in
             words += 1
         }
-        return Stats(words: words, characters: text.count)
+        // Each ordered-list marker (e.g. "1.") is enumerated as exactly one numeric
+        // word; subtract those so the marker number does not inflate the count.
+        return Stats(words: max(0, words - orderedListMarkerCount(in: text)),
+                     characters: text.count)
+    }
+
+    /// Number of lines that begin (after optional indentation) with an ordered-list
+    /// marker: one or more ASCII digits, then `.` or `)`, then whitespace. Matches
+    /// CommonMark's marker shape, so an inline "1." or a leading year like "2024 "
+    /// (no delimiter + space) is left counted as a normal word.
+    private static func orderedListMarkerCount(in text: String) -> Int {
+        var count = 0
+        text.enumerateLines { line, _ in
+            if lineStartsWithOrderedMarker(line) { count += 1 }
+        }
+        return count
+    }
+
+    private static func lineStartsWithOrderedMarker(_ line: String) -> Bool {
+        var i = line.startIndex
+        while i < line.endIndex, line[i] == " " || line[i] == "\t" {
+            i = line.index(after: i)
+        }
+        let digitsStart = i
+        while i < line.endIndex, line[i] >= "0", line[i] <= "9" {
+            i = line.index(after: i)
+        }
+        guard i > digitsStart else { return false }                 // at least one digit
+        guard i < line.endIndex, line[i] == "." || line[i] == ")" else { return false }
+        i = line.index(after: i)
+        return i < line.endIndex && (line[i] == " " || line[i] == "\t")
     }
 
     /// Estimated silent reading time in whole minutes at a conservative 200 wpm.
