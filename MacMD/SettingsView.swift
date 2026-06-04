@@ -244,8 +244,9 @@ struct SettingsView: View {
                          appearance: wcAppearance, fontSize: CGFloat(wcFontSize))
                 .frame(maxWidth: .infinity)
             HStack(spacing: 10) {
-                Button("Close") { theme.revertToSaved(); dismiss() }
-                    .buttonStyle(SquareButtonStyle())
+                // No Close button: the title-bar close control and Escape already
+                // revert any unsaved Apply and dismiss (via onDisappear), matching
+                // the Custom Theme window. Apply and Save sit at the trailing edge.
                 Spacer()
                 Button("Apply") {
                     theme.apply(coloring: wcColoring, themeId: wcThemeId,
