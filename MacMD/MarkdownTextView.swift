@@ -293,12 +293,28 @@ final class ClickableTextView: NSTextView {
     /// Format menu's Bold (`**`) and Italic (`*`) commands.
     func macmdBold(_ sender: Any?) { applyEmphasis(marker: "**") }
     func macmdItalic(_ sender: Any?) { applyEmphasis(marker: "*") }
+    func macmdStrikethrough(_ sender: Any?) { applyEmphasis(marker: "~~") }
+    func macmdCode(_ sender: Any?) { applyEmphasis(marker: "`") }
 
     private func applyEmphasis(marker: String) {
         guard let ts = textStorage else { return }
         let edit = EditingCommands.emphasisToggle(in: ts.string as NSString,
                                                   selection: selectedRange(),
                                                   marker: marker)
+        applyTextEdit(edit)
+    }
+
+    /// Wrap the selection as a markdown link `[label](url)`, leaving the `url`
+    /// placeholder selected. Bound to the Format menu's Link command.
+    func macmdLink(_ sender: Any?) {
+        guard let ts = textStorage else { return }
+        let edit = EditingCommands.linkWrap(in: ts.string as NSString, selection: selectedRange())
+        applyTextEdit(edit)
+    }
+
+    /// Apply a computed `EditingCommands.TextEdit` through the undo-aware path.
+    private func applyTextEdit(_ edit: EditingCommands.TextEdit) {
+        guard let ts = textStorage else { return }
         guard shouldChangeText(in: edit.range, replacementString: edit.replacement) else { return }
         ts.beginEditing()
         ts.replaceCharacters(in: edit.range, with: edit.replacement)

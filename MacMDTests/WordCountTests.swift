@@ -54,4 +54,47 @@ final class WordCountTests: XCTestCase {
         XCTAssertEqual(WordCount.readingMinutes(words: 100, wpm: 100), 1)
         XCTAssertEqual(WordCount.readingMinutes(words: 150, wpm: 100), 2)
     }
+
+    // MARK: - Ordered-list markers (excluded, like Word/Pages/Docs)
+
+    func testOrderedListMarkerNotCounted() {
+        // "1." is structure, not a word: count only the item text.
+        XCTAssertEqual(WordCount.stats(for: "1. Buy milk").words, 2)
+    }
+
+    func testOrderedListMarkersAcrossLines() {
+        XCTAssertEqual(WordCount.stats(for: "1. one\n2. two\n3. three").words, 3)
+    }
+
+    func testOrderedMarkerWithParenthesis() {
+        XCTAssertEqual(WordCount.stats(for: "1) First").words, 1)
+    }
+
+    func testMultiDigitOrderedMarker() {
+        XCTAssertEqual(WordCount.stats(for: "12. item").words, 1)
+    }
+
+    func testIndentedOrderedMarkerNotCounted() {
+        XCTAssertEqual(WordCount.stats(for: "    1. nested item").words, 2)
+    }
+
+    func testUnorderedBulletUnchanged() {
+        // Bullets were never counted (punctuation); confirm that still holds.
+        XCTAssertEqual(WordCount.stats(for: "- one\n- two").words, 2)
+    }
+
+    func testInlineNumberStillCounts() {
+        // A number mid-sentence is content, not a list marker.
+        XCTAssertEqual(WordCount.stats(for: "I ate 3 apples").words, 4)
+    }
+
+    func testYearAtLineStartIsNotMarker() {
+        // Leading digits with no "." / ")" delimiter are a normal word.
+        XCTAssertEqual(WordCount.stats(for: "2024 was great").words, 3)
+    }
+
+    func testOrderedMarkerOnlyStrippedAtLineStart() {
+        // A "1." in the middle of a line is content, not a list marker.
+        XCTAssertEqual(WordCount.stats(for: "Section 1. is here").words, 4)
+    }
 }

@@ -244,8 +244,9 @@ struct SettingsView: View {
                          appearance: wcAppearance, fontSize: CGFloat(wcFontSize))
                 .frame(maxWidth: .infinity)
             HStack(spacing: 10) {
-                Button("Close") { theme.revertToSaved(); dismiss() }
-                    .buttonStyle(SquareButtonStyle())
+                // No Close button: the title-bar close control and Escape already
+                // revert any unsaved Apply and dismiss (via onDisappear), matching
+                // the Custom Theme window. Apply and Save sit at the trailing edge.
                 Spacer()
                 Button("Apply") {
                     theme.apply(coloring: wcColoring, themeId: wcThemeId,
@@ -875,8 +876,14 @@ struct EmptySwatch: View {
 /// Sharp-cornered bordered button matching the other Settings controls.
 struct SquareButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
-    /// Optional fill (e.g. red for a destructive Delete); nil = the neutral well.
+    /// Optional solid fill (e.g. red for a destructive DEFAULT action like the
+    /// delete-confirmation button); nil = the neutral well.
     var tint: Color? = nil
+    /// Optional colored border + matching label over the neutral well, for a
+    /// non-default destructive action (e.g. the editor's Delete, which only opens
+    /// a confirmation). Lighter weight than `tint` so it does not out-shout the
+    /// default Save button beside it.
+    var outline: Color? = nil
     /// Optional fixed width so a row of buttons can be made uniform regardless of
     /// their label length (nil = size to content).
     var width: CGFloat? = nil
@@ -884,17 +891,23 @@ struct SquareButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 12))
-            .foregroundStyle(tint == nil ? Pane.text : .white)
+            .foregroundStyle(labelColor)
             .padding(.horizontal, 14)
             .frame(width: width, height: 26)
             .background(fill(pressed: configuration.isPressed))
-            .overlay(Rectangle().strokeBorder(tint ?? Pane.border, lineWidth: 1))
+            .overlay(Rectangle().strokeBorder(outline ?? tint ?? Pane.border, lineWidth: 1))
             .opacity(isEnabled ? 1.0 : 0.4)
             .contentShape(Rectangle())
     }
 
+    private var labelColor: Color {
+        if let outline { return outline }   // colored text matching the colored border
+        return tint == nil ? Pane.text : .white
+    }
+
     private func fill(pressed: Bool) -> Color {
         if let tint { return pressed ? tint.opacity(0.75) : tint }
+        // outline and neutral both sit on the neutral well.
         return pressed ? Color(white: 0.40) : Pane.field
     }
 }

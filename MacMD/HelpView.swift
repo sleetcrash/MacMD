@@ -15,7 +15,7 @@ struct HelpView: View {
                     .font(.system(size: 16, weight: .semibold))
 
                 section("Files",
-                        "MacMD opens and saves Markdown (.md) and plain text (.txt). New documents are Markdown by default. Use File > Open and File > Save as usual.")
+                        "MacMD opens and saves Markdown (.md, .markdown, .mdown, .mkd) and plain text (.txt). New documents are Markdown by default. Use File > Open and File > Save as usual.")
 
                 section("Markdown",
                         "Headings, bold, italic, inline code, fenced code, links, lists, task lists, blockquotes, strikethrough, and horizontal rules are highlighted as you type. Front matter at the top of a file (--- for YAML or +++ for TOML) is shown as muted metadata.")
@@ -30,7 +30,10 @@ struct HelpView: View {
                         "In the Appearance window's Theme dropdown choose Custom+ to open the Custom Theme builder. Pick heading colors for light and dark mode. A Standard theme sets H1, H2, and H3 separately; a Unified theme uses one color for all headings. The Appearance window previews each change live. Name and Save the theme, then choose it in the Appearance window to apply it to your document.")
 
                 section("Word count",
-                        "Use View > Show Word Count to show a live word count and reading-time estimate under the editor. It is off by default.")
+                        "Use View > Show Word Count to show a live word count and reading-time estimate under the editor. It is off by default. List markers and ordered-list numbers are not counted.")
+
+                section("Keyboard shortcuts",
+                        "Bold Command-B, Italic Command-I, Strikethrough Shift-Command-X, and Link Command-K (Inline Code is on the Format menu). Toggle a task checkbox with Shift-Command-L. Find with Command-F. Open Settings with Command-Comma. Resize the editor font with Command-Plus, Command-Minus, and Command-0.")
             }
             .padding(24)
             .frame(maxWidth: .infinity, alignment: .leading)

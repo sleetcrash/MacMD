@@ -104,7 +104,7 @@ struct CustomThemeEditor: View {
             editor
             if showDeleteConfirm { deleteConfirmation }
         }
-        .frame(width: 354)   // matches the Appearance window; fits Delete/Close/Save
+        .frame(width: 264)   // hugs the swatch row; no Close button to widen for
         .background(Pane.window)
         .background(SystemWindowAppearance())
         .background(PositionBesideAppearance())
@@ -189,21 +189,22 @@ struct CustomThemeEditor: View {
             }
             .frame(maxWidth: .infinity)
 
-            // Delete (red, only when editing a saved theme), Close, and Save: a
-            // uniform width, centered as a group, in both the new and edit windows.
+            // Save sits bottom-right and Delete (red outline, only when editing a
+            // saved theme) bottom-left, at the window margins -- the macOS-standard
+            // action placement. The title-bar close button dismisses the window, so
+            // there is no separate Close button to duplicate it.
             HStack(spacing: 10) {
                 if draft.editingId != nil {
                     Button("Delete") { showDeleteConfirm = true }
-                        .buttonStyle(SquareButtonStyle(tint: Self.deleteRed, width: 72))
+                        .buttonStyle(SquareButtonStyle(outline: Self.deleteRed))
                 }
-                Button("Close") { dismiss() }
-                    .buttonStyle(SquareButtonStyle(width: 72))
+                Spacer()
                 Button("Save") { save() }
-                    .buttonStyle(SquareButtonStyle(width: 72))
+                    .buttonStyle(SquareButtonStyle())
                     .disabled(!canSave)
                     .keyboardShortcut(.defaultAction)
             }
-            .frame(maxWidth: .infinity, alignment: .center)
+            .frame(maxWidth: .infinity)
         }
         .padding(EdgeInsets(top: 26, leading: 20, bottom: 20, trailing: 20))
         .foregroundStyle(Pane.text)

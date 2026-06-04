@@ -73,6 +73,31 @@ enum EditingCommands {
         )
     }
 
+    /// Wrap the selection as a markdown link `[label](url)`. With a selection the
+    /// selected text becomes the label and the `url` placeholder is returned
+    /// selected, so the user can immediately type the destination. With no
+    /// selection, inserts `[](url)` with the caret between the brackets to type
+    /// the label first.
+    static func linkWrap(in text: NSString, selection: NSRange) -> TextEdit {
+        let urlPlaceholder = "url"
+        if selection.length == 0 {
+            return TextEdit(
+                range: selection,
+                replacement: "[](\(urlPlaceholder))",
+                selectionAfter: NSRange(location: selection.location + 1, length: 0)
+            )
+        }
+        let label = text.substring(with: selection)
+        let labelLength = (label as NSString).length
+        return TextEdit(
+            range: selection,
+            replacement: "[\(label)](\(urlPlaceholder))",
+            // Select the "url" placeholder, which sits just past "[label](".
+            selectionAfter: NSRange(location: selection.location + labelLength + 3,
+                                    length: (urlPlaceholder as NSString).length)
+        )
+    }
+
     /// Decide what Return should do on a list line. Regexes are compiled per
     /// call: Return is human-paced, so the cost is negligible, and a local
     /// `let` keeps this type free of non-Sendable shared state under Swift 6
