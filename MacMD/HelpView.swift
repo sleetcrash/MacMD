@@ -27,7 +27,7 @@ struct HelpView: View {
                         "Open Format > Appearance to set light, dark, or system appearance, the heading color scheme, and the editor font size. Adjust size quickly with Command-Plus, Command-Minus, and Command-0.")
 
                 section("Custom themes",
-                        "In the Appearance window's Theme dropdown choose Custom+ to open the Custom Theme builder. Pick colors for your H1, H2, and H3 headings in both light (sun) and dark (moon) appearance. The Appearance window previews each change live. Name and Save the theme, then choose it in the Appearance window to apply it to your document.")
+                        "In the Appearance window's Theme dropdown choose Custom+ to open the Custom Theme builder. Pick heading colors for light and dark mode. A Standard theme sets H1, H2, and H3 separately; a Unified theme uses one color for all headings. The Appearance window previews each change live. Name and Save the theme, then choose it in the Appearance window to apply it to your document.")
 
                 section("Word count",
                         "Use View > Show Word Count to show a live word count and reading-time estimate under the editor. It is off by default.")
