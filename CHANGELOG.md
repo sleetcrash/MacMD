@@ -2,6 +2,24 @@
 
 All notable changes to MacMD will be documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.9] - 2026-06-04
+
+### Added
+- Strikethrough, Inline Code, and Link commands in the Format menu (Strikethrough is Shift-Command-X, Link is Command-K).
+- A Spelling and Grammar submenu in the Edit menu, so you can check spelling and toggle check-as-you-type.
+- A Settings item (Command-Comma) in the app menu, the standard place for app preferences. It opens the Appearance window.
+- A Keyboard shortcuts section in the Help window.
+
+### Changed
+- Toggle Task Checkbox moved from the Edit menu to the Format menu, next to Bold and Italic.
+- The word count no longer counts ordered-list numbers (1., 2.), matching Word, Pages, and Google Docs.
+- The Custom Theme window is narrower so it fits its content, with no empty space on the sides. Its buttons follow the standard macOS layout (Save at the bottom-right, Delete at the bottom-left).
+- The Help window's Files section now lists every supported file type (.md, .markdown, .mdown, .mkd).
+
+### Removed
+- The Window menu no longer repeats Appearance, Custom Theme, and Help. They are already in the Format and Help menus.
+- The Custom Theme and Appearance windows no longer have a Close button. Use the red window button or Escape to close them.
+
 ## [1.2.8] - 2026-06-04
 
 ### Fixed
