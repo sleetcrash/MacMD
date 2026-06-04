@@ -2,6 +2,12 @@
 
 All notable changes to MacMD will be documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.7] - 2026-06-03
+
+### Changed
+- The Custom Theme builder is simpler: a single "Custom Theme" title and no description text (the same guidance lives in the Help window).
+- The theme, scheme, and font-size dropdowns scroll more gently.
+
 ## [1.2.6] - 2026-06-03
 
 ### Changed
