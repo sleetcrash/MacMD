@@ -2,6 +2,15 @@
 
 All notable changes to MacMD will be documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.8] - 2026-06-04
+
+### Fixed
+- The theme, scheme, and font-size dropdowns scroll normally again. A 1.2.7 change had over-dampened them, making the Custom+ row at the bottom of the theme list very hard to reach.
+
+### Changed
+- The Custom Theme builder is tidied up: the title, swatches, name field, and buttons are centered; the name field shows "Name" inside it and spans the swatches; and Delete, Close, and Save are the same size.
+- The Appearance and Custom Theme windows now stay above the document window when you click into the document.
+
 ## [1.2.7] - 2026-06-03
 
 ### Changed
