@@ -225,4 +225,55 @@ final class ThemeControllerTests: XCTestCase {
         c.revertToSaved()
         XCTAssertEqual(c.fontFamilyId, "georgia")
     }
+
+    // MARK: - Cursor (transactional, additive)
+
+    func testInitDefaultsToBarCursorBlinkOn() {
+        let c = ThemeController(defaults: freshDefaults())
+        XCTAssertEqual(c.cursorStyle, .bar)
+        XCTAssertTrue(c.cursorBlink)
+    }
+
+    func testInitLoadsSavedCursor() {
+        let d = freshDefaults()
+        d.set(CursorStyle.block.rawValue, forKey: ThemeSettings.cursorStyleKey)
+        d.set(false, forKey: ThemeSettings.cursorBlinkKey)
+        let c = ThemeController(defaults: d)
+        XCTAssertEqual(c.cursorStyle, .block)
+        XCTAssertFalse(c.cursorBlink)
+    }
+
+    func testInitUnknownCursorStyleFallsBackToBar() {
+        let d = freshDefaults()
+        d.set("squiggle", forKey: ThemeSettings.cursorStyleKey)
+        XCTAssertEqual(ThemeController(defaults: d).cursorStyle, .bar)
+    }
+
+    func testApplyCursorDoesNotPersist() {
+        let d = freshDefaults()
+        let c = ThemeController(defaults: d)
+        c.applyCursor(style: .underline, blink: false)
+        XCTAssertEqual(c.cursorStyle, .underline)
+        XCTAssertFalse(c.cursorBlink)
+        XCTAssertNil(d.object(forKey: ThemeSettings.cursorStyleKey))
+    }
+
+    func testSaveCursorPersists() {
+        let d = freshDefaults()
+        let c = ThemeController(defaults: d)
+        c.saveCursor(style: .block, blink: false)
+        XCTAssertEqual(d.string(forKey: ThemeSettings.cursorStyleKey), CursorStyle.block.rawValue)
+        XCTAssertEqual(d.object(forKey: ThemeSettings.cursorBlinkKey) as? Bool, false)
+    }
+
+    func testRevertRestoresSavedCursor() {
+        let d = freshDefaults()
+        d.set(CursorStyle.block.rawValue, forKey: ThemeSettings.cursorStyleKey)
+        d.set(false, forKey: ThemeSettings.cursorBlinkKey)
+        let c = ThemeController(defaults: d)
+        c.applyCursor(style: .bar, blink: true)
+        c.revertToSaved()
+        XCTAssertEqual(c.cursorStyle, .block)
+        XCTAssertFalse(c.cursorBlink)
+    }
 }

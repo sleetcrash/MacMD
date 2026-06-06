@@ -14,6 +14,8 @@ final class ThemeController: ObservableObject {
     @Published private(set) var fontSize: Double
     @Published private(set) var appearance: AppAppearance
     @Published private(set) var fontFamilyId: String
+    @Published private(set) var cursorStyle: CursorStyle
+    @Published private(set) var cursorBlink: Bool
 
     private let defaults: UserDefaults
 
@@ -24,6 +26,8 @@ final class ThemeController: ObservableObject {
         self.fontSize = ThemeController.loadFontSize(defaults)
         self.appearance = ThemeController.loadAppearance(defaults)
         self.fontFamilyId = ThemeController.loadFontFamilyId(defaults)
+        self.cursorStyle = ThemeController.loadCursorStyle(defaults)
+        self.cursorBlink = ThemeController.loadCursorBlink(defaults)
     }
 
     // MARK: - Saved (persisted) state
@@ -33,6 +37,8 @@ final class ThemeController: ObservableObject {
     var savedFontSize: Double { ThemeController.loadFontSize(defaults) }
     var savedAppearance: AppAppearance { ThemeController.loadAppearance(defaults) }
     var savedFontFamilyId: String { ThemeController.loadFontFamilyId(defaults) }
+    var savedCursorStyle: CursorStyle { ThemeController.loadCursorStyle(defaults) }
+    var savedCursorBlink: Bool { ThemeController.loadCursorBlink(defaults) }
 
     // MARK: - Transitions
 
@@ -65,11 +71,27 @@ final class ThemeController: ObservableObject {
         self.fontFamilyId = id
     }
 
+    /// Preview the cursor in the live editor without persisting it.
+    func applyCursor(style: CursorStyle, blink: Bool) {
+        self.cursorStyle = style
+        self.cursorBlink = blink
+    }
+
+    /// Persist and apply the cursor settings.
+    func saveCursor(style: CursorStyle, blink: Bool) {
+        defaults.set(style.rawValue, forKey: ThemeSettings.cursorStyleKey)
+        defaults.set(blink, forKey: ThemeSettings.cursorBlinkKey)
+        self.cursorStyle = style
+        self.cursorBlink = blink
+    }
+
     /// Discard any unsaved Apply and snap the effective state back to saved.
     func revertToSaved() {
         apply(coloring: savedColoring, themeId: savedThemeId,
               fontSize: savedFontSize, appearance: savedAppearance)
         self.fontFamilyId = savedFontFamilyId
+        self.cursorStyle = savedCursorStyle
+        self.cursorBlink = savedCursorBlink
     }
 
     /// Immediately change AND persist only the font size (for the View-menu
@@ -101,5 +123,11 @@ final class ThemeController: ObservableObject {
     private static func loadFontFamilyId(_ d: UserDefaults) -> String {
         let stored = d.string(forKey: ThemeSettings.fontFamilyKey) ?? FontFamily.default.id
         return FontFamily.all.contains(where: { $0.id == stored }) ? stored : FontFamily.default.id
+    }
+    private static func loadCursorStyle(_ d: UserDefaults) -> CursorStyle {
+        CursorStyle(rawValue: d.string(forKey: ThemeSettings.cursorStyleKey) ?? "") ?? .bar
+    }
+    private static func loadCursorBlink(_ d: UserDefaults) -> Bool {
+        d.object(forKey: ThemeSettings.cursorBlinkKey) == nil ? true : d.bool(forKey: ThemeSettings.cursorBlinkKey)
     }
 }

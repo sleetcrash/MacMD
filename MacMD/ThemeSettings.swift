@@ -10,6 +10,8 @@ enum ThemeSettings {
     static let appearanceKey = "appAppearance"
     static let customsKey = "customPalettes"
     static let fontFamilyKey = "editorFontFamily"
+    static let cursorStyleKey = "cursorStyle"
+    static let cursorBlinkKey = "cursorBlink"
 
     // MARK: - Pure resolver (unit-tested)
 
