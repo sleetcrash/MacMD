@@ -9,6 +9,7 @@ enum ThemeSettings {
     static let themeIdKey = "themeId"
     static let appearanceKey = "appAppearance"
     static let customsKey = "customPalettes"
+    static let fontFamilyKey = "editorFontFamily"
 
     // MARK: - Pure resolver (unit-tested)
 
