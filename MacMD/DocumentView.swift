@@ -24,6 +24,7 @@ struct DocumentView: View {
         VStack(spacing: 0) {
             MarkdownTextView(text: $document.text,
                              fontSize: CGFloat(theme.fontSize),
+                             fontFamily: FontFamily.resolve(id: theme.fontFamilyId),
                              coloring: theme.coloring,
                              palette: palette,
                              appearance: theme.appearance)

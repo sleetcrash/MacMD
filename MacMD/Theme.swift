@@ -5,8 +5,12 @@ enum Theme {
     static let editorLineSpacing: CGFloat = 4
 
     private(set) static var editorFontSize: CGFloat = FontSize.standard
-    private(set) static var editorFont: NSFont = monospaced(FontSize.standard)
-    private static var headingFonts: [NSFont] = makeHeadingFonts(base: FontSize.standard)
+    private(set) static var editorFontFamily: FontFamily = .default
+    private(set) static var editorFont: NSFont = FontFamily.default.font(size: FontSize.standard)
+    /// Always-monospace font for inline and fenced code, so code stays legible
+    /// under a proportional body font. Tracks the editor size, not the family.
+    private(set) static var codeFont: NSFont = .monospacedSystemFont(ofSize: FontSize.standard, weight: .regular)
+    private static var headingFonts: [NSFont] = makeHeadingFonts(base: FontSize.standard, family: .default)
 
     /// Clamps to the supported range and rebuilds the cached fonts. Returns
     /// whether the size actually changed, so callers can skip a re-highlight.
@@ -15,8 +19,17 @@ enum Theme {
         let clamped = FontSize.clamp(size)
         guard clamped != editorFontSize else { return false }
         editorFontSize = clamped
-        editorFont = monospaced(clamped)
-        headingFonts = makeHeadingFonts(base: clamped)
+        rebuildFonts()
+        return true
+    }
+
+    /// Sets the body font family and rebuilds the cached fonts. Returns whether
+    /// it changed (mirrors `setEditorFontSize`). The code font is unaffected.
+    @discardableResult
+    static func setEditorFontFamily(_ family: FontFamily) -> Bool {
+        guard family != editorFontFamily else { return false }
+        editorFontFamily = family
+        rebuildFonts()
         return true
     }
 
@@ -25,14 +38,16 @@ enum Theme {
         return headingFonts[clamped - 1]
     }
 
-    private static func monospaced(_ size: CGFloat) -> NSFont {
-        .monospacedSystemFont(ofSize: size, weight: .regular)
+    private static func rebuildFonts() {
+        editorFont = editorFontFamily.font(size: editorFontSize)
+        codeFont = .monospacedSystemFont(ofSize: editorFontSize, weight: .regular)
+        headingFonts = makeHeadingFonts(base: editorFontSize, family: editorFontFamily)
     }
 
-    private static func makeHeadingFonts(base: CGFloat) -> [NSFont] {
+    private static func makeHeadingFonts(base: CGFloat, family: FontFamily) -> [NSFont] {
         (1...6).map { level in
             let bump = CGFloat(7 - level)
-            return .monospacedSystemFont(ofSize: base + bump, weight: .bold)
+            return family.boldFont(size: base + bump)
         }
     }
 

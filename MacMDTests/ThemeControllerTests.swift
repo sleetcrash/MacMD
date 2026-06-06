@@ -180,4 +180,49 @@ final class ThemeControllerTests: XCTestCase {
         draft.begin(scheme: .standard)
         XCTAssertNil(draft.selectedWell)
     }
+
+    // MARK: - Font family (transactional, additive)
+
+    func testInitDefaultsToSystemMonospaceFamily() {
+        let c = ThemeController(defaults: freshDefaults())
+        XCTAssertEqual(c.fontFamilyId, FontFamily.default.id)
+    }
+
+    func testInitLoadsSavedFontFamily() {
+        let d = freshDefaults()
+        d.set("georgia", forKey: ThemeSettings.fontFamilyKey)
+        XCTAssertEqual(ThemeController(defaults: d).fontFamilyId, "georgia")
+    }
+
+    func testInitUnknownFontFamilyFallsBack() {
+        let d = freshDefaults()
+        d.set("not-a-real-font", forKey: ThemeSettings.fontFamilyKey)
+        XCTAssertEqual(ThemeController(defaults: d).fontFamilyId, FontFamily.default.id)
+    }
+
+    func testApplyFontFamilyDoesNotPersist() {
+        let d = freshDefaults()
+        let c = ThemeController(defaults: d)
+        c.applyFontFamily("menlo")
+        XCTAssertEqual(c.fontFamilyId, "menlo")
+        XCTAssertNil(d.string(forKey: ThemeSettings.fontFamilyKey))
+        XCTAssertEqual(c.savedFontFamilyId, FontFamily.default.id)
+    }
+
+    func testSaveFontFamilyPersists() {
+        let d = freshDefaults()
+        let c = ThemeController(defaults: d)
+        c.saveFontFamily("monaco")
+        XCTAssertEqual(c.fontFamilyId, "monaco")
+        XCTAssertEqual(d.string(forKey: ThemeSettings.fontFamilyKey), "monaco")
+    }
+
+    func testRevertRestoresSavedFontFamily() {
+        let d = freshDefaults()
+        d.set("georgia", forKey: ThemeSettings.fontFamilyKey)
+        let c = ThemeController(defaults: d)
+        c.applyFontFamily("menlo")
+        c.revertToSaved()
+        XCTAssertEqual(c.fontFamilyId, "georgia")
+    }
 }

@@ -110,6 +110,7 @@ struct SettingsView: View {
     @State private var wcThemeId = ColorTheming.defaultStandardId
     @State private var wcFontSize = Double(FontSize.standard)
     @State private var wcAppearanceRaw = AppAppearance.system.rawValue
+    @State private var wcFontFamilyId = FontFamily.default.id
     @State private var sizeText = ""
 
     // Which dropdown (if any) is open, and the on-screen frame of each trigger
@@ -128,6 +129,7 @@ struct SettingsView: View {
     private var wcPalette: Palette? {
         ThemeSettings.resolvePalette(coloring: wcColoring, themeId: wcThemeId, customs: customs)
     }
+    private var wcFontFamily: FontFamily { FontFamily.resolve(id: wcFontFamilyId) }
     // Apply lights up when the selection differs from what the editor is
     // currently showing (the applied/effective state), so you can always apply
     // your choice, even if it equals the saved value. Save lights up when the
@@ -137,12 +139,14 @@ struct SettingsView: View {
         || wcThemeId != theme.themeId
         || wcFontSize != theme.fontSize
         || wcAppearance != theme.appearance
+        || wcFontFamilyId != theme.fontFamilyId
     }
     private var saveDirty: Bool {
         wcSchemeRaw != theme.savedColoring.rawValue
         || wcThemeId != theme.savedThemeId
         || wcFontSize != theme.savedFontSize
         || wcAppearanceRaw != theme.savedAppearance.rawValue
+        || wcFontFamilyId != theme.savedFontFamilyId
     }
     // A new custom theme is being edited in the Custom Theme window but hasn't been
     // saved yet, so it has no committable id. The preview shows the live draft, but
@@ -239,6 +243,9 @@ struct SettingsView: View {
                     schemeBox.frame(width: segWidth, height: rowHeight)
                 }
             }
+            LabeledField(label: "Font") {
+                fontBox.frame(width: wideWidth + 14 + segWidth, height: rowHeight)
+            }
             ThemePreview(coloring: customDraft.active ? customDraft.scheme : wcColoring,
                          palette: customDraft.active ? customDraft.palette : wcPalette,
                          appearance: wcAppearance, fontSize: CGFloat(wcFontSize))
@@ -251,12 +258,14 @@ struct SettingsView: View {
                 Button("Apply") {
                     theme.apply(coloring: wcColoring, themeId: wcThemeId,
                                 fontSize: wcFontSize, appearance: wcAppearance)
+                    theme.applyFontFamily(wcFontFamilyId)
                 }
                     .buttonStyle(SquareButtonStyle())
                     .disabled(!applyDirty || draftUncommitted)
                 Button("Save") {
                     theme.save(coloring: wcColoring, themeId: wcThemeId,
                                fontSize: wcFontSize, appearance: wcAppearance)
+                    theme.saveFontFamily(wcFontFamilyId)
                     dismiss()
                 }
                     .buttonStyle(SquareButtonStyle())
@@ -277,6 +286,26 @@ struct SettingsView: View {
         .buttonStyle(.plain)
         .disabled(wcColoring == .off)
         .reportsFrame(.theme)
+    }
+
+    private var fontBox: some View {
+        Button { toggle(.font) } label: {
+            HStack(spacing: 0) {
+                Text(wcFontFamily.displayName)
+                    .font(Font(wcFontFamily.font(size: 12) as CTFont))
+                    .lineLimit(1)
+                Spacer(minLength: 8)
+                Image(systemName: "chevron.down").font(.system(size: 8)).opacity(0.5)
+                    .rotationEffect(.degrees(openMenu == .font ? 180 : 0))
+                    .animation(.easeInOut(duration: 0.15), value: openMenu == .font)
+            }
+            .padding(.horizontal, 10)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Pane.field)
+            .overlay(Rectangle().strokeBorder(Pane.border, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .reportsFrame(.font)
     }
 
     private var schemeBox: some View {
@@ -351,12 +380,18 @@ struct SettingsView: View {
                 DropdownItem(id: "\(s)", kind: .text("\(s)"), selected: sizeText == "\(s)",
                              centered: true, action: { pickSize(s) })
             }
+        case .font:
+            return FontFamily.all.map { fam in
+                DropdownItem(id: fam.id, kind: .fontSample(fam), selected: fam.id == wcFontFamilyId,
+                             action: { pickFont(fam.id) })
+            }
         }
     }
 
     private func toggle(_ field: MenuField) { openMenu = (openMenu == field ? nil : field) }
 
     private func pickTheme(_ id: String) { wcThemeId = id; openMenu = nil }
+    private func pickFont(_ id: String) { wcFontFamilyId = id; openMenu = nil }
 
     private func pickScheme(_ c: Coloring) {
         defer { openMenu = nil }
@@ -382,6 +417,7 @@ struct SettingsView: View {
         wcThemeId = theme.savedThemeId
         wcFontSize = theme.savedFontSize
         wcAppearanceRaw = theme.savedAppearance.rawValue
+        wcFontFamilyId = theme.savedFontFamilyId
         sizeText = "\(Int(theme.savedFontSize))"
     }
 
@@ -399,7 +435,7 @@ struct SettingsView: View {
 // MARK: - Dropdown plumbing
 
 /// Identifies which trigger box a dropdown belongs to.
-enum MenuField: Hashable { case theme, scheme, size }
+enum MenuField: Hashable { case theme, scheme, size, font }
 
 /// Collects each trigger box's frame (in the settings coordinate space) so the
 /// root overlay can place the dropdown flush beneath the right box.
@@ -427,6 +463,7 @@ struct DropdownItem: Identifiable {
         case customPlus(Coloring)   // "Custom+" + empty light | dark swatches
         case header(String)         // non-selectable subheading
         case text(String)           // plain title (scheme / size)
+        case fontSample(FontFamily) // family name rendered in its own face
     }
     let id: String
     let kind: Kind
@@ -719,6 +756,13 @@ private struct DropdownRow: View {
                     Text(title).font(.system(size: 11))
                     Spacer(minLength: 0)
                 }
+            }
+        case .fontSample(let fam):
+            row {
+                Text(fam.displayName)
+                    .font(Font(fam.font(size: 12) as CTFont))
+                    .lineLimit(1)
+                Spacer(minLength: 0)
             }
         }
     }

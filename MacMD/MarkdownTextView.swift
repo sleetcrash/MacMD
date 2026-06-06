@@ -4,6 +4,7 @@ import AppKit
 struct MarkdownTextView: NSViewRepresentable {
     @Binding var text: String
     var fontSize: CGFloat
+    var fontFamily: FontFamily
     var coloring: Coloring
     var palette: Palette?
     var appearance: AppAppearance
@@ -14,6 +15,7 @@ struct MarkdownTextView: NSViewRepresentable {
 
     func makeNSView(context: Context) -> NSScrollView {
         Theme.setEditorFontSize(fontSize)
+        Theme.setEditorFontFamily(fontFamily)
         Theme.setActiveTheme(coloring: coloring, palette: palette)
         let scrollView = ClickableTextView.scrollableClickableTextView()
         scrollView.hasVerticalScroller = true
@@ -90,7 +92,9 @@ struct MarkdownTextView: NSViewRepresentable {
 
     func updateNSView(_ nsView: NSScrollView, context: Context) {
         guard let textView = nsView.documentView as? NSTextView else { return }
-        if Theme.setEditorFontSize(fontSize) {
+        let sizeChanged = Theme.setEditorFontSize(fontSize)
+        let familyChanged = Theme.setEditorFontFamily(fontFamily)
+        if sizeChanged || familyChanged {
             context.coordinator.applyFontChange(to: textView)
         }
         if Theme.setActiveTheme(coloring: coloring, palette: palette) {
