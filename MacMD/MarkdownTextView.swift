@@ -274,6 +274,15 @@ final class ClickableTextView: NSTextView {
         updateInsertionPointStateAndRestartTimer(true)
     }
 
+    /// Blink off: keep the caret steady by not letting the blink timer toggle it
+    /// off. Combined with `drawInsertionPoint` forcing `on = true` when blink is
+    /// off, the caret stays visible. HONEST NOTE: NSTextView caret blinking is
+    /// fiddly; if live verification shows residual blink or artifacts, ship
+    /// Bar/Block/Underline without blink-off and add a FUTURE.md row.
+    override func updateInsertionPointStateAndRestartTimer(_ restartFlag: Bool) {
+        super.updateInsertionPointStateAndRestartTimer(Theme.cursorBlink ? restartFlag : false)
+    }
+
     static func scrollableClickableTextView() -> NSScrollView {
         let scrollView = NSScrollView()
         let textView = ClickableTextView()
