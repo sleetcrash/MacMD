@@ -6,6 +6,7 @@ struct MacMDApp: App {
     @StateObject private var themeController = ThemeController()
     @StateObject private var customDraft = CustomDraft()
     @AppStorage(WordCountPref.key) private var showWordCount = false
+    @AppStorage(FormattingPref.key) private var showFormatting = true
 
     var body: some Scene {
         DocumentGroup(newDocument: MarkdownDocument()) { file in
@@ -61,6 +62,11 @@ struct MacMDApp: App {
                 Button(showWordCount ? "Hide Word Count" : "Show Word Count") {
                     WordCountPref.set(!showWordCount)
                 }
+                Toggle("Show Formatting", isOn: Binding(
+                    get: { showFormatting },
+                    set: { FormattingPref.set($0) }
+                ))
+                .keyboardShortcut("/", modifiers: .command)
                 Divider()
             }
         }
