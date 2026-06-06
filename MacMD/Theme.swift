@@ -77,6 +77,21 @@ enum Theme {
         return activePalette.headingColor(level: level)
     }
 
+    // MARK: - Cursor
+
+    private(set) static var cursorStyle: CursorStyle = .bar
+    private(set) static var cursorBlink: Bool = true
+
+    /// Sets the caret style + blink. Returns whether anything changed, so callers
+    /// can skip a redraw (mirrors `setEditorFontSize`).
+    @discardableResult
+    static func setCursor(style: CursorStyle, blink: Bool) -> Bool {
+        guard style != cursorStyle || blink != cursorBlink else { return false }
+        cursorStyle = style
+        cursorBlink = blink
+        return true
+    }
+
     static var textColor: NSColor { .labelColor }
     static var mutedColor: NSColor { .secondaryLabelColor }
     static var accentColor: NSColor { .controlAccentColor }

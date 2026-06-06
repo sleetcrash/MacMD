@@ -30,4 +30,19 @@ final class CursorStyleTests: XCTestCase {
     func testBlockWidthFallsBackWhenNegative() {
         XCTAssertEqual(CursorGeometry.blockWidth(glyphWidth: -1, fallback: 7), 7)
     }
+
+    // MARK: - Theme cursor state
+
+    func testThemeDefaultsToBarBlinkOn() {
+        Theme.setCursor(style: .bar, blink: true)
+        XCTAssertEqual(Theme.cursorStyle, .bar)
+        XCTAssertTrue(Theme.cursorBlink)
+    }
+
+    func testSetCursorReportsChange() {
+        Theme.setCursor(style: .bar, blink: true)
+        XCTAssertTrue(Theme.setCursor(style: .block, blink: true))
+        XCTAssertFalse(Theme.setCursor(style: .block, blink: true))
+        Theme.setCursor(style: .bar, blink: true)   // reset for other suites
+    }
 }
