@@ -43,6 +43,7 @@
 		F200000000000000000000D6 /* FormattingPrefTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000D6 /* FormattingPrefTests.swift */; };
 		F200000000000000000000D7 /* LineNumbering.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000D7 /* LineNumbering.swift */; };
 		F200000000000000000000D8 /* LineNumberingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000D8 /* LineNumberingTests.swift */; };
+		F200000000000000000000D9 /* LineNumberRulerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000D9 /* LineNumberRulerView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -94,6 +95,7 @@
 		F100000000000000000000D6 /* FormattingPrefTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FormattingPrefTests.swift; sourceTree = "<group>"; };
 		F100000000000000000000D7 /* LineNumbering.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LineNumbering.swift; sourceTree = "<group>"; };
 		F100000000000000000000D8 /* LineNumberingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LineNumberingTests.swift; sourceTree = "<group>"; };
+		F100000000000000000000D9 /* LineNumberRulerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LineNumberRulerView.swift; sourceTree = "<group>"; };
 		F100000000000000000000A4 /* MacMD.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MacMD.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F100000000000000000000A5 /* MacMDTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MacMDTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -148,6 +150,7 @@
 				F100000000000000000000D3 /* CursorStyle.swift */,
 				F100000000000000000000D5 /* FormattingPref.swift */,
 				F100000000000000000000D7 /* LineNumbering.swift */,
+				F100000000000000000000D9 /* LineNumberRulerView.swift */,
 				F100000000000000000000A0 /* Assets.xcassets */,
 				F100000000000000000000A2 /* Info.plist */,
 				F100000000000000000000A1 /* MacMD.entitlements */,
@@ -304,6 +307,7 @@
 				F200000000000000000000D3 /* CursorStyle.swift in Sources */,
 				F200000000000000000000D5 /* FormattingPref.swift in Sources */,
 				F200000000000000000000D7 /* LineNumbering.swift in Sources */,
+				F200000000000000000000D9 /* LineNumberRulerView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
