@@ -34,6 +34,8 @@
 		F200000000000000000000BA /* CustomThemeEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000BA /* CustomThemeEditor.swift */; };
 		F200000000000000000000BB /* ThemeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000BB /* ThemeController.swift */; };
 		F200000000000000000000BC /* ThemeControllerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000BC /* ThemeControllerTests.swift */; };
+		F200000000000000000000D0 /* FontFamily.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000D0 /* FontFamily.swift */; };
+		F200000000000000000000D1 /* FontFamilyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000D1 /* FontFamilyTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -76,6 +78,8 @@
 		F100000000000000000000BA /* CustomThemeEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomThemeEditor.swift; sourceTree = "<group>"; };
 		F100000000000000000000BB /* ThemeController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeController.swift; sourceTree = "<group>"; };
 		F100000000000000000000BC /* ThemeControllerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeControllerTests.swift; sourceTree = "<group>"; };
+		F100000000000000000000D0 /* FontFamily.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FontFamily.swift; sourceTree = "<group>"; };
+		F100000000000000000000D1 /* FontFamilyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FontFamilyTests.swift; sourceTree = "<group>"; };
 		F100000000000000000000A4 /* MacMD.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MacMD.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F100000000000000000000A5 /* MacMDTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MacMDTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -126,6 +130,7 @@
 				F100000000000000000000B9 /* ThemePreview.swift */,
 				F100000000000000000000BA /* CustomThemeEditor.swift */,
 				F100000000000000000000BB /* ThemeController.swift */,
+				F100000000000000000000D0 /* FontFamily.swift */,
 				F100000000000000000000A0 /* Assets.xcassets */,
 				F100000000000000000000A2 /* Info.plist */,
 				F100000000000000000000A1 /* MacMD.entitlements */,
@@ -146,6 +151,7 @@
 				F100000000000000000000B7 /* ThemeSettingsTests.swift */,
 				F100000000000000000000BC /* ThemeControllerTests.swift */,
 				F1000000000000000000001B /* WordCountTests.swift */,
+				F100000000000000000000D1 /* FontFamilyTests.swift */,
 			);
 			path = MacMDTests;
 			sourceTree = "<group>";
@@ -273,6 +279,7 @@
 				F200000000000000000000B9 /* ThemePreview.swift in Sources */,
 				F200000000000000000000BA /* CustomThemeEditor.swift in Sources */,
 				F200000000000000000000BB /* ThemeController.swift in Sources */,
+				F200000000000000000000D0 /* FontFamily.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -290,6 +297,7 @@
 				F200000000000000000000B7 /* ThemeSettingsTests.swift in Sources */,
 				F200000000000000000000BC /* ThemeControllerTests.swift in Sources */,
 				F2000000000000000000001B /* WordCountTests.swift in Sources */,
+				F200000000000000000000D1 /* FontFamilyTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
