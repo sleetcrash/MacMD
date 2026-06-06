@@ -82,8 +82,14 @@ struct MarkdownTextView: NSViewRepresentable {
         textView.textStorage?.delegate = context.coordinator.highlighter
         textView.highlighter = context.coordinator.highlighter
 
+        scrollView.hasVerticalRuler = true
+        scrollView.verticalRulerView = LineNumberRulerView(scrollView: scrollView, textView: textView)
+        scrollView.rulersVisible = !FormattingPref.isOn
+
         context.coordinator.textView = textView
         context.coordinator.loadInitial(text: text)
+        context.coordinator.observeFormatting(textView: textView)
+        (scrollView.verticalRulerView as? LineNumberRulerView)?.updateThickness()
 
         let initialAppearance = appearance
         DispatchQueue.main.async { [weak textView] in
@@ -119,6 +125,9 @@ struct MarkdownTextView: NSViewRepresentable {
         let highlighter = MarkdownHighlighter()
         private var isUpdatingFromBinding = false
         private var hasLoaded = false
+        private var isOverSoftSizeLimit = false
+        private var formattingObserver: NSObjectProtocol?
+        private var clipObserver: NSObjectProtocol?
 
         init(text: Binding<String>) {
             self._text = text
@@ -133,10 +142,14 @@ struct MarkdownTextView: NSViewRepresentable {
             ts.replaceCharacters(in: NSRange(location: 0, length: ts.length), with: text)
             ts.endEditing()
             highlighter.isSuppressed = false
-            if text.utf8.count >= MarkdownDocument.softSizeLimit {
-                highlighter.isDisabled = true
-            } else {
+            isOverSoftSizeLimit = text.utf8.count >= MarkdownDocument.softSizeLimit
+            let shouldHighlight = FormattingPref.shouldHighlight(showFormatting: FormattingPref.isOn,
+                                                                 overSoftSizeLimit: isOverSoftSizeLimit)
+            highlighter.isDisabled = !shouldHighlight
+            if shouldHighlight {
                 highlighter.rehighlightAll(ts)
+            } else {
+                highlighter.clearHighlighting(ts)
             }
             isUpdatingFromBinding = false
         }
@@ -167,6 +180,11 @@ struct MarkdownTextView: NSViewRepresentable {
             } else {
                 highlighter.rehighlightAll(ts)
             }
+            if let sv = textView.enclosingScrollView, sv.rulersVisible,
+               let ruler = sv.verticalRulerView as? LineNumberRulerView {
+                ruler.updateThickness()
+                ruler.needsDisplay = true
+            }
         }
 
         func applyThemeChange(to textView: NSTextView) {
@@ -174,10 +192,61 @@ struct MarkdownTextView: NSViewRepresentable {
             highlighter.rehighlightAll(ts)
         }
 
+        /// React to a global Show Formatting change: flip styled<->plain and the
+        /// gutter, with no document mutation.
+        func applyFormattingChange(to textView: NSTextView) {
+            guard let ts = textView.textStorage else { return }
+            let show = FormattingPref.isOn
+            let shouldHighlight = FormattingPref.shouldHighlight(showFormatting: show,
+                                                                overSoftSizeLimit: isOverSoftSizeLimit)
+            highlighter.isSuppressed = true
+            highlighter.isDisabled = !shouldHighlight
+            if shouldHighlight {
+                highlighter.rehighlightAll(ts)
+            } else {
+                highlighter.clearHighlighting(ts)
+                textView.font = Theme.editorFont
+            }
+            highlighter.isSuppressed = false
+            if let scrollView = textView.enclosingScrollView {
+                scrollView.rulersVisible = !show
+                if let ruler = scrollView.verticalRulerView as? LineNumberRulerView {
+                    ruler.updateThickness()
+                    ruler.needsDisplay = true
+                }
+            }
+        }
+
+        func observeFormatting(textView: NSTextView) {
+            formattingObserver = NotificationCenter.default.addObserver(
+                forName: FormattingPref.didChange, object: nil, queue: .main) { [weak self, weak textView] _ in
+                guard let self, let textView else { return }
+                MainActor.assumeIsolated { self.applyFormattingChange(to: textView) }
+            }
+            if let clip = textView.enclosingScrollView?.contentView {
+                clip.postsBoundsChangedNotifications = true
+                clipObserver = NotificationCenter.default.addObserver(
+                    forName: NSView.boundsDidChangeNotification, object: clip, queue: .main) { [weak textView] _ in
+                    guard let sv = textView?.enclosingScrollView, sv.rulersVisible else { return }
+                    sv.verticalRulerView?.needsDisplay = true
+                }
+            }
+        }
+
+        deinit {
+            if let formattingObserver { NotificationCenter.default.removeObserver(formattingObserver) }
+            if let clipObserver { NotificationCenter.default.removeObserver(clipObserver) }
+        }
+
         func textDidChange(_ notification: Notification) {
             guard !isUpdatingFromBinding,
                   let tv = notification.object as? NSTextView else { return }
             text = tv.string
+            if let sv = tv.enclosingScrollView, sv.rulersVisible,
+               let ruler = sv.verticalRulerView as? LineNumberRulerView {
+                ruler.updateThickness()
+                ruler.needsDisplay = true
+            }
         }
 
         /// Markdown-aware Return: continue the current list item, or end the
