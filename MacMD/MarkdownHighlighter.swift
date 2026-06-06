@@ -157,6 +157,7 @@ private enum MarkdownRules {
         },
         Rule(regex: r("`[^`\\n]+`")) { ts, m, _ in
             ts.addAttribute(.backgroundColor, value: Theme.codeBackgroundColor, range: m.range)
+            ts.addAttribute(.font, value: Theme.codeFont, range: m.range)
         },
         Rule(regex: r("~~(?!\\s)[^~\\n]+?(?<!\\s)~~")) { ts, m, _ in
             ts.addAttribute(.strikethroughStyle, value: NSUnderlineStyle.single.rawValue, range: m.range)
@@ -221,6 +222,7 @@ private enum MarkdownRules {
             if intersect.length > 0 {
                 ts.addAttribute(.foregroundColor, value: Theme.mutedColor, range: intersect)
                 ts.addAttribute(.backgroundColor, value: Theme.codeBackgroundColor, range: intersect)
+                ts.addAttribute(.font, value: Theme.codeFont, range: intersect)
             }
         }
 
