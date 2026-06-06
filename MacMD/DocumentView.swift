@@ -27,7 +27,9 @@ struct DocumentView: View {
                              fontFamily: FontFamily.resolve(id: theme.fontFamilyId),
                              coloring: theme.coloring,
                              palette: palette,
-                             appearance: theme.appearance)
+                             appearance: theme.appearance,
+                             cursorStyle: theme.cursorStyle,
+                             cursorBlink: theme.cursorBlink)
                 .frame(minWidth: 520, idealWidth: 760, minHeight: 400, idealHeight: 680)
                 .background(Color(nsColor: .textBackgroundColor))
             if showWordCount {

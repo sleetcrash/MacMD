@@ -111,6 +111,8 @@ struct SettingsView: View {
     @State private var wcFontSize = Double(FontSize.standard)
     @State private var wcAppearanceRaw = AppAppearance.system.rawValue
     @State private var wcFontFamilyId = FontFamily.default.id
+    @State private var wcCursorStyleRaw = CursorStyle.bar.rawValue
+    @State private var wcCursorBlink = true
     @State private var sizeText = ""
 
     // Which dropdown (if any) is open, and the on-screen frame of each trigger
@@ -140,6 +142,8 @@ struct SettingsView: View {
         || wcFontSize != theme.fontSize
         || wcAppearance != theme.appearance
         || wcFontFamilyId != theme.fontFamilyId
+        || wcCursorStyleRaw != theme.cursorStyle.rawValue
+        || wcCursorBlink != theme.cursorBlink
     }
     private var saveDirty: Bool {
         wcSchemeRaw != theme.savedColoring.rawValue
@@ -147,6 +151,8 @@ struct SettingsView: View {
         || wcFontSize != theme.savedFontSize
         || wcAppearanceRaw != theme.savedAppearance.rawValue
         || wcFontFamilyId != theme.savedFontFamilyId
+        || wcCursorStyleRaw != theme.savedCursorStyle.rawValue
+        || wcCursorBlink != theme.savedCursorBlink
     }
     // A new custom theme is being edited in the Custom Theme window but hasn't been
     // saved yet, so it has no committable id. The preview shows the live draft, but
@@ -246,6 +252,16 @@ struct SettingsView: View {
             LabeledField(label: "Font") {
                 fontBox.frame(width: wideWidth + 14 + segWidth, height: rowHeight)
             }
+            HStack(spacing: 14) {
+                LabeledField(label: "Cursor") {
+                    CursorControl(styleRaw: $wcCursorStyleRaw)
+                        .frame(width: wideWidth, height: rowHeight)
+                }
+                Toggle("Blink", isOn: $wcCursorBlink)
+                    .toggleStyle(.checkbox)
+                    .font(.system(size: 11))
+                    .frame(width: segWidth, height: rowHeight)
+            }
             ThemePreview(coloring: customDraft.active ? customDraft.scheme : wcColoring,
                          palette: customDraft.active ? customDraft.palette : wcPalette,
                          appearance: wcAppearance, fontSize: CGFloat(wcFontSize))
@@ -259,6 +275,7 @@ struct SettingsView: View {
                     theme.apply(coloring: wcColoring, themeId: wcThemeId,
                                 fontSize: wcFontSize, appearance: wcAppearance)
                     theme.applyFontFamily(wcFontFamilyId)
+                    theme.applyCursor(style: CursorStyle(rawValue: wcCursorStyleRaw) ?? .bar, blink: wcCursorBlink)
                 }
                     .buttonStyle(SquareButtonStyle())
                     .disabled(!applyDirty || draftUncommitted)
@@ -266,6 +283,7 @@ struct SettingsView: View {
                     theme.save(coloring: wcColoring, themeId: wcThemeId,
                                fontSize: wcFontSize, appearance: wcAppearance)
                     theme.saveFontFamily(wcFontFamilyId)
+                    theme.saveCursor(style: CursorStyle(rawValue: wcCursorStyleRaw) ?? .bar, blink: wcCursorBlink)
                     dismiss()
                 }
                     .buttonStyle(SquareButtonStyle())
@@ -418,6 +436,8 @@ struct SettingsView: View {
         wcFontSize = theme.savedFontSize
         wcAppearanceRaw = theme.savedAppearance.rawValue
         wcFontFamilyId = theme.savedFontFamilyId
+        wcCursorStyleRaw = theme.savedCursorStyle.rawValue
+        wcCursorBlink = theme.savedCursorBlink
         sizeText = "\(Int(theme.savedFontSize))"
     }
 
@@ -846,6 +866,42 @@ private struct DropdownRow: View {
             Text("|").opacity(0.35).padding(.horizontal, 2)
             ForEach(0..<count, id: \.self) { _ in EmptySwatch() }
         }
+    }
+}
+
+/// Bar / Block / Underline segmented control, styled like `ModeControl`. Binds
+/// the working-copy raw value so it only previews until Apply, persists on Save.
+struct CursorControl: View {
+    @Binding var styleRaw: String
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(CursorStyle.allCases, id: \.self) { style in
+                let selected = styleRaw == style.rawValue
+                Button { styleRaw = style.rawValue } label: {
+                    Text(style.displayName)
+                        .font(.system(size: 11))
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background {
+                            if selected {
+                                Rectangle().fill(
+                                    Color.black.opacity(0.28)
+                                        .shadow(.inner(color: .black.opacity(0.55), radius: 3, y: 1.5))
+                                )
+                            } else {
+                                Rectangle().fill(Color.white.opacity(0.10))
+                            }
+                        }
+                        .foregroundStyle(selected ? Pane.text : Pane.muted)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(style.displayName)
+                .accessibilityAddTraits(selected ? .isSelected : [])
+            }
+        }
+        .background(Pane.field)
+        .overlay(Rectangle().strokeBorder(Pane.border, lineWidth: 1))
     }
 }
 
