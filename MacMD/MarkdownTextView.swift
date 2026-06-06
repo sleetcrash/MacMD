@@ -8,6 +8,8 @@ struct MarkdownTextView: NSViewRepresentable {
     var coloring: Coloring
     var palette: Palette?
     var appearance: AppAppearance
+    var cursorStyle: CursorStyle
+    var cursorBlink: Bool
 
     func makeCoordinator() -> Coordinator {
         Coordinator(text: $text)
@@ -16,6 +18,7 @@ struct MarkdownTextView: NSViewRepresentable {
     func makeNSView(context: Context) -> NSScrollView {
         Theme.setEditorFontSize(fontSize)
         Theme.setEditorFontFamily(fontFamily)
+        Theme.setCursor(style: cursorStyle, blink: cursorBlink)
         Theme.setActiveTheme(coloring: coloring, palette: palette)
         let scrollView = ClickableTextView.scrollableClickableTextView()
         scrollView.hasVerticalScroller = true
@@ -101,6 +104,9 @@ struct MarkdownTextView: NSViewRepresentable {
             context.coordinator.applyThemeChange(to: textView)
         }
         textView.window?.appearance = appearance.nsAppearance
+        if Theme.setCursor(style: cursorStyle, blink: cursorBlink) {
+            (textView as? ClickableTextView)?.refreshCaret()
+        }
         if textView.string != text {
             context.coordinator.replace(textView: textView, with: text)
         }
@@ -221,6 +227,52 @@ struct MarkdownTextView: NSViewRepresentable {
 
 final class ClickableTextView: NSTextView {
     weak var highlighter: MarkdownHighlighter?
+
+    /// Draw the caret per `Theme.cursorStyle` by widening / repositioning the
+    /// rect and calling super (which handles both the draw and the erase pass for
+    /// the same rect). Block uses reduced alpha so the glyph under it stays
+    /// readable. The accent color is supplied by AppKit (set as
+    /// `insertionPointColor`).
+    override func drawInsertionPoint(in rect: NSRect, color: NSColor, turnedOn flag: Bool) {
+        var caretRect = rect
+        var caretColor = color
+        switch Theme.cursorStyle {
+        case .bar:
+            break
+        case .block:
+            caretRect.size.width = CursorGeometry.blockWidth(glyphWidth: glyphWidthAtCaret(),
+                                                             fallback: spaceAdvance())
+            caretColor = color.withAlphaComponent(0.5)
+        case .underline:
+            let thickness: CGFloat = 2
+            caretRect.origin.y = rect.maxY - thickness
+            caretRect.size.height = thickness
+        }
+        // Blink off: force the caret drawn even on the timer's "off" pass.
+        let on = Theme.cursorBlink ? flag : true
+        super.drawInsertionPoint(in: caretRect, color: caretColor, turnedOn: on)
+    }
+
+    /// Width of the glyph at the insertion point, or 0 at end-of-line / on a
+    /// newline / empty document (caller falls back to a space advance).
+    private func glyphWidthAtCaret() -> CGFloat {
+        guard let lm = layoutManager, let tc = textContainer, let ts = textStorage else { return 0 }
+        let caret = selectedRange().location
+        let ns = ts.string as NSString
+        guard caret < ns.length, ns.substring(with: NSRange(location: caret, length: 1)) != "\n" else { return 0 }
+        let glyphRange = lm.glyphRange(forCharacterRange: NSRange(location: caret, length: 1), actualCharacterRange: nil)
+        return lm.boundingRect(forGlyphRange: glyphRange, in: tc).width
+    }
+
+    private func spaceAdvance() -> CGFloat {
+        (" " as NSString).size(withAttributes: [.font: Theme.editorFont]).width
+    }
+
+    /// Force the caret to redraw after a style/blink change.
+    func refreshCaret() {
+        needsDisplay = true
+        updateInsertionPointStateAndRestartTimer(true)
+    }
 
     static func scrollableClickableTextView() -> NSScrollView {
         let scrollView = NSScrollView()
