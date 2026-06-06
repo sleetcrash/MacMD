@@ -13,6 +13,7 @@ final class ThemeController: ObservableObject {
     @Published private(set) var themeId: String
     @Published private(set) var fontSize: Double
     @Published private(set) var appearance: AppAppearance
+    @Published private(set) var fontFamilyId: String
 
     private let defaults: UserDefaults
 
@@ -22,6 +23,7 @@ final class ThemeController: ObservableObject {
         self.themeId = ThemeController.loadThemeId(defaults)
         self.fontSize = ThemeController.loadFontSize(defaults)
         self.appearance = ThemeController.loadAppearance(defaults)
+        self.fontFamilyId = ThemeController.loadFontFamilyId(defaults)
     }
 
     // MARK: - Saved (persisted) state
@@ -30,6 +32,7 @@ final class ThemeController: ObservableObject {
     var savedThemeId: String { ThemeController.loadThemeId(defaults) }
     var savedFontSize: Double { ThemeController.loadFontSize(defaults) }
     var savedAppearance: AppAppearance { ThemeController.loadAppearance(defaults) }
+    var savedFontFamilyId: String { ThemeController.loadFontFamilyId(defaults) }
 
     // MARK: - Transitions
 
@@ -51,10 +54,22 @@ final class ThemeController: ObservableObject {
         apply(coloring: coloring, themeId: themeId, fontSize: size, appearance: appearance)
     }
 
+    /// Preview a font family in the live editor without persisting it.
+    func applyFontFamily(_ id: String) {
+        self.fontFamilyId = id
+    }
+
+    /// Persist and apply the font family.
+    func saveFontFamily(_ id: String) {
+        defaults.set(id, forKey: ThemeSettings.fontFamilyKey)
+        self.fontFamilyId = id
+    }
+
     /// Discard any unsaved Apply and snap the effective state back to saved.
     func revertToSaved() {
         apply(coloring: savedColoring, themeId: savedThemeId,
               fontSize: savedFontSize, appearance: savedAppearance)
+        self.fontFamilyId = savedFontFamilyId
     }
 
     /// Immediately change AND persist only the font size (for the View-menu
@@ -82,5 +97,9 @@ final class ThemeController: ObservableObject {
     }
     private static func loadAppearance(_ d: UserDefaults) -> AppAppearance {
         AppAppearance(rawValue: d.string(forKey: ThemeSettings.appearanceKey) ?? "") ?? .system
+    }
+    private static func loadFontFamilyId(_ d: UserDefaults) -> String {
+        let stored = d.string(forKey: ThemeSettings.fontFamilyKey) ?? FontFamily.default.id
+        return FontFamily.all.contains(where: { $0.id == stored }) ? stored : FontFamily.default.id
     }
 }

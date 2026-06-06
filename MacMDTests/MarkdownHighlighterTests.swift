@@ -550,4 +550,23 @@ final class MarkdownHighlighterTests: XCTestCase {
         let titleIndex = (text as NSString).range(of: "title").location
         XCTAssertEqual(color(at: titleIndex, in: storage), Theme.mutedColor)
     }
+
+    // MARK: - Code font stays monospace under a proportional body font
+
+    func testInlineCodeUsesMonospaceFontUnderProportionalBody() {
+        Theme.setEditorFontFamily(FontFamily.resolve(id: "georgia"))
+        defer { Theme.setEditorFontFamily(.default) }
+        let storage = highlight("Body `code` here")
+        let codeIndex = "Body `".count
+        XCTAssertTrue((font(at: codeIndex, in: storage))?.isFixedPitch ?? false)
+        XCTAssertFalse((font(at: 0, in: storage))?.isFixedPitch ?? true)
+    }
+
+    func testFencedCodeUsesMonospaceFontUnderProportionalBody() {
+        Theme.setEditorFontFamily(FontFamily.resolve(id: "georgia"))
+        defer { Theme.setEditorFontFamily(.default) }
+        let storage = highlight("```\nlet x = 1\n```")
+        let insideIndex = "```\nlet".count
+        XCTAssertTrue((font(at: insideIndex, in: storage))?.isFixedPitch ?? false)
+    }
 }
