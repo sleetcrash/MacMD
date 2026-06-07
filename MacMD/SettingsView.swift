@@ -264,7 +264,8 @@ struct SettingsView: View {
             }
             ThemePreview(coloring: customDraft.active ? customDraft.scheme : wcColoring,
                          palette: customDraft.active ? customDraft.palette : wcPalette,
-                         appearance: wcAppearance, fontSize: CGFloat(wcFontSize))
+                         appearance: wcAppearance, fontSize: CGFloat(wcFontSize),
+                         family: wcFontFamily)
                 .frame(maxWidth: .infinity)
             HStack(spacing: 10) {
                 // No Close button: the title-bar close control and Escape already
