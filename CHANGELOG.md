@@ -2,6 +2,17 @@
 
 All notable changes to MacMD will be documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-06-06
+
+### Added
+- A Font control in the Appearance window to choose the editor body font from eight families (System Monospace, Menlo, Monaco, Courier New, System, New York, Helvetica Neue, Georgia). Inline and fenced code always stay monospace, and headings stay bold and sized for any font.
+- A Cursor control in the Appearance window to set the insertion-point style (Bar, Block, or Underline), with an optional Blink toggle.
+- Show Formatting in the View menu (Command-Slash) to switch the editor between styled markdown and plain, uniform source text. It applies to every open window.
+- Line numbers down the left edge in plain mode (when Show Formatting is off). A wrapped line is numbered only on its first row.
+
+### Changed
+- The Appearance preview now renders in your chosen body font, so it matches the editor.
+
 ## [1.2.9] - 2026-06-04
 
 ### Added
