@@ -10,6 +10,7 @@ struct ThemePreview: View {
     let palette: Palette?
     let appearance: AppAppearance
     let fontSize: CGFloat
+    let family: FontFamily
 
     @MainActor private var dark: Bool {
         switch appearance {
@@ -26,12 +27,12 @@ struct ThemePreview: View {
             Text("body text").font(bodyFont).foregroundColor(bodyColor)
             heading("## Section", level: 2)
             HStack(spacing: 0) {
-                Text("- ").font(bodyFont.weight(.bold)).foregroundColor(headingColor(level: 2))
+                Text("- ").font(boldBodyFont).foregroundColor(headingColor(level: 2))
                 Text("list item").font(bodyFont).foregroundColor(bodyColor)
             }
             heading("### Subsection", level: 3)
             HStack(spacing: 0) {
-                Text("1. ").font(bodyFont.weight(.bold)).foregroundColor(headingColor(level: 3))
+                Text("1. ").font(boldBodyFont).foregroundColor(headingColor(level: 3))
                 Text("ordered item").font(bodyFont).foregroundColor(bodyColor)
             }
         }
@@ -43,13 +44,16 @@ struct ThemePreview: View {
         .overlay(Rectangle().strokeBorder((dark ? Color.white : Color.black).opacity(0.15), lineWidth: 1))
     }
 
-    // Mirrors the editor's font scheme so the preview shows the chosen size:
-    // body at the base size, headings bumped by (7 - level) like Theme.headingFont.
-    private var bodyFont: Font { .system(size: fontSize, design: .monospaced) }
+    // Mirrors the editor's font scheme so the preview shows the chosen family and
+    // size: body at the base size in the chosen family, headings bumped by
+    // (7 - level) and bolded like Theme.headingFont. Uses the same NSFont -> Font
+    // bridge the Appearance font dropdown uses.
+    private var bodyFont: Font { Font(family.font(size: fontSize) as CTFont) }
+    private var boldBodyFont: Font { Font(family.boldFont(size: fontSize) as CTFont) }
 
     private func heading(_ text: String, level: Int) -> some View {
         Text(text)
-            .font(.system(size: fontSize + CGFloat(7 - level), weight: .bold, design: .monospaced))
+            .font(Font(family.boldFont(size: fontSize + CGFloat(7 - level)) as CTFont))
             .foregroundColor(headingColor(level: level))
     }
 
