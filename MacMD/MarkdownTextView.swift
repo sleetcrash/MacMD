@@ -127,6 +127,7 @@ struct MarkdownTextView: NSViewRepresentable {
         weak var scrollView: NSScrollView?
         private var gutter: LineNumberGutterView?
         private var clipObserver: NSObjectProtocol?
+        private var cachedLineCount = 1
 
         static let baseInsetWidth: CGFloat = 24
         static let insetHeight: CGFloat = 20
@@ -138,6 +139,7 @@ struct MarkdownTextView: NSViewRepresentable {
         func loadInitial(text: String) {
             guard !hasLoaded, let tv = textView, let ts = tv.textStorage else { return }
             hasLoaded = true
+            cachedLineCount = LineNumbering.lineCount(in: text)
             isUpdatingFromBinding = true
             highlighter.isSuppressed = true
             ts.beginEditing()
@@ -171,6 +173,7 @@ struct MarkdownTextView: NSViewRepresentable {
             let location = min(oldSelection.location, newLength)
             let length = min(oldSelection.length, newLength - location)
             textView.setSelectedRange(NSRange(location: location, length: length))
+            cachedLineCount = LineNumbering.lineCount(in: newText)
             refreshGutter()
             isUpdatingFromBinding = false
         }
@@ -253,6 +256,7 @@ struct MarkdownTextView: NSViewRepresentable {
         /// gutter to the viewport, and redraw.
         private func layoutGutter() {
             guard let g = gutter, let scrollView, let tv = textView as? ClickableTextView else { return }
+            g.lineCount = cachedLineCount
             let width = g.requiredWidth()
             tv.textContainerInset = NSSize(width: width, height: Self.insetHeight)
             g.frame = NSRect(x: 0, y: 0, width: width, height: scrollView.contentView.frame.height)
@@ -289,7 +293,9 @@ struct MarkdownTextView: NSViewRepresentable {
         func textDidChange(_ notification: Notification) {
             guard !isUpdatingFromBinding,
                   let tv = notification.object as? NSTextView else { return }
-            text = tv.string
+            let updated = tv.string
+            text = updated
+            cachedLineCount = LineNumbering.lineCount(in: updated)
             refreshGutter()
         }
 

@@ -10,6 +10,11 @@ import AppKit
 final class LineNumberGutterView: NSView {
     weak var textView: ClickableTextView?
 
+    /// Total logical line count, set by the Coordinator on text changes. Drives
+    /// the gutter width and the trailing empty-line number so neither rescans the
+    /// whole document on every scroll.
+    var lineCount = 1
+
     /// Left padding before the numbers, and the gap between numbers and body text.
     static let leftPadding: CGFloat = 6
     static let textGap: CGFloat = 8
@@ -37,14 +42,7 @@ final class LineNumberGutterView: NSView {
     /// Width for the widest line number in the WHOLE document plus padding, so the
     /// gutter width is stable while scrolling (does not jiggle per visible range).
     func requiredWidth() -> CGFloat {
-        let totalLines: Int
-        if let ts = textView?.textStorage {
-            let ns = ts.string as NSString
-            totalLines = LineNumbering.lineNumber(forCharacterIndex: ns.length, in: ns)
-        } else {
-            totalLines = 0
-        }
-        let digits = max(Self.minDigits, String(max(1, totalLines)).count)
+        let digits = max(Self.minDigits, String(max(1, lineCount)).count)
         let sample = String(repeating: "0", count: digits) as NSString
         let textWidth = sample.size(withAttributes: numberAttributes).width
         return ceil(Self.leftPadding + textWidth + Self.textGap)
@@ -63,6 +61,11 @@ final class LineNumberGutterView: NSView {
         let visible = textView.visibleRect
         let glyphRange = lm.glyphRange(forBoundingRect: visible, in: tc)
 
+        // Seed the first visible fragment's logical line once (O(firstIndex)),
+        // then increment per logical line - so each visible fragment is O(1)
+        // instead of rescanning newlines from the document start.
+        var line = -1
+        var first = true
         var lastDrawn = -1
         lm.enumerateLineFragments(forGlyphRange: glyphRange) { rect, _, _, fragmentGlyphRange, _ in
             let charRange = lm.characterRange(forGlyphRange: fragmentGlyphRange, actualGlyphRange: nil)
@@ -71,21 +74,26 @@ final class LineNumberGutterView: NSView {
             // skipped (blank), per the code-editor convention.
             let isLineStart = charRange.location == 0
                 || (charRange.location <= ns.length && ns.character(at: charRange.location - 1) == 0x000A)
+            if first {
+                line = LineNumbering.lineNumber(forCharacterIndex: charRange.location, in: ns)
+                first = false
+            } else if isLineStart {
+                line += 1
+            }
             guard isLineStart else { return }
-            let n = LineNumbering.lineNumber(forCharacterIndex: charRange.location, in: ns)
-            self.draw(number: n, fragmentRect: rect, containerOriginY: containerOriginY, visibleMinY: visible.minY)
-            lastDrawn = n
+            self.draw(number: line, fragmentRect: rect, containerOriginY: containerOriginY, visibleMinY: visible.minY)
+            lastDrawn = line
         }
 
         // Trailing empty line (doc ends with '\n') or an empty document: enumerate
-        // emits no fragment for it, so use the extra line fragment rect.
+        // emits no fragment for it, so use the extra line fragment rect. Its number
+        // is the total line count (already cached, no rescan).
         let extra = lm.extraLineFragmentRect
         if extra.height > 0 {
             let yTextView = extra.minY + containerOriginY
             if yTextView + extra.height >= visible.minY && yTextView <= visible.maxY {
-                let n = LineNumbering.lineNumber(forCharacterIndex: ns.length, in: ns)
-                if n != lastDrawn {
-                    self.draw(number: n, fragmentRect: extra, containerOriginY: containerOriginY, visibleMinY: visible.minY)
+                if lineCount != lastDrawn {
+                    self.draw(number: lineCount, fragmentRect: extra, containerOriginY: containerOriginY, visibleMinY: visible.minY)
                 }
             }
         }

@@ -15,4 +15,14 @@ enum LineNumbering {
         }
         return count
     }
+
+    /// Total 1-based logical line count (newline count + 1) via a fast contiguous
+    /// UTF-8 scan, for the gutter width and the trailing empty-line number where
+    /// the per-character `NSString` path would be needlessly slow on a large
+    /// document. Equivalent to `lineNumber(forCharacterIndex: length, in:)`.
+    static func lineCount(in string: String) -> Int {
+        var count = 1
+        for byte in string.utf8 where byte == 0x000A { count += 1 }
+        return count
+    }
 }
