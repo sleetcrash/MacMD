@@ -69,6 +69,22 @@ final class MarkdownHighlighter: NSObject, @preconcurrency NSTextStorageDelegate
         MarkdownRules.applyHighlighting(to: textStorage, in: full, fencedSpans: spans, frontMatter: frontMatter, sectionMap: sectionMap)
     }
 
+    /// Strip all styling back to base attributes, for Plain (formatting-off)
+    /// mode: uniform body font + text color + base paragraph style, no code
+    /// background, underline, or strikethrough. Leaves the text itself untouched.
+    func clearHighlighting(_ textStorage: NSTextStorage) {
+        let full = NSRange(location: 0, length: textStorage.length)
+        guard full.length > 0 else { return }
+        textStorage.beginEditing()
+        textStorage.removeAttribute(.backgroundColor, range: full)
+        textStorage.removeAttribute(.underlineStyle, range: full)
+        textStorage.removeAttribute(.strikethroughStyle, range: full)
+        textStorage.addAttribute(.font, value: Theme.editorFont, range: full)
+        textStorage.addAttribute(.foregroundColor, value: Theme.textColor, range: full)
+        textStorage.addAttribute(.paragraphStyle, value: Theme.bodyParagraphStyle, range: full)
+        textStorage.endEditing()
+    }
+
     func taskCheckboxRanges(in textStorage: NSTextStorage) -> [NSRange] {
         guard !isDisabled else { return [] }
         return MarkdownRules.taskCheckboxRanges(in: textStorage)

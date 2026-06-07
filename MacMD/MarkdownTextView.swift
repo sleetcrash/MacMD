@@ -84,6 +84,7 @@ struct MarkdownTextView: NSViewRepresentable {
 
         context.coordinator.textView = textView
         context.coordinator.loadInitial(text: text)
+        context.coordinator.observeFormatting(textView: textView)
 
         let initialAppearance = appearance
         DispatchQueue.main.async { [weak textView] in
@@ -119,6 +120,8 @@ struct MarkdownTextView: NSViewRepresentable {
         let highlighter = MarkdownHighlighter()
         private var isUpdatingFromBinding = false
         private var hasLoaded = false
+        private var isOverSoftSizeLimit = false
+        private var formattingObserver: NSObjectProtocol?
 
         init(text: Binding<String>) {
             self._text = text
@@ -133,10 +136,14 @@ struct MarkdownTextView: NSViewRepresentable {
             ts.replaceCharacters(in: NSRange(location: 0, length: ts.length), with: text)
             ts.endEditing()
             highlighter.isSuppressed = false
-            if text.utf8.count >= MarkdownDocument.softSizeLimit {
-                highlighter.isDisabled = true
-            } else {
+            isOverSoftSizeLimit = text.utf8.count >= MarkdownDocument.softSizeLimit
+            let shouldHighlight = FormattingPref.shouldHighlight(showFormatting: FormattingPref.isOn,
+                                                                 overSoftSizeLimit: isOverSoftSizeLimit)
+            highlighter.isDisabled = !shouldHighlight
+            if shouldHighlight {
                 highlighter.rehighlightAll(ts)
+            } else {
+                highlighter.clearHighlighting(ts)
             }
             isUpdatingFromBinding = false
         }
@@ -172,6 +179,36 @@ struct MarkdownTextView: NSViewRepresentable {
         func applyThemeChange(to textView: NSTextView) {
             guard let ts = textView.textStorage, !highlighter.isDisabled else { return }
             highlighter.rehighlightAll(ts)
+        }
+
+        /// React to a global Show Formatting change: flip styled<->plain with no
+        /// document mutation.
+        func applyFormattingChange(to textView: NSTextView) {
+            guard let ts = textView.textStorage else { return }
+            let show = FormattingPref.isOn
+            let shouldHighlight = FormattingPref.shouldHighlight(showFormatting: show,
+                                                                overSoftSizeLimit: isOverSoftSizeLimit)
+            highlighter.isSuppressed = true
+            highlighter.isDisabled = !shouldHighlight
+            if shouldHighlight {
+                highlighter.rehighlightAll(ts)
+            } else {
+                highlighter.clearHighlighting(ts)
+                textView.font = Theme.editorFont
+            }
+            highlighter.isSuppressed = false
+        }
+
+        func observeFormatting(textView: NSTextView) {
+            formattingObserver = NotificationCenter.default.addObserver(
+                forName: FormattingPref.didChange, object: nil, queue: .main) { [weak self, weak textView] _ in
+                guard let self, let textView else { return }
+                MainActor.assumeIsolated { self.applyFormattingChange(to: textView) }
+            }
+        }
+
+        deinit {
+            if let formattingObserver { NotificationCenter.default.removeObserver(formattingObserver) }
         }
 
         func textDidChange(_ notification: Notification) {
