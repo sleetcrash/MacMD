@@ -83,8 +83,10 @@ struct MarkdownTextView: NSViewRepresentable {
         textView.highlighter = context.coordinator.highlighter
 
         context.coordinator.textView = textView
+        context.coordinator.scrollView = scrollView
         context.coordinator.loadInitial(text: text)
         context.coordinator.observeFormatting(textView: textView)
+        context.coordinator.syncGutter()
 
         let initialAppearance = appearance
         DispatchQueue.main.async { [weak textView] in
@@ -122,6 +124,13 @@ struct MarkdownTextView: NSViewRepresentable {
         private var hasLoaded = false
         private var isOverSoftSizeLimit = false
         private var formattingObserver: NSObjectProtocol?
+        weak var scrollView: NSScrollView?
+        private var gutter: LineNumberGutterView?
+        private var clipObserver: NSObjectProtocol?
+        private var cachedLineCount = 1
+
+        static let baseInsetWidth: CGFloat = 24
+        static let insetHeight: CGFloat = 20
 
         init(text: Binding<String>) {
             self._text = text
@@ -130,6 +139,7 @@ struct MarkdownTextView: NSViewRepresentable {
         func loadInitial(text: String) {
             guard !hasLoaded, let tv = textView, let ts = tv.textStorage else { return }
             hasLoaded = true
+            cachedLineCount = LineNumbering.lineCount(in: text)
             isUpdatingFromBinding = true
             highlighter.isSuppressed = true
             ts.beginEditing()
@@ -163,6 +173,8 @@ struct MarkdownTextView: NSViewRepresentable {
             let location = min(oldSelection.location, newLength)
             let length = min(oldSelection.length, newLength - location)
             textView.setSelectedRange(NSRange(location: location, length: length))
+            cachedLineCount = LineNumbering.lineCount(in: newText)
+            refreshGutter()
             isUpdatingFromBinding = false
         }
 
@@ -174,6 +186,7 @@ struct MarkdownTextView: NSViewRepresentable {
             } else {
                 highlighter.rehighlightAll(ts)
             }
+            refreshGutter()
         }
 
         func applyThemeChange(to textView: NSTextView) {
@@ -197,6 +210,7 @@ struct MarkdownTextView: NSViewRepresentable {
                 textView.font = Theme.editorFont
             }
             highlighter.isSuppressed = false
+            syncGutter()
         }
 
         func observeFormatting(textView: NSTextView) {
@@ -207,14 +221,82 @@ struct MarkdownTextView: NSViewRepresentable {
             }
         }
 
+        // MARK: - Line-number gutter (Plain mode only)
+
+        /// Install/remove the gutter and widen/restore the left inset to match the
+        /// current FormattingPref. The gutter shows only when formatting is OFF
+        /// (Plain). Restores the base 24pt inset in Styled mode so defaults are
+        /// byte-identical to today.
+        func syncGutter() {
+            guard let tv = textView as? ClickableTextView, let scrollView else { return }
+            if FormattingPref.isOn {
+                gutter?.removeFromSuperview()
+                gutter = nil
+                if let clipObserver {
+                    NotificationCenter.default.removeObserver(clipObserver)
+                    self.clipObserver = nil
+                }
+                tv.textContainerInset = NSSize(width: Self.baseInsetWidth, height: Self.insetHeight)
+            } else {
+                if gutter == nil {
+                    let v = LineNumberGutterView(textView: tv)
+                    v.autoresizingMask = [.height]
+                    scrollView.addSubview(v)
+                    gutter = v
+                    observeClipBounds(scrollView: scrollView)
+                    // Re-lay out once the host has settled the frames (at first
+                    // install the clip height can still be zero).
+                    DispatchQueue.main.async { [weak self] in self?.refreshGutter() }
+                }
+                layoutGutter()
+            }
+        }
+
+        /// Recompute gutter width, widen the text inset to reserve it, size the
+        /// gutter to the viewport, and redraw.
+        private func layoutGutter() {
+            guard let g = gutter, let scrollView, let tv = textView as? ClickableTextView else { return }
+            g.lineCount = cachedLineCount
+            let width = g.requiredWidth()
+            tv.textContainerInset = NSSize(width: width, height: Self.insetHeight)
+            g.frame = NSRect(x: 0, y: 0, width: width, height: scrollView.contentView.frame.height)
+            g.needsDisplay = true
+        }
+
+        private func observeClipBounds(scrollView: NSScrollView) {
+            let clip = scrollView.contentView
+            clip.postsBoundsChangedNotifications = true
+            clipObserver = NotificationCenter.default.addObserver(
+                forName: NSView.boundsDidChangeNotification, object: clip, queue: .main) { [weak self] _ in
+                guard let self else { return }
+                MainActor.assumeIsolated {
+                    if let g = self.gutter, let sv = self.scrollView {
+                        g.frame.size.height = sv.contentView.frame.height
+                    }
+                    self.gutter?.needsDisplay = true
+                }
+            }
+        }
+
+        /// Recompute width + inset + redraw after the text or font changed (digit
+        /// count or line height may change). No-op in Styled mode.
+        func refreshGutter() {
+            guard !FormattingPref.isOn, gutter != nil else { return }
+            layoutGutter()
+        }
+
         deinit {
             if let formattingObserver { NotificationCenter.default.removeObserver(formattingObserver) }
+            if let clipObserver { NotificationCenter.default.removeObserver(clipObserver) }
         }
 
         func textDidChange(_ notification: Notification) {
             guard !isUpdatingFromBinding,
                   let tv = notification.object as? NSTextView else { return }
-            text = tv.string
+            let updated = tv.string
+            text = updated
+            cachedLineCount = LineNumbering.lineCount(in: updated)
+            refreshGutter()
         }
 
         /// Markdown-aware Return: continue the current list item, or end the
