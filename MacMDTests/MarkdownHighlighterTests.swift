@@ -551,6 +551,28 @@ final class MarkdownHighlighterTests: XCTestCase {
         XCTAssertEqual(color(at: titleIndex, in: storage), Theme.mutedColor)
     }
 
+    // MARK: - clearHighlighting (Plain mode)
+
+    func testClearHighlightingRestoresBaseAttributes() {
+        Theme.setActiveTheme(coloring: .standard, palette: ColorTheming.standardPresets[0])
+        let storage = NSTextStorage(string: "# Heading\nbody **bold** `code`")
+        let highlighter = MarkdownHighlighter()
+        storage.delegate = highlighter
+        highlighter.rehighlightAll(storage)
+        XCTAssertTrue((font(at: 0, in: storage))?.fontDescriptor.symbolicTraits.contains(.bold) ?? false)
+
+        highlighter.clearHighlighting(storage)
+
+        let full = NSRange(location: 0, length: storage.length)
+        storage.enumerateAttribute(.font, in: full, options: []) { value, _, _ in
+            XCTAssertEqual(value as? NSFont, Theme.editorFont)
+        }
+        XCTAssertEqual(color(at: 0, in: storage), Theme.textColor)
+        XCTAssertNil(storage.attribute(.underlineStyle, at: 0, effectiveRange: nil))
+        XCTAssertNil(storage.attribute(.strikethroughStyle, at: 0, effectiveRange: nil))
+        XCTAssertNil(storage.attribute(.backgroundColor, at: 0, effectiveRange: nil))
+    }
+
     // MARK: - Code font stays monospace under a proportional body font
 
     func testInlineCodeUsesMonospaceFontUnderProportionalBody() {
