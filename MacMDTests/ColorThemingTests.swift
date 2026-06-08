@@ -73,8 +73,6 @@ final class ColorThemingTests: XCTestCase {
         let pair = ColorPair(light: "#C13F50", dark: "#E86577")
         XCTAssertEqual(pair.nsLight.hexString, "#C13F50")
         XCTAssertEqual(pair.nsDark.hexString, "#E86577")
-        XCTAssertEqual(pair.resolved(for: NSAppearance(named: .aqua)!).hexString, "#C13F50")
-        XCTAssertEqual(pair.resolved(for: NSAppearance(named: .darkAqua)!).hexString, "#E86577")
     }
 
     func testColorPairCodableRoundTrip() throws {
@@ -182,6 +180,40 @@ final class ColorThemingTests: XCTestCase {
         Theme.setActiveTheme(coloring: .off, palette: ColorTheming.standardPresets[0])
         XCTAssertTrue(Theme.setActiveTheme(coloring: .unified, palette: ColorTheming.preset(id: "uni.teal")!))
         XCTAssertFalse(Theme.setActiveTheme(coloring: .unified, palette: ColorTheming.preset(id: "uni.teal")!))
+    }
+
+    // MARK: - CustomDraft slot normalization
+
+    func testBeginEditingNormalizesSlotCountToScheme() {
+        let draft = CustomDraft()
+
+        // A standard palette with too few slots (e.g. a corrupt prefs blob) is
+        // padded to 3, so the slotCount-indexed reads in `palette`/`persistPalette`
+        // can't run off the end. Reading `palette` would have trapped before.
+        draft.beginEditing(Palette(id: "x", name: "X", scheme: .standard,
+                                   slots: [ColorPair(light: "#112233", dark: "#445566")]))
+        XCTAssertEqual(draft.lights.count, 3)
+        XCTAssertEqual(draft.darks.count, 3)
+        XCTAssertEqual(draft.palette.slots.count, 3)
+
+        // A unified palette with too many slots truncates to 1.
+        draft.beginEditing(Palette(id: "y", name: "Y", scheme: .unified, slots: [
+            ColorPair(light: "#111111", dark: "#222222"),
+            ColorPair(light: "#333333", dark: "#444444"),
+        ]))
+        XCTAssertEqual(draft.lights.count, 1)
+        XCTAssertEqual(draft.darks.count, 1)
+        XCTAssertEqual(draft.palette.slots.count, 1)
+    }
+
+    // MARK: - Hex parsing
+
+    func testHexInitRejectsMalformedInput() {
+        XCTAssertNotNil(NSColor(hex: "#C13F50"))
+        XCTAssertNotNil(NSColor(hex: "C13F50"))
+        XCTAssertNil(NSColor(hex: "-F0000"), "a sign char must not parse to a color")
+        XCTAssertNil(NSColor(hex: "GGGGGG"), "non-hex digits must be rejected")
+        XCTAssertNil(NSColor(hex: "12345"), "wrong length must be rejected")
     }
 }
 

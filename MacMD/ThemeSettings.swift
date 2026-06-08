@@ -33,21 +33,6 @@ enum ThemeSettings {
         (try? JSONDecoder().decode([Palette].self, from: data)) ?? []
     }
 
-    // MARK: - UserDefaults accessors (exercised by the live smoke test)
-
-    static var coloring: Coloring {
-        Coloring(rawValue: UserDefaults.standard.string(forKey: schemeKey) ?? "") ?? .off
-    }
-
-    static var appAppearance: AppAppearance {
-        AppAppearance(rawValue: UserDefaults.standard.string(forKey: appearanceKey) ?? "") ?? .system
-    }
-
-    /// Defaults to the Standard default id; `resolvePalette` corrects any scheme mismatch.
-    static var selectedThemeId: String {
-        UserDefaults.standard.string(forKey: themeIdKey) ?? ColorTheming.defaultStandardId
-    }
-
     static func savedCustoms() -> [Palette] {
         decodeCustoms(UserDefaults.standard.data(forKey: customsKey) ?? Data())
     }

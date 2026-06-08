@@ -28,7 +28,7 @@ struct SystemWindowAppearance: NSViewRepresentable {
     func updateNSView(_ nsView: NSView, context: Context) {
         DispatchQueue.main.async {
             guard let window = nsView.window else { return }
-            let dark = UserDefaults.standard.string(forKey: "AppleInterfaceStyle") == "Dark"
+            let dark = NSApp.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
             window.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
         }
     }
@@ -198,7 +198,13 @@ struct SettingsView: View {
             // (The builder's own onDisappear only re-focuses "Appearance" while it
             // is still visible, so this can't resurrect a closing window.)
             NSApp.windows.first { $0.title == "Custom Theme" }?.close()
+            // Leave the shared color panel in a known-good state. PanelColorWell
+            // forces showsAlpha off and a floating level while picking; resetting
+            // both here makes closing Appearance self-sufficient instead of relying
+            // on the Custom Theme window's teardown running first.
             NSColorPanel.shared.close()
+            NSColorPanel.shared.level = .normal
+            NSColorPanel.shared.showsAlpha = true
         }
         // When the Custom Theme window saves a palette, select it here.
         .onChange(of: customDraft.savedId) { _, id in
@@ -803,8 +809,7 @@ private struct DropdownRow: View {
                 HStack(spacing: 0) {
                     Text(p.name).font(.system(size: 11)).lineLimit(1)
                     Spacer(minLength: 8)
-                    swatchTrio(light: p.slots.map { Color(nsColor: $0.nsLight) },
-                               dark: p.slots.map { Color(nsColor: $0.nsDark) })
+                    SwatchTrio(slots: p.slots)
                 }
                 .frame(maxWidth: .infinity)
                 .contentShape(Rectangle())
@@ -851,14 +856,6 @@ private struct DropdownRow: View {
         if isActive { return Color.white.opacity(0.16) }
         if item.selected { return Color.white.opacity(0.10) }
         return .clear
-    }
-
-    private func swatchTrio(light: [Color], dark: [Color]) -> some View {
-        HStack(spacing: 2) {
-            ForEach(Array(light.enumerated()), id: \.offset) { _, c in Swatch(color: c) }
-            Text("|").opacity(0.35).padding(.horizontal, 2)
-            ForEach(Array(dark.enumerated()), id: \.offset) { _, c in Swatch(color: c) }
-        }
     }
 
     private func emptyTrio(count: Int) -> some View {
@@ -963,6 +960,23 @@ struct Swatch: View {
     }
 }
 
+/// A palette's light │ dark swatch trio, shown beside the name in the Theme box
+/// and in every palette dropdown row. One definition so the two never drift.
+struct SwatchTrio: View {
+    let slots: [ColorPair]
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(Array(slots.enumerated()), id: \.offset) { _, slot in
+                Swatch(color: Color(nsColor: slot.nsLight))
+            }
+            Text("|").opacity(0.35).padding(.horizontal, 2)
+            ForEach(Array(slots.enumerated()), id: \.offset) { _, slot in
+                Swatch(color: Color(nsColor: slot.nsDark))
+            }
+        }
+    }
+}
+
 /// An empty 12×12 chip (outline only), a placeholder slot for a custom theme
 /// that hasn't had a color chosen yet.
 struct EmptySwatch: View {
@@ -985,16 +999,13 @@ struct SquareButtonStyle: ButtonStyle {
     /// a confirmation). Lighter weight than `tint` so it does not out-shout the
     /// default Save button beside it.
     var outline: Color? = nil
-    /// Optional fixed width so a row of buttons can be made uniform regardless of
-    /// their label length (nil = size to content).
-    var width: CGFloat? = nil
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 12))
             .foregroundStyle(labelColor)
             .padding(.horizontal, 14)
-            .frame(width: width, height: 26)
+            .frame(height: 26)
             .background(fill(pressed: configuration.isPressed))
             .overlay(Rectangle().strokeBorder(outline ?? tint ?? Pane.border, lineWidth: 1))
             .opacity(isEnabled ? 1.0 : 0.4)
@@ -1026,15 +1037,7 @@ struct ThemeBoxLabel: View {
                 .lineLimit(1)
             Spacer(minLength: 8)
             if let palette {
-                HStack(spacing: 2) {
-                    ForEach(Array(palette.slots.enumerated()), id: \.offset) { _, slot in
-                        Swatch(color: Color(nsColor: slot.nsLight))
-                    }
-                    Text("|").opacity(0.35).padding(.horizontal, 2)
-                    ForEach(Array(palette.slots.enumerated()), id: \.offset) { _, slot in
-                        Swatch(color: Color(nsColor: slot.nsDark))
-                    }
-                }
+                SwatchTrio(slots: palette.slots)
             }
             Image(systemName: "chevron.down")
                 .font(.system(size: 8))
