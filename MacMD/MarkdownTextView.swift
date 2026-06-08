@@ -395,9 +395,7 @@ final class ClickableTextView: NSTextView {
 
     /// Blink off: keep the caret steady by not letting the blink timer toggle it
     /// off. Combined with `drawInsertionPoint` forcing `on = true` when blink is
-    /// off, the caret stays visible. HONEST NOTE: NSTextView caret blinking is
-    /// fiddly; if live verification shows residual blink or artifacts, ship
-    /// Bar/Block/Underline without blink-off and add a FUTURE.md row.
+    /// off, the caret stays visible.
     override func updateInsertionPointStateAndRestartTimer(_ restartFlag: Bool) {
         super.updateInsertionPointStateAndRestartTimer(Theme.cursorBlink ? restartFlag : false)
     }
@@ -436,6 +434,14 @@ final class ClickableTextView: NSTextView {
 
         let ranges = highlighter.taskCheckboxRanges(in: ts)
         guard let bracket = ranges.first(where: { NSLocationInRange(charIndex, $0) }) else {
+            super.mouseDown(with: event)
+            return
+        }
+        // glyphIndex(for:in:) clamps a click that lands on no glyph to the nearest
+        // one, so a click in the line-spacing gap above/below the bracket column
+        // would otherwise toggle it. Require the point to fall inside the glyph.
+        let glyphRect = layoutManager.boundingRect(forGlyphRange: NSRange(location: glyphIndex, length: 1), in: container)
+        guard glyphRect.contains(pointInContainer) else {
             super.mouseDown(with: event)
             return
         }

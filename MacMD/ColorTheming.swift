@@ -6,7 +6,7 @@ extension NSColor {
     convenience init?(hex: String) {
         var s = hex.trimmingCharacters(in: .whitespacesAndNewlines)
         if s.hasPrefix("#") { s.removeFirst() }
-        guard s.count == 6, let v = Int(s, radix: 16) else { return nil }
+        guard s.count == 6, s.allSatisfy(\.isHexDigit), let v = Int(s, radix: 16) else { return nil }
         let r = CGFloat((v >> 16) & 0xFF) / 255
         let g = CGFloat((v >> 8) & 0xFF) / 255
         let b = CGFloat(v & 0xFF) / 255
@@ -60,10 +60,6 @@ struct ColorPair: Codable, Equatable {
 
     var nsLight: NSColor { NSColor(hex: light) ?? .labelColor }
     var nsDark: NSColor { NSColor(hex: dark) ?? .labelColor }
-
-    func resolved(for appearance: NSAppearance) -> NSColor {
-        appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? nsDark : nsLight
-    }
 
     var dynamic: NSColor {
         NSColor(name: nil) { appearance in

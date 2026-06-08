@@ -133,8 +133,9 @@ enum EditingCommands {
             }
             let indent = ns.substring(with: m.range(at: 1))
             let number = Int(ns.substring(with: m.range(at: 2))) ?? 0
+            let next = number < Int.max ? number + 1 : number   // saturate so an Int.max marker can't trap
             let delimiter = ns.substring(with: m.range(at: 3))
-            return .continue(newPrefix: "\(indent)\(number + 1)\(delimiter) ")
+            return .continue(newPrefix: "\(indent)\(next)\(delimiter) ")
         }
 
         return .none

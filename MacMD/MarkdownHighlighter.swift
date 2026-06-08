@@ -178,7 +178,11 @@ private enum MarkdownRules {
         Rule(regex: r("~~(?!\\s)[^~\\n]+?(?<!\\s)~~")) { ts, m, _ in
             ts.addAttribute(.strikethroughStyle, value: NSUnderlineStyle.single.rawValue, range: m.range)
         },
-        Rule(regex: r("\\[([^\\]\\n]+)\\]\\(([^)\\n]+)\\)")) { ts, m, _ in
+        // Bounded, atomic inner runs so a single long line of `[a](` repeated
+        // can't drive catastrophic O(n^2) backtracking (a real DoS, since the app
+        // opens untrusted .md files). Same defense as the emphasis rules above.
+        // Group 1 = label, group 2 = url.
+        Rule(regex: r("\\[(?>([^\\]\\n]{1,1024}))\\]\\((?>([^)\\n]{1,2048}))\\)")) { ts, m, _ in
             let label = m.range(at: 1)
             let url = m.range(at: 2)
             if label.location != NSNotFound {
@@ -318,18 +322,24 @@ private enum MarkdownRules {
         var lineStart = 0, lineEnd = 0, contentsEnd = 0
         nsString.getLineStart(&lineStart, end: &lineEnd, contentsEnd: &contentsEnd,
                               for: NSRange(location: 0, length: 0))
-        let firstLine = nsString.substring(with: NSRange(location: 0, length: contentsEnd))
+        // Delimiters are exactly three characters, so only a 3-char first line can
+        // open a block. Gate on the length first so the common case (every other
+        // first line) returns without allocating a substring on every keystroke.
+        guard contentsEnd == 3 else { return nil }
         let delimiter: String
-        if firstLine == "---" { delimiter = "---" }
-        else if firstLine == "+++" { delimiter = "+++" }
-        else { return nil }
+        switch nsString.substring(with: NSRange(location: 0, length: 3)) {
+        case "---": delimiter = "---"
+        case "+++": delimiter = "+++"
+        default: return nil
+        }
         guard lineEnd > 0, lineEnd < nsString.length else { return nil }
         var idx = lineEnd
         while idx < nsString.length {
             var ls = 0, le = 0, ce = 0
             nsString.getLineStart(&ls, end: &le, contentsEnd: &ce, for: NSRange(location: idx, length: 0))
-            let line = nsString.substring(with: NSRange(location: ls, length: ce - ls))
-            if line == delimiter {
+            // Same 3-char gate inside the loop: only a 3-char line can be the
+            // closing delimiter, so non-matching lines never allocate a substring.
+            if ce - ls == 3, nsString.substring(with: NSRange(location: ls, length: 3)) == delimiter {
                 return NSRange(location: 0, length: le)
             }
             guard le > ls else { break }

@@ -267,6 +267,21 @@ final class MarkdownHighlighterTests: XCTestCase {
                           "Emphasis highlighting must stay linear on long lines")
     }
 
+    func testLongLinkLineHighlightsWithoutBacktracking() {
+        // A single long line of "[a](" repeated (no closing paren) used to send the
+        // link rule into catastrophic O(n^2) backtracking and peg the main thread
+        // for minutes. The inner runs are now atomic and bounded so this must
+        // finish near-instantly.
+        let line = String(repeating: "[a](", count: 40_000)
+        let storage = NSTextStorage(string: line)
+        let highlighter = MarkdownHighlighter()
+        storage.delegate = highlighter
+        let started = CFAbsoluteTimeGetCurrent()
+        highlighter.rehighlightAll(storage)
+        XCTAssertLessThan(CFAbsoluteTimeGetCurrent() - started, 2.0,
+                          "Link highlighting must stay linear on long lines")
+    }
+
     func testBlockquoteComposesWithBold() {
         let text = "> **bolded** in a quote"
         let storage = highlight(text)

@@ -46,7 +46,7 @@ struct MacMDApp: App {
             }
             CommandGroup(replacing: .printItem) {
                 Button("Print…") {
-                    (NSApp.keyWindow?.firstResponder as? ClickableTextView)?.macmdPrint(nil)
+                    focusedEditor()?.macmdPrint(nil)
                 }
                 .keyboardShortcut("p", modifiers: .command)
             }
@@ -115,27 +115,27 @@ struct FormatCommands: Commands {
     var body: some Commands {
         CommandMenu("Format") {
             Button("Bold") {
-                (NSApp.keyWindow?.firstResponder as? ClickableTextView)?.macmdBold(nil)
+                focusedEditor()?.macmdBold(nil)
             }
             .keyboardShortcut("b", modifiers: .command)
             Button("Italic") {
-                (NSApp.keyWindow?.firstResponder as? ClickableTextView)?.macmdItalic(nil)
+                focusedEditor()?.macmdItalic(nil)
             }
             .keyboardShortcut("i", modifiers: .command)
             Button("Strikethrough") {
-                (NSApp.keyWindow?.firstResponder as? ClickableTextView)?.macmdStrikethrough(nil)
+                focusedEditor()?.macmdStrikethrough(nil)
             }
             .keyboardShortcut("x", modifiers: [.command, .shift])
             Button("Inline Code") {
-                (NSApp.keyWindow?.firstResponder as? ClickableTextView)?.macmdCode(nil)
+                focusedEditor()?.macmdCode(nil)
             }
             Button("Link…") {
-                (NSApp.keyWindow?.firstResponder as? ClickableTextView)?.macmdLink(nil)
+                focusedEditor()?.macmdLink(nil)
             }
             .keyboardShortcut("k", modifiers: .command)
             Divider()
             Button("Toggle Task Checkbox") {
-                (NSApp.keyWindow?.firstResponder as? ClickableTextView)?.toggleTaskCheckbox(nil)
+                focusedEditor()?.toggleTaskCheckbox(nil)
             }
             .keyboardShortcut("l", modifiers: [.command, .shift])
         }
@@ -193,6 +193,14 @@ enum FontSize {
     static func clamp(_ size: CGFloat) -> CGFloat {
         min(maximum, max(minimum, size.rounded()))
     }
+}
+
+/// The markdown editor that currently holds keyboard focus, or nil. Menu commands
+/// resolve their target this way because `sendAction(_:to:nil)` does not reach an
+/// NSTextView hosted inside the SwiftUI DocumentGroup.
+@MainActor
+private func focusedEditor() -> ClickableTextView? {
+    NSApp.keyWindow?.firstResponder as? ClickableTextView
 }
 
 /// Drive the focused editor's already-active NSTextFinder from a menu command.

@@ -96,6 +96,13 @@ final class EditingCommandsTests: XCTestCase {
         XCTAssertEqual(EditingCommands.listContinuation(forLine: "3) third"), .continue(newPrefix: "4) "))
     }
 
+    func testOrderedContinuationSaturatesAtIntMax() {
+        // A marker numbered exactly Int.max parses successfully, so the increment
+        // must saturate (reuse the number) instead of trapping on overflow.
+        XCTAssertEqual(EditingCommands.listContinuation(forLine: "\(Int.max). item"),
+                       .continue(newPrefix: "\(Int.max). "))
+    }
+
     // MARK: - List continuation: task items continue unchecked
 
     func testTaskContinuationStartsUnchecked() {

@@ -7,12 +7,15 @@ enum LineNumbering {
     /// `index` is clamped to `[0, string.length]`.
     static func lineNumber(forCharacterIndex index: Int, in string: NSString) -> Int {
         let clamped = max(0, min(index, string.length))
+        guard clamped > 0 else { return 1 }
+        // Copy the prefix once and scan it in a tight loop, rather than paying a
+        // per-character `character(at:)` bridge cost. The gutter seeds this on
+        // every scroll frame, so at the bottom of a large file the old per-char
+        // path stalled the main thread; this keeps it sub-frame.
+        var prefix = [unichar](repeating: 0, count: clamped)
+        string.getCharacters(&prefix, range: NSRange(location: 0, length: clamped))
         var count = 1
-        var i = 0
-        while i < clamped {
-            if string.character(at: i) == 0x000A { count += 1 }
-            i += 1
-        }
+        for unit in prefix where unit == 0x000A { count += 1 }
         return count
     }
 

@@ -51,11 +51,22 @@ final class CustomDraft: ObservableObject {
         scheme = palette.scheme
         name = palette.name
         editingId = palette.id
-        lights = palette.slots.map { Color(nsColor: $0.nsLight) }
-        darks = palette.slots.map { Color(nsColor: $0.nsDark) }
+        // Normalize to the scheme's slot count (padding with the begin() defaults
+        // or truncating) so a malformed stored palette whose slot count disagrees
+        // with its scheme can't make the slotCount-indexed reads in `palette` and
+        // `persistPalette` run off the end of these arrays.
+        lights = Self.fit(palette.slots.map { Color(nsColor: $0.nsLight) }, to: slotCount, pad: .black)
+        darks = Self.fit(palette.slots.map { Color(nsColor: $0.nsDark) }, to: slotCount, pad: .white)
         savedId = nil
         selectedWell = nil
         active = true
+    }
+
+    /// Pad (with `pad`) or truncate `colors` to exactly `count` slots.
+    private static func fit(_ colors: [Color], to count: Int, pad: Color) -> [Color] {
+        if colors.count > count { return Array(colors.prefix(count)) }
+        if colors.count < count { return colors + Array(repeating: pad, count: count - colors.count) }
+        return colors
     }
 
     func end() { active = false; selectedWell = nil }
