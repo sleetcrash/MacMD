@@ -39,8 +39,5 @@ MacMD.app
 # Local-only project reference doc
 project.md
 
-# Local-only backlog
-FUTURE.md
-
 # Local-only planning docs - specs and plans stay on disk, never committed
 docs/superpowers/
