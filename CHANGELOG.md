@@ -2,6 +2,16 @@
 
 All notable changes to MacMD will be documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] - 2026-06-08
+
+### Fixed
+- Opening or editing a document with an unusual long line (a malformed link with no closing parenthesis, repeated many times) could make the app stop responding. Such lines are now handled instantly.
+- Continuing a numbered list with the Return key no longer quits the app in a rare edge case (a list item numbered with an extremely large value).
+- Clicking in the narrow gap just above or below a task checkbox no longer toggles it. Only a click on the checkbox itself toggles it.
+
+### Changed
+- Scrolling a large document in plain mode (with line numbers showing) is smoother.
+
 ## [1.3.0] - 2026-06-06
 
 ### Added
