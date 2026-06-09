@@ -999,13 +999,16 @@ struct SquareButtonStyle: ButtonStyle {
     /// a confirmation). Lighter weight than `tint` so it does not out-shout the
     /// default Save button beside it.
     var outline: Color? = nil
+    /// Optional fixed width, so a row of these buttons can be made uniform (e.g.
+    /// Delete and Save / Cancel sharing one size). nil = hug the label.
+    var width: CGFloat? = nil
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 12))
             .foregroundStyle(labelColor)
             .padding(.horizontal, 14)
-            .frame(height: 26)
+            .frame(width: width, height: 26)
             .background(fill(pressed: configuration.isPressed))
             .overlay(Rectangle().strokeBorder(outline ?? tint ?? Pane.border, lineWidth: 1))
             .opacity(isEnabled ? 1.0 : 0.4)
