@@ -103,6 +103,12 @@ struct CustomThemeEditor: View {
     private let wellSize: CGFloat = 24
     @State private var showDeleteConfirm = false
     static let deleteRed = Color(red: 0.80, green: 0.25, blue: 0.27)
+    /// One width for every action button (Delete / Save / Cancel) so a row of them
+    /// is uniform across the editor and the confirmation. The explicit width also
+    /// keeps the confirmation's buttons drawing as the square SquareButtonStyle:
+    /// without it the system fell back to a default rounded bezel for an
+    /// intrinsically-sized custom button on that pure-SwiftUI page.
+    static let actionWidth: CGFloat = 96
 
     private var slotLabels: [String] { draft.scheme == .standard ? ["H1", "H2", "H3"] : ["Color"] }
     // The slot count that is safe to index across every per-slot array, guarding
@@ -111,32 +117,47 @@ struct CustomThemeEditor: View {
     private var canSave: Bool { !draft.name.trimmingCharacters(in: .whitespaces).isEmpty }
 
     var body: some View {
-        ZStack {
-            editor
-            if showDeleteConfirm { deleteConfirmation }
-        }
-        .frame(width: 264)   // hugs the swatch row; no Close button to widen for
-        .background(Pane.window)
-        .background(SystemWindowAppearance())
-        .background(PositionBesideAppearance())
-        .background(RaiseOnOpen())
-        .background(FloatAboveDocument())
-        .onExitCommand {
-            if showDeleteConfirm { showDeleteConfirm = false } else { dismiss() }
-        }
-        .onDisappear {
-            draft.end()
-            // Close the color picker and hand focus back to the Appearance window
-            // (not the document) however this window was dismissed, but only if
-            // Appearance is still on screen. When Appearance is the one closing (it
-            // cascades this window shut), re-showing it here would resurrect a
-            // closing window, so skip the re-focus in that case.
-            NSColorPanel.shared.orderOut(nil)
-            NSColorPanel.shared.level = .normal   // undo the floating level set while picking
-            if let appWin = NSApp.windows.first(where: { $0.title == "Appearance" }), appWin.isVisible {
-                appWin.makeKeyAndOrderFront(nil)
+        // The confirmation REPLACES the editor as the window's content instead of
+        // floating over it as a dimmed overlay. The window is
+        // `.windowResizability(.contentSize)`, so it simply resizes to whichever
+        // page is shown. The previous dimmed card needed a greedy full-bleed
+        // backdrop which, in a content-sized window, didn't cover cleanly and left
+        // a black band above the card; a plain sibling page has no backdrop to
+        // misfit. (The square button rendering is handled by `actionWidth`.)
+        Group {
+            if showDeleteConfirm {
+                deleteConfirmation
+            } else {
+                editor
             }
         }
+            .frame(width: 264)   // hugs the swatch row; no Close button to widen for
+            .background(Pane.window)
+            .background(SystemWindowAppearance())
+            .background(PositionBesideAppearance())
+            .background(RaiseOnOpen())
+            .background(FloatAboveDocument())
+            .onExitCommand {
+                if showDeleteConfirm { showDeleteConfirm = false } else { dismiss() }
+            }
+            .onDisappear {
+                // Reset the confirmation so closing this window (red dot) while it is
+                // showing doesn't reopen straight into the confirmation next time the
+                // same theme is edited. The window is a singleton scene whose state
+                // otherwise persists across close/reopen.
+                showDeleteConfirm = false
+                draft.end()
+                // Close the color picker and hand focus back to the Appearance window
+                // (not the document) however this window was dismissed, but only if
+                // Appearance is still on screen. When Appearance is the one closing (it
+                // cascades this window shut), re-showing it here would resurrect a
+                // closing window, so skip the re-focus in that case.
+                NSColorPanel.shared.orderOut(nil)
+                NSColorPanel.shared.level = .normal   // undo the floating level set while picking
+                if let appWin = NSApp.windows.first(where: { $0.title == "Appearance" }), appWin.isVisible {
+                    appWin.makeKeyAndOrderFront(nil)
+                }
+            }
     }
 
     private var editor: some View {
@@ -207,11 +228,11 @@ struct CustomThemeEditor: View {
             HStack(spacing: 10) {
                 if draft.editingId != nil {
                     Button("Delete") { showDeleteConfirm = true }
-                        .buttonStyle(SquareButtonStyle(outline: Self.deleteRed))
+                        .buttonStyle(SquareButtonStyle(outline: Self.deleteRed, width: Self.actionWidth))
                 }
                 Spacer()
                 Button("Save") { save() }
-                    .buttonStyle(SquareButtonStyle())
+                    .buttonStyle(SquareButtonStyle(width: Self.actionWidth))
                     .disabled(!canSave)
                     .keyboardShortcut(.defaultAction)
             }
@@ -221,34 +242,32 @@ struct CustomThemeEditor: View {
         .foregroundStyle(Pane.text)
     }
 
-    /// A modal card styled like this window (Pane chrome, sharp edges, square
-    /// buttons) confirming deletion. Cancel / red Delete.
+    /// The delete confirmation page, styled like the editor (same window chrome,
+    /// padding, and square buttons) so it reads as the same window asking a
+    /// question. The red-outline Delete is identical to the editor's Delete (same
+    /// style, side, and width); Cancel takes Save's neutral slot and returns to the
+    /// editor. A sibling page rather than a dimmed overlay (see `body`).
     private var deleteConfirmation: some View {
-        ZStack {
-            Color.black.opacity(0.45)
-                .contentShape(Rectangle())
-                .onTapGesture { showDeleteConfirm = false }
-            VStack(alignment: .leading, spacing: 16) {
-                Text("Delete “\(draft.name)”?")
-                    .font(.system(size: 13, weight: .semibold))
-                Text("This permanently removes the custom theme and can’t be undone.")
-                    .font(.system(size: 11))
-                    .foregroundStyle(Pane.muted)
-                    .fixedSize(horizontal: false, vertical: true)
-                HStack(spacing: 10) {
-                    Button("Cancel") { showDeleteConfirm = false }
-                        .buttonStyle(SquareButtonStyle())
-                    Spacer()
-                    Button("Delete") { performDelete() }
-                        .buttonStyle(SquareButtonStyle(tint: Self.deleteRed))
-                }
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Delete “\(draft.name)”?")
+                .font(.system(size: 13, weight: .semibold))
+                .frame(maxWidth: .infinity, alignment: .center)
+            Text("This permanently removes the custom theme and can’t be undone.")
+                .font(.system(size: 11))
+                .foregroundStyle(Pane.muted)
+                .fixedSize(horizontal: false, vertical: true)
+            // Delete is the same button as the editor's (red outline, left, same
+            // width); Cancel takes Save's neutral slot on the right.
+            HStack(spacing: 10) {
+                Button("Delete") { performDelete() }
+                    .buttonStyle(SquareButtonStyle(outline: Self.deleteRed, width: Self.actionWidth))
+                Spacer()
+                Button("Cancel") { showDeleteConfirm = false }
+                    .buttonStyle(SquareButtonStyle(width: Self.actionWidth))
             }
-            .padding(20)
-            .frame(width: 260)
-            .background(Pane.window)
-            .overlay(Rectangle().strokeBorder(Pane.border, lineWidth: 1))
+            .frame(maxWidth: .infinity)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(EdgeInsets(top: 26, leading: 20, bottom: 20, trailing: 20))
         .foregroundStyle(Pane.text)
     }
 
