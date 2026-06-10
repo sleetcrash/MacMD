@@ -395,11 +395,20 @@ final class ClickableTextView: NSTextView {
         }
         if flag {
             lastDrawnCaretRect = caretRect
+        } else if let last = lastDrawnCaretRect,
+                  abs(last.origin.x - caretRect.origin.x) < 0.5,
+                  abs(last.origin.y - caretRect.origin.y) < 0.5 {
+            // Blink hide at the current position: erase exactly what was
+            // drawn and schedule NOTHING. An extra invalidation here makes
+            // the display pass repaint the caret straight back, which reads
+            // as "never blinks" when blink is on.
+            caretRect = last
+            lastDrawnCaretRect = nil
         } else {
-            // Erase: AppKit hands back a rect computed from the CURRENT
-            // selection, which after a move is the wrong place (and, with a
-            // proportional font, the wrong width) for the caret that was
-            // actually drawn. Repaint the union of both so no pixels strand.
+            // Stale erase (the caret moved): AppKit hands back a rect
+            // computed from the CURRENT selection, which is the wrong place
+            // (and, with a proportional font, the wrong width) for the caret
+            // that was actually drawn. Repaint the union so no pixels strand.
             var dirty = caretRect
             if let last = lastDrawnCaretRect { dirty = dirty.union(last) }
             setNeedsDisplay(dirty.insetBy(dx: -2, dy: -2))
