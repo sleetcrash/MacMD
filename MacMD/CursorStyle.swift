@@ -42,6 +42,7 @@ enum CursorGeometry {
 /// registration domain keeps the caret steady without fighting the timer
 /// pass-by-pass (the old force-on approach broke move-erases and caused ghost
 /// carets) and without persisting anything to the user's real defaults.
+@MainActor
 enum CaretBlink {
     private static let onKey = "NSTextInsertionPointBlinkPeriodOn"
     private static let offKey = "NSTextInsertionPointBlinkPeriodOff"
