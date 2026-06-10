@@ -348,10 +348,12 @@ struct SettingsView: View {
     }
 
     /// The Background trigger: a single swatch (the selection's color) plus the
-    /// dropdown chevron. Swatch-only, no name; styled like the Theme box.
+    /// dropdown chevron. Swatch-only, no name; the swatch sits right-aligned
+    /// against the chevron like the Theme box's swatches.
     private var backgroundBox: some View {
         Button { toggle(.background) } label: {
             HStack(spacing: 0) {
+                Spacer(minLength: 4)
                 if wcBackgroundMode == .custom {
                     if let color = wcStoredCustomColor {
                         Swatch(color: Color(nsColor: color))
@@ -361,8 +363,8 @@ struct SettingsView: View {
                 } else {
                     Swatch(color: Color(nsColor: EditorBackground.defaultBackground(dark: wcAppearance.resolvesDark)))
                 }
-                Spacer(minLength: 4)
                 Image(systemName: "chevron.down").font(.system(size: 8)).opacity(0.5)
+                    .padding(.leading, 8)
                     .rotationEffect(.degrees(openMenu == .background ? 180 : 0))
                     .animation(.easeInOut(duration: 0.15), value: openMenu == .background)
             }
@@ -424,10 +426,14 @@ struct SettingsView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .contentShape(Rectangle())
                 .onTapGesture { openMenu = nil; NSApp.keyWindow?.makeFirstResponder(nil) }
+            // The Background trigger is swatch-only (segWidth), but its rows
+            // carry "Default" / "Custom+" labels, so that one dropdown is wider
+            // than its trigger and stays right-aligned to it.
+            let width = max(frame.width, field == .background ? 104 : 0)
             InlineDropdown(items: items(for: field), keyboardNav: field != .size)
                 .id(field)
-                .frame(width: frame.width, alignment: .topLeading)
-                .offset(x: frame.minX, y: frame.maxY)
+                .frame(width: width, alignment: .topLeading)
+                .offset(x: frame.maxX - width, y: frame.maxY)
         }
     }
 
@@ -889,8 +895,9 @@ private struct DropdownRow: View {
             }
         case .backgroundSwatch(let color):
             row {
+                Text("Default").font(.system(size: 11)).lineLimit(1)
+                Spacer(minLength: 8)
                 Swatch(color: Color(nsColor: color))
-                Spacer(minLength: 0)
                 // Reserve the pencil slot so this swatch stays column-aligned
                 // with the Custom row's (same trick as the Custom+ theme row).
                 Color.clear.frame(width: iconSlot, height: 1)
@@ -942,20 +949,22 @@ private struct DropdownRow: View {
         .contentShape(Rectangle())
     }
 
-    /// The Background dropdown's Custom row: the picked color's swatch (or a
-    /// blank "+" before one is picked) plus a trailing pencil that reopens the
-    /// color panel. Mirrors paletteRow's two-button split so the pencil is not
-    /// nested inside the select button.
+    /// The Background dropdown's Custom row: a "Custom+" label, the picked
+    /// color's swatch right-aligned like the theme rows (a blank "+" before
+    /// one is picked), and a trailing pencil that reopens the color panel.
+    /// Mirrors paletteRow's two-button split so the pencil is not nested
+    /// inside the select button.
     private func backgroundCustomRow(_ color: NSColor?) -> some View {
         HStack(spacing: 0) {
             Button { item.action?() } label: {
                 HStack(spacing: 0) {
+                    Text("Custom+").font(.system(size: 11)).lineLimit(1)
+                    Spacer(minLength: 8)
                     if let color {
                         Swatch(color: Color(nsColor: color))
                     } else {
                         PlusSwatch()
                     }
-                    Spacer(minLength: 0)
                 }
                 .frame(maxWidth: .infinity)
                 .contentShape(Rectangle())
@@ -1336,12 +1345,10 @@ private final class ProgrammaticColorWell: NSColorWell {
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }
 
-/// Wraps a control with an uppercase label that fades in on hover (keeps the
-/// pane clean) while always exposing the label to VoiceOver.
+/// Wraps a control with a small uppercase caption above it, always visible.
 struct LabeledField<Content: View>: View {
     let label: String
     @ViewBuilder let content: Content
-    @State private var hovering = false
 
     var body: some View {
         content
@@ -1350,12 +1357,10 @@ struct LabeledField<Content: View>: View {
                     .font(.system(size: 9))
                     .tracking(0.6)
                     .foregroundStyle(Pane.muted)
-                    .opacity(hovering ? 0.55 : 0)
-                    .animation(.easeInOut(duration: 0.15), value: hovering)
+                    .opacity(0.55)
                     .offset(y: -14)
                     .allowsHitTesting(false)
             }
-            .onHover { hovering = $0 }
             .accessibilityElement(children: .contain)
             .accessibilityLabel(label)
     }
