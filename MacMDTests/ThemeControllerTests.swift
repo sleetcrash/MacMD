@@ -342,11 +342,15 @@ final class ThemeControllerTests: XCTestCase {
     }
 
     func testRevertRestoresSavedBackground() {
+        // Seed a NON-default saved state so this fails if revertToSaved()
+        // resets to constants instead of re-reading the defaults.
         let d = freshDefaults()
+        d.set(BackgroundMode.custom.rawValue, forKey: ThemeSettings.backgroundModeKey)
+        d.set("#FFF4DC", forKey: ThemeSettings.customBackgroundKey)
         let c = ThemeController(defaults: d)
-        c.applyBackground(mode: .custom, hex: "#112233")
+        c.applyBackground(mode: .default, hex: nil)
         c.revertToSaved()
-        XCTAssertEqual(c.backgroundMode, .default)
-        XCTAssertNil(c.customBackgroundHex)
+        XCTAssertEqual(c.backgroundMode, .custom)
+        XCTAssertEqual(c.customBackgroundHex, "#FFF4DC")
     }
 }
