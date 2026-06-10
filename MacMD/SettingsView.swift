@@ -895,7 +895,7 @@ private struct DropdownRow: View {
             }
         case .backgroundSwatch(let color):
             row {
-                Text("Default").font(.system(size: 11))
+                Text("Default").font(.system(size: 11)).lineLimit(1)
                 Spacer(minLength: 8)
                 Swatch(color: Color(nsColor: color))
                 // Reserve the pencil slot so this swatch stays column-aligned
@@ -958,7 +958,7 @@ private struct DropdownRow: View {
         HStack(spacing: 0) {
             Button { item.action?() } label: {
                 HStack(spacing: 0) {
-                    Text("Custom+").font(.system(size: 11))
+                    Text("Custom+").font(.system(size: 11)).lineLimit(1)
                     Spacer(minLength: 8)
                     if let color {
                         Swatch(color: Color(nsColor: color))
