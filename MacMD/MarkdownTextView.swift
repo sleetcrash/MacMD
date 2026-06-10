@@ -408,9 +408,12 @@ final class ClickableTextView: NSTextView {
         super.drawInsertionPoint(in: caretRect, color: caretColor, turnedOn: flag)
     }
 
-    /// Clear the previous caret's pixels on every selection change. Without
-    /// this, rapid moves leave block/underline ghosts: AppKit's own
-    /// invalidation covers only the thin bar rect.
+    /// Clear the previous caret's pixels on every selection change, and widen
+    /// the dirty region to the new caret's whole line fragment. AppKit's own
+    /// invalidation covers only the thin bar rect, which both strands the old
+    /// widened block/underline as a ghost AND clips a display-pass redraw of
+    /// the new one to a sliver (bit on vertical moves, where the erase union
+    /// sits on another line and cannot cover the new caret's cell).
     override func setSelectedRanges(_ ranges: [NSValue], affinity: NSSelectionAffinity,
                                     stillSelecting: Bool) {
         if let last = lastDrawnCaretRect {
@@ -418,6 +421,32 @@ final class ClickableTextView: NSTextView {
             lastDrawnCaretRect = nil
         }
         super.setSelectedRanges(ranges, affinity: affinity, stillSelecting: stillSelecting)
+        invalidateCaretLine()
+    }
+
+    /// Mark the caret's whole line fragment as needing display, so a widened
+    /// block/underline caret paints in full no matter how thin a rect AppKit
+    /// invalidated for the move.
+    private func invalidateCaretLine() {
+        guard Theme.cursorStyle != .bar, let lm = layoutManager else { return }
+        let caret = selectedRange()
+        guard caret.length == 0 else { return }
+        let length = (string as NSString).length
+        var rect: NSRect
+        if caret.location >= length {
+            rect = lm.extraLineFragmentRect
+            if rect.height <= 0, length > 0 {
+                let glyph = lm.glyphIndexForCharacter(at: length - 1)
+                rect = lm.lineFragmentRect(forGlyphAt: glyph, effectiveRange: nil)
+            }
+        } else {
+            let glyph = lm.glyphIndexForCharacter(at: caret.location)
+            rect = lm.lineFragmentRect(forGlyphAt: glyph, effectiveRange: nil)
+        }
+        guard rect.height > 0 else { return }
+        rect.origin.x += textContainerOrigin.x
+        rect.origin.y += textContainerOrigin.y
+        setNeedsDisplay(rect.insetBy(dx: -2, dy: -2))
     }
 
     /// Width of the glyph at the insertion point, or 0 at end-of-line / on a
