@@ -113,6 +113,11 @@ struct SettingsView: View {
     @State private var wcFontFamilyId = FontFamily.default.id
     @State private var wcCursorStyleRaw = CursorStyle.bar.rawValue
     @State private var wcCursorBlink = true
+    @State private var wcBackgroundModeRaw = BackgroundMode.default.rawValue
+    @State private var wcCustomBackgroundHex: String?
+    /// Bump to open the shared color panel on the background well (picking
+    /// Custom with no color yet, or the pencil).
+    @State private var backgroundPickerActivation = 0
     @State private var sizeText = ""
 
     // Which dropdown (if any) is open, and the on-screen frame of each trigger
@@ -132,6 +137,15 @@ struct SettingsView: View {
         ThemeSettings.resolvePalette(coloring: wcColoring, themeId: wcThemeId, customs: customs)
     }
     private var wcFontFamily: FontFamily { FontFamily.resolve(id: wcFontFamilyId) }
+    private var wcBackgroundMode: BackgroundMode { BackgroundMode(rawValue: wcBackgroundModeRaw) ?? .default }
+    /// The stored Custom color (even while Default is selected, for the Custom
+    /// row's swatch and pencil); nil until one is picked or for a bad hex.
+    private var wcStoredCustomColor: NSColor? { wcCustomBackgroundHex.flatMap { NSColor(hex: $0) } }
+    /// The custom color only when Custom is the active selection (what the
+    /// preview paints).
+    private var wcActiveCustomColor: NSColor? {
+        EditorBackground.customColor(mode: wcBackgroundMode, hex: wcCustomBackgroundHex)
+    }
     // Apply lights up when the selection differs from what the editor is
     // currently showing (the applied/effective state), so you can always apply
     // your choice, even if it equals the saved value. Save lights up when the
@@ -144,6 +158,8 @@ struct SettingsView: View {
         || wcFontFamilyId != theme.fontFamilyId
         || wcCursorStyleRaw != theme.cursorStyle.rawValue
         || wcCursorBlink != theme.cursorBlink
+        || wcBackgroundModeRaw != theme.backgroundMode.rawValue
+        || wcCustomBackgroundHex != theme.customBackgroundHex
     }
     private var saveDirty: Bool {
         wcSchemeRaw != theme.savedColoring.rawValue
@@ -153,6 +169,8 @@ struct SettingsView: View {
         || wcFontFamilyId != theme.savedFontFamilyId
         || wcCursorStyleRaw != theme.savedCursorStyle.rawValue
         || wcCursorBlink != theme.savedCursorBlink
+        || wcBackgroundModeRaw != theme.savedBackgroundMode.rawValue
+        || wcCustomBackgroundHex != theme.savedCustomBackground
     }
     // A new custom theme is being edited in the Custom Theme window but hasn't been
     // saved yet, so it has no committable id. The preview shows the live draft, but
@@ -178,6 +196,14 @@ struct SettingsView: View {
         // OS (light in Light, dark in Dark). The preview still shows the Mode.
         .background(SystemWindowAppearance())
         .background(FloatAboveDocument())
+        // Invisible, zero-sized color well bridging the shared NSColorPanel to
+        // the Background working copy. Mounted on the window root (not the
+        // transient dropdown) so the panel keeps feeding color changes after the
+        // dropdown closes. Opened programmatically via backgroundPickerActivation.
+        .background(BackgroundColorWell(hex: $wcCustomBackgroundHex,
+                                        activation: backgroundPickerActivation,
+                                        initialColor: EditorBackground.defaultBackground(dark: wcAppearance.resolvesDark))
+            .frame(width: 0, height: 0))
         // macOS frame autosave can restore this auxiliary window partway off the
         // screen edge; pull it back fully on screen on open (a dragged on-screen
         // position is left untouched).
@@ -242,9 +268,8 @@ struct SettingsView: View {
                     ModeControl(appearanceRaw: $wcAppearanceRaw)
                         .frame(width: wideWidth, height: rowHeight)
                 }
-                LabeledField(label: "Size") {
-                    SizeControl(fontSize: $wcFontSize, text: $sizeText, openMenu: $openMenu)
-                        .frame(width: segWidth, height: rowHeight)
+                LabeledField(label: "Background") {
+                    backgroundBox.frame(width: segWidth, height: rowHeight)
                 }
             }
             HStack(spacing: 14) {
@@ -255,8 +280,14 @@ struct SettingsView: View {
                     schemeBox.frame(width: segWidth, height: rowHeight)
                 }
             }
-            LabeledField(label: "Font") {
-                fontBox.frame(width: wideWidth + 14 + segWidth, height: rowHeight)
+            HStack(spacing: 14) {
+                LabeledField(label: "Font") {
+                    fontBox.frame(width: wideWidth, height: rowHeight)
+                }
+                LabeledField(label: "Size") {
+                    SizeControl(fontSize: $wcFontSize, text: $sizeText, openMenu: $openMenu)
+                        .frame(width: segWidth, height: rowHeight)
+                }
             }
             HStack(spacing: 14) {
                 LabeledField(label: "Cursor") {
@@ -271,7 +302,8 @@ struct SettingsView: View {
             ThemePreview(coloring: customDraft.active ? customDraft.scheme : wcColoring,
                          palette: customDraft.active ? customDraft.palette : wcPalette,
                          appearance: wcAppearance, fontSize: CGFloat(wcFontSize),
-                         family: wcFontFamily)
+                         family: wcFontFamily,
+                         customBackground: wcActiveCustomColor)
                 .frame(maxWidth: .infinity)
             HStack(spacing: 10) {
                 // No Close button: the title-bar close control and Escape already
@@ -283,6 +315,7 @@ struct SettingsView: View {
                                 fontSize: wcFontSize, appearance: wcAppearance)
                     theme.applyFontFamily(wcFontFamilyId)
                     theme.applyCursor(style: CursorStyle(rawValue: wcCursorStyleRaw) ?? .bar, blink: wcCursorBlink)
+                    theme.applyBackground(mode: wcBackgroundMode, hex: wcCustomBackgroundHex)
                 }
                     .buttonStyle(SquareButtonStyle())
                     .disabled(!applyDirty || draftUncommitted)
@@ -291,6 +324,7 @@ struct SettingsView: View {
                                fontSize: wcFontSize, appearance: wcAppearance)
                     theme.saveFontFamily(wcFontFamilyId)
                     theme.saveCursor(style: CursorStyle(rawValue: wcCursorStyleRaw) ?? .bar, blink: wcCursorBlink)
+                    theme.saveBackground(mode: wcBackgroundMode, hex: wcCustomBackgroundHex)
                     dismiss()
                 }
                     .buttonStyle(SquareButtonStyle())
@@ -311,6 +345,35 @@ struct SettingsView: View {
         .buttonStyle(.plain)
         .disabled(wcColoring == .off)
         .reportsFrame(.theme)
+    }
+
+    /// The Background trigger: a single swatch (the selection's color) plus the
+    /// dropdown chevron. Swatch-only, no name; styled like the Theme box.
+    private var backgroundBox: some View {
+        Button { toggle(.background) } label: {
+            HStack(spacing: 0) {
+                if wcBackgroundMode == .custom {
+                    if let color = wcStoredCustomColor {
+                        Swatch(color: Color(nsColor: color))
+                    } else {
+                        PlusSwatch()
+                    }
+                } else {
+                    Swatch(color: Color(nsColor: EditorBackground.defaultBackground(dark: wcAppearance.resolvesDark)))
+                }
+                Spacer(minLength: 4)
+                Image(systemName: "chevron.down").font(.system(size: 8)).opacity(0.5)
+                    .rotationEffect(.degrees(openMenu == .background ? 180 : 0))
+                    .animation(.easeInOut(duration: 0.15), value: openMenu == .background)
+            }
+            .padding(.horizontal, 7)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Pane.field)
+            .overlay(Rectangle().strokeBorder(Pane.border, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Background")
+        .reportsFrame(.background)
     }
 
     private var fontBox: some View {
@@ -410,6 +473,18 @@ struct SettingsView: View {
                 DropdownItem(id: fam.id, kind: .fontSample(fam), selected: fam.id == wcFontFamilyId,
                              action: { pickFont(fam.id) })
             }
+        case .background:
+            return [
+                DropdownItem(id: "bg.default",
+                             kind: .backgroundSwatch(EditorBackground.defaultBackground(dark: wcAppearance.resolvesDark)),
+                             selected: wcBackgroundMode == .default,
+                             action: { pickBackground(.default) }),
+                DropdownItem(id: "bg.custom",
+                             kind: .backgroundCustom(wcStoredCustomColor),
+                             selected: wcBackgroundMode == .custom,
+                             action: { pickBackground(.custom) },
+                             onEdit: wcStoredCustomColor == nil ? nil : { openBackgroundPicker() }),
+            ]
         }
     }
 
@@ -417,6 +492,23 @@ struct SettingsView: View {
 
     private func pickTheme(_ id: String) { wcThemeId = id; openMenu = nil }
     private func pickFont(_ id: String) { wcFontFamilyId = id; openMenu = nil }
+
+    /// Picking Custom with no color yet goes straight to the color panel (the
+    /// blank "+" swatch); with a remembered color it just selects it (the pencil
+    /// reopens the panel).
+    private func pickBackground(_ mode: BackgroundMode) {
+        wcBackgroundModeRaw = mode.rawValue
+        openMenu = nil
+        if mode == .custom, wcCustomBackgroundHex == nil { backgroundPickerActivation += 1 }
+    }
+
+    /// The Custom row's pencil: select Custom and reopen the panel on the
+    /// stored color.
+    private func openBackgroundPicker() {
+        wcBackgroundModeRaw = BackgroundMode.custom.rawValue
+        openMenu = nil
+        backgroundPickerActivation += 1
+    }
 
     private func pickScheme(_ c: Coloring) {
         defer { openMenu = nil }
@@ -445,6 +537,8 @@ struct SettingsView: View {
         wcFontFamilyId = theme.savedFontFamilyId
         wcCursorStyleRaw = theme.savedCursorStyle.rawValue
         wcCursorBlink = theme.savedCursorBlink
+        wcBackgroundModeRaw = theme.savedBackgroundMode.rawValue
+        wcCustomBackgroundHex = theme.savedCustomBackground
         sizeText = "\(Int(theme.savedFontSize))"
     }
 
@@ -462,7 +556,7 @@ struct SettingsView: View {
 // MARK: - Dropdown plumbing
 
 /// Identifies which trigger box a dropdown belongs to.
-enum MenuField: Hashable { case theme, scheme, size, font }
+enum MenuField: Hashable { case theme, scheme, size, font, background }
 
 /// Collects each trigger box's frame (in the settings coordinate space) so the
 /// root overlay can place the dropdown flush beneath the right box.
@@ -491,6 +585,8 @@ struct DropdownItem: Identifiable {
         case header(String)         // non-selectable subheading
         case text(String)           // plain title (scheme / size)
         case fontSample(FontFamily) // family name rendered in its own face
+        case backgroundSwatch(NSColor)   // Background's Default row: the mode's bg
+        case backgroundCustom(NSColor?)  // Background's Custom row: the picked color, or nil = blank "+"
     }
     let id: String
     let kind: Kind
@@ -791,6 +887,16 @@ private struct DropdownRow: View {
                     .lineLimit(1)
                 Spacer(minLength: 0)
             }
+        case .backgroundSwatch(let color):
+            row {
+                Swatch(color: Color(nsColor: color))
+                Spacer(minLength: 0)
+                // Reserve the pencil slot so this swatch stays column-aligned
+                // with the Custom row's (same trick as the Custom+ theme row).
+                Color.clear.frame(width: iconSlot, height: 1)
+            }
+        case .backgroundCustom(let color):
+            backgroundCustomRow(color)
         }
     }
 
@@ -825,6 +931,47 @@ private struct DropdownRow: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Edit \(p.name)")
+                }
+            }
+            .foregroundStyle(Pane.muted)
+        }
+        .padding(.horizontal, 10)
+        .frame(height: 24)
+        .frame(maxWidth: .infinity)
+        .background(rowBackground)
+        .contentShape(Rectangle())
+    }
+
+    /// The Background dropdown's Custom row: the picked color's swatch (or a
+    /// blank "+" before one is picked) plus a trailing pencil that reopens the
+    /// color panel. Mirrors paletteRow's two-button split so the pencil is not
+    /// nested inside the select button.
+    private func backgroundCustomRow(_ color: NSColor?) -> some View {
+        HStack(spacing: 0) {
+            Button { item.action?() } label: {
+                HStack(spacing: 0) {
+                    if let color {
+                        Swatch(color: Color(nsColor: color))
+                    } else {
+                        PlusSwatch()
+                    }
+                    Spacer(minLength: 0)
+                }
+                .frame(maxWidth: .infinity)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Custom background")
+            .accessibilityAddTraits(item.selected ? .isSelected : [])
+
+            ZStack(alignment: .trailing) {
+                Color.clear.frame(width: iconSlot, height: 1)   // always reserve the slot
+                if let onEdit = item.onEdit {
+                    Button { onEdit() } label: {
+                        Image(systemName: "pencil").font(.system(size: 10))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Edit custom background color")
                 }
             }
             .foregroundStyle(Pane.muted)
@@ -988,6 +1135,19 @@ struct EmptySwatch: View {
     }
 }
 
+/// An empty swatch with a small plus: the Background dropdown's Custom state
+/// before a color has been picked ("click to choose one").
+struct PlusSwatch: View {
+    var body: some View {
+        EmptySwatch()
+            .overlay(
+                Image(systemName: "plus")
+                    .font(.system(size: 7, weight: .semibold))
+                    .foregroundStyle(Pane.muted)
+            )
+    }
+}
+
 /// Sharp-cornered bordered button matching the other Settings controls.
 struct SquareButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
@@ -1113,6 +1273,67 @@ struct SizeControl: View {
             text = "\(Int(fontSize))"
         }
     }
+}
+
+/// An invisible, zero-sized color well bridging the shared `NSColorPanel` to
+/// the Background working copy, reusing the CustomThemeEditor bridge pattern
+/// (the panel reports picks through a real NSColorWell). Unlike that one it is
+/// never clicked directly: it activates programmatically when `activation`
+/// bumps (picking Custom with no color, or the pencil), and it opts out of
+/// hit-testing entirely so it can never swallow clicks meant for the controls.
+private struct BackgroundColorWell: NSViewRepresentable {
+    @Binding var hex: String?
+    /// Bump to open the panel. Compared against the coordinator's last seen
+    /// value so re-renders never re-open it.
+    var activation: Int
+    /// What the panel shows when no custom color has been picked yet (the
+    /// current mode's background, so picking starts from a familiar color).
+    var initialColor: NSColor
+
+    func makeCoordinator() -> Coordinator { Coordinator(hex: $hex) }
+
+    func makeNSView(context: Context) -> NSColorWell {
+        let well = ProgrammaticColorWell()
+        well.color = hex.flatMap { NSColor(hex: $0) } ?? initialColor
+        well.target = context.coordinator
+        well.action = #selector(Coordinator.colorChanged(_:))
+        return well
+    }
+
+    func updateNSView(_ well: NSColorWell, context: Context) {
+        context.coordinator.hex = $hex
+        if context.coordinator.lastActivation != activation {
+            context.coordinator.lastActivation = activation
+            well.color = hex.flatMap { NSColor(hex: $0) } ?? initialColor
+            well.activate(true)
+        }
+    }
+
+    @MainActor final class Coordinator: NSObject {
+        var hex: Binding<String?>
+        var lastActivation = 0
+        init(hex: Binding<String?>) { self.hex = hex }
+
+        @objc func colorChanged(_ sender: NSColorWell) {
+            // Pin alpha to 1: the background persists as opaque hex, so a
+            // translucent pick would disagree with what is painted and saved.
+            hex.wrappedValue = sender.color.withAlphaComponent(1).hexString
+        }
+    }
+}
+
+/// The well behind `BackgroundColorWell`: exclusive activation configures the
+/// shared panel (opaque colors only, floated above this floating window, same
+/// as the Custom Theme swatches), and `hitTest` returns nil because this well
+/// is only ever activated programmatically.
+private final class ProgrammaticColorWell: NSColorWell {
+    override func activate(_ exclusive: Bool) {
+        super.activate(true)
+        NSColorPanel.shared.showsAlpha = false
+        NSColorPanel.shared.level = .floating
+    }
+
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }
 
 /// Wraps a control with an uppercase label that fades in on hover (keeps the

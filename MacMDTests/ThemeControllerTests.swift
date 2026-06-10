@@ -276,4 +276,81 @@ final class ThemeControllerTests: XCTestCase {
         XCTAssertEqual(c.cursorStyle, .block)
         XCTAssertFalse(c.cursorBlink)
     }
+
+    // MARK: - Background (transactional, additive)
+
+    func testInitDefaultsToDefaultBackground() {
+        let c = ThemeController(defaults: freshDefaults())
+        XCTAssertEqual(c.backgroundMode, .default)
+        XCTAssertNil(c.customBackgroundHex)
+    }
+
+    func testInitLoadsSavedBackground() {
+        let d = freshDefaults()
+        d.set(BackgroundMode.custom.rawValue, forKey: ThemeSettings.backgroundModeKey)
+        d.set("#223344", forKey: ThemeSettings.customBackgroundKey)
+        let c = ThemeController(defaults: d)
+        XCTAssertEqual(c.backgroundMode, .custom)
+        XCTAssertEqual(c.customBackgroundHex, "#223344")
+    }
+
+    func testInitUnknownBackgroundModeFallsBackToDefault() {
+        let d = freshDefaults()
+        d.set("plaid", forKey: ThemeSettings.backgroundModeKey)
+        XCTAssertEqual(ThemeController(defaults: d).backgroundMode, .default)
+    }
+
+    func testApplyBackgroundDoesNotPersist() {
+        let d = freshDefaults()
+        let c = ThemeController(defaults: d)
+        c.applyBackground(mode: .custom, hex: "#FF8800")
+        XCTAssertEqual(c.backgroundMode, .custom)
+        XCTAssertEqual(c.customBackgroundHex, "#FF8800")
+        XCTAssertNil(d.string(forKey: ThemeSettings.backgroundModeKey))
+        XCTAssertEqual(c.savedBackgroundMode, .default)
+        XCTAssertNil(c.savedCustomBackground)
+    }
+
+    func testSaveBackgroundPersistsAndApplies() {
+        let d = freshDefaults()
+        let c = ThemeController(defaults: d)
+        c.saveBackground(mode: .custom, hex: "#FF8800")
+        XCTAssertEqual(d.string(forKey: ThemeSettings.backgroundModeKey), BackgroundMode.custom.rawValue)
+        XCTAssertEqual(d.string(forKey: ThemeSettings.customBackgroundKey), "#FF8800")
+        XCTAssertEqual(c.backgroundMode, .custom)
+        XCTAssertEqual(c.customBackgroundHex, "#FF8800")
+    }
+
+    func testSaveBackgroundKeepsRememberedColorUnderDefaultMode() {
+        // Switching back to Default keeps the picked color, so the Custom row
+        // still shows it (and the pencil can reopen it) later.
+        let d = freshDefaults()
+        let c = ThemeController(defaults: d)
+        c.saveBackground(mode: .custom, hex: "#FF8800")
+        c.saveBackground(mode: .default, hex: "#FF8800")
+        XCTAssertEqual(d.string(forKey: ThemeSettings.backgroundModeKey), BackgroundMode.default.rawValue)
+        XCTAssertEqual(d.string(forKey: ThemeSettings.customBackgroundKey), "#FF8800")
+    }
+
+    func testSaveBackgroundNilHexClearsTheStoredColor() {
+        let d = freshDefaults()
+        let c = ThemeController(defaults: d)
+        c.saveBackground(mode: .custom, hex: "#FF8800")
+        c.saveBackground(mode: .default, hex: nil)
+        XCTAssertNil(d.string(forKey: ThemeSettings.customBackgroundKey))
+        XCTAssertNil(c.customBackgroundHex)
+    }
+
+    func testRevertRestoresSavedBackground() {
+        // Seed a NON-default saved state so this fails if revertToSaved()
+        // resets to constants instead of re-reading the defaults.
+        let d = freshDefaults()
+        d.set(BackgroundMode.custom.rawValue, forKey: ThemeSettings.backgroundModeKey)
+        d.set("#FFF4DC", forKey: ThemeSettings.customBackgroundKey)
+        let c = ThemeController(defaults: d)
+        c.applyBackground(mode: .default, hex: nil)
+        c.revertToSaved()
+        XCTAssertEqual(c.backgroundMode, .custom)
+        XCTAssertEqual(c.customBackgroundHex, "#FFF4DC")
+    }
 }
