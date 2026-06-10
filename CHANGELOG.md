@@ -2,6 +2,15 @@
 
 All notable changes to MacMD will be documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.1] - 2026-06-10
+
+### Fixed
+- With Blink on, the whole Block or Underline cursor now blinks. Previously only a thin sliver inside it flashed.
+
+### Changed
+- The Background dropdown options are now labeled Default and Custom+, with their color swatches right-aligned to match the Theme dropdown.
+- The small captions above the Appearance controls (Mode, Background, Theme, Scheme, Font, Size, Cursor) are always visible instead of appearing on hover.
+
 ## [1.4.0] - 2026-06-10
 
 ### Added
