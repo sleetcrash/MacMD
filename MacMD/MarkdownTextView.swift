@@ -93,6 +93,9 @@ struct MarkdownTextView: NSViewRepresentable {
         context.coordinator.loadInitial(text: text)
         context.coordinator.observeFormatting(textView: textView)
         context.coordinator.syncGutter()
+        // Pick up a saved blink-off at launch: updateNSView's change check only
+        // catches LATER pref changes, not the initial load.
+        textView.refreshCaret()
 
         let initialAppearance = appearance
         DispatchQueue.main.async { [weak textView] in
@@ -364,11 +367,17 @@ struct MarkdownTextView: NSViewRepresentable {
 final class ClickableTextView: NSTextView {
     weak var highlighter: MarkdownHighlighter?
 
+    /// The style-adjusted rect of the caret as last drawn. AppKit only
+    /// invalidates the thin default caret rect on moves and erases, so the
+    /// widened block/underline would otherwise strand stale pixels (ghost
+    /// carets); this records exactly what must be repainted.
+    private var lastDrawnCaretRect: NSRect?
+
     /// Draw the caret per `Theme.cursorStyle` by widening / repositioning the
-    /// rect and calling super (which handles both the draw and the erase pass for
-    /// the same rect). Block uses reduced alpha so the glyph under it stays
-    /// readable. The accent color is supplied by AppKit (set as
-    /// `insertionPointColor`).
+    /// rect and calling super. Block uses reduced alpha so the glyph under it
+    /// stays readable. The accent color is supplied by AppKit (set as
+    /// `insertionPointColor`). Blink-off is handled by `CaretBlink` (the blink
+    /// timer never fires), so an off pass here is always a real erase.
     override func drawInsertionPoint(in rect: NSRect, color: NSColor, turnedOn flag: Bool) {
         var caretRect = rect
         var caretColor = color
@@ -380,13 +389,73 @@ final class ClickableTextView: NSTextView {
                                                              fallback: spaceAdvance())
             caretColor = color.withAlphaComponent(0.5)
         case .underline:
-            let thickness: CGFloat = 2
-            caretRect.origin.y = rect.maxY - thickness
-            caretRect.size.height = thickness
+            caretRect = CursorGeometry.underlineRect(caret: rect,
+                                                     glyphWidth: glyphWidthAtCaret(),
+                                                     fallback: spaceAdvance())
         }
-        // Blink off: force the caret drawn even on the timer's "off" pass.
-        let on = Theme.cursorBlink ? flag : true
-        super.drawInsertionPoint(in: caretRect, color: caretColor, turnedOn: on)
+        if flag {
+            lastDrawnCaretRect = caretRect
+        } else if let last = lastDrawnCaretRect,
+                  abs(last.origin.x - caretRect.origin.x) < 0.5,
+                  abs(last.origin.y - caretRect.origin.y) < 0.5 {
+            // Blink hide at the current position: erase exactly what was
+            // drawn and schedule NOTHING. An extra invalidation here makes
+            // the display pass repaint the caret straight back, which reads
+            // as "never blinks" when blink is on.
+            caretRect = last
+            lastDrawnCaretRect = nil
+        } else {
+            // Stale erase (the caret moved): AppKit hands back a rect
+            // computed from the CURRENT selection, which is the wrong place
+            // (and, with a proportional font, the wrong width) for the caret
+            // that was actually drawn. Repaint the union so no pixels strand.
+            var dirty = caretRect
+            if let last = lastDrawnCaretRect { dirty = dirty.union(last) }
+            setNeedsDisplay(dirty.insetBy(dx: -2, dy: -2))
+            lastDrawnCaretRect = nil
+        }
+        super.drawInsertionPoint(in: caretRect, color: caretColor, turnedOn: flag)
+    }
+
+    /// Clear the previous caret's pixels on every selection change, and widen
+    /// the dirty region to the new caret's whole line fragment. AppKit's own
+    /// invalidation covers only the thin bar rect, which both strands the old
+    /// widened block/underline as a ghost AND clips a display-pass redraw of
+    /// the new one to a sliver (bit on vertical moves, where the erase union
+    /// sits on another line and cannot cover the new caret's cell).
+    override func setSelectedRanges(_ ranges: [NSValue], affinity: NSSelectionAffinity,
+                                    stillSelecting: Bool) {
+        if let last = lastDrawnCaretRect {
+            setNeedsDisplay(last.insetBy(dx: -2, dy: -2))
+            lastDrawnCaretRect = nil
+        }
+        super.setSelectedRanges(ranges, affinity: affinity, stillSelecting: stillSelecting)
+        invalidateCaretLine()
+    }
+
+    /// Mark the caret's whole line fragment as needing display, so a widened
+    /// block/underline caret paints in full no matter how thin a rect AppKit
+    /// invalidated for the move.
+    private func invalidateCaretLine() {
+        guard Theme.cursorStyle != .bar, let lm = layoutManager else { return }
+        let caret = selectedRange()
+        guard caret.length == 0 else { return }
+        let length = (string as NSString).length
+        var rect: NSRect
+        if caret.location >= length {
+            rect = lm.extraLineFragmentRect
+            if rect.height <= 0, length > 0 {
+                let glyph = lm.glyphIndexForCharacter(at: length - 1)
+                rect = lm.lineFragmentRect(forGlyphAt: glyph, effectiveRange: nil)
+            }
+        } else {
+            let glyph = lm.glyphIndexForCharacter(at: caret.location)
+            rect = lm.lineFragmentRect(forGlyphAt: glyph, effectiveRange: nil)
+        }
+        guard rect.height > 0 else { return }
+        rect.origin.x += textContainerOrigin.x
+        rect.origin.y += textContainerOrigin.y
+        setNeedsDisplay(rect.insetBy(dx: -2, dy: -2))
     }
 
     /// Width of the glyph at the insertion point, or 0 at end-of-line / on a
@@ -404,17 +473,12 @@ final class ClickableTextView: NSTextView {
         (" " as NSString).size(withAttributes: [.font: Theme.editorFont]).width
     }
 
-    /// Force the caret to redraw after a style/blink change.
+    /// Force the caret to redraw after a style/blink change. Re-registers the
+    /// blink periods first, then restarts the caret timer so it picks them up.
     func refreshCaret() {
+        CaretBlink.apply(Theme.cursorBlink)
         needsDisplay = true
         updateInsertionPointStateAndRestartTimer(true)
-    }
-
-    /// Blink off: keep the caret steady by not letting the blink timer toggle it
-    /// off. Combined with `drawInsertionPoint` forcing `on = true` when blink is
-    /// off, the caret stays visible.
-    override func updateInsertionPointStateAndRestartTimer(_ restartFlag: Bool) {
-        super.updateInsertionPointStateAndRestartTimer(Theme.cursorBlink ? restartFlag : false)
     }
 
     static func scrollableClickableTextView() -> NSScrollView {

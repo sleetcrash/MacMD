@@ -31,6 +31,28 @@ final class CursorStyleTests: XCTestCase {
         XCTAssertEqual(CursorGeometry.blockWidth(glyphWidth: -1, fallback: 7), 7)
     }
 
+    // MARK: - Underline rect
+
+    func testUnderlineSpansTheGlyphCell() {
+        let caret = NSRect(x: 10, y: 20, width: 1, height: 16)
+        let r = CursorGeometry.underlineRect(caret: caret, glyphWidth: 8.5, fallback: 6)
+        XCTAssertEqual(r.width, 8.5)
+    }
+
+    func testUnderlineFallsBackToSpaceAdvanceAtLineEnd() {
+        let caret = NSRect(x: 10, y: 20, width: 1, height: 16)
+        let r = CursorGeometry.underlineRect(caret: caret, glyphWidth: 0, fallback: 6)
+        XCTAssertEqual(r.width, 6)
+    }
+
+    func testUnderlineSitsOnTheCellBottom() {
+        let caret = NSRect(x: 10, y: 20, width: 1, height: 16)
+        let r = CursorGeometry.underlineRect(caret: caret, glyphWidth: 8, fallback: 6)
+        XCTAssertEqual(r.minX, 10)
+        XCTAssertEqual(r.height, 2)
+        XCTAssertEqual(r.maxY, caret.maxY)
+    }
+
     // MARK: - Theme cursor state
 
     func testThemeDefaultsToBarBlinkOn() {
