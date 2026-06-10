@@ -2,6 +2,19 @@
 
 All notable changes to MacMD will be documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-06-10
+
+### Added
+- A Background control in the Appearance window to set the editor background. Default follows your Light/Dark Mode as before. Custom opens the system color picker so any color becomes the editor background, and the text adjusts itself to stay readable on it (a dark color gets light text, a light color gets dark text). The pencil on the Custom swatch reopens the picker, and your choice persists across launches.
+
+### Changed
+- The Appearance window controls are rearranged: Mode and Background share the first row, Theme and Scheme the second, Font and Size the third, and Cursor and Blink the fourth.
+
+### Fixed
+- The Underline cursor style now draws as a full-width underscore beneath the character. It previously drew as a tiny dot.
+- Moving the cursor quickly with the Block or Underline style no longer leaves stale copies of the cursor scattered through the text.
+- Turning Blink off now actually keeps the cursor steady. It previously kept blinking regardless of the setting.
+
 ## [1.3.2] - 2026-06-09
 
 ### Fixed
