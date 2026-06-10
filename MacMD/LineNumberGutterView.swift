@@ -15,6 +15,11 @@ final class LineNumberGutterView: NSView {
     /// whole document on every scroll.
     var lineCount = 1
 
+    /// The strip's fill, set by the Coordinator: the custom editor background
+    /// when one is active, else the appearance-driven default. Keeps the gutter
+    /// from reading as a mismatched stripe beside a custom-colored editor.
+    var backgroundColor: NSColor = .textBackgroundColor
+
     /// Left padding before the numbers, and the gap between numbers and body text.
     static let leftPadding: CGFloat = 6
     static let textGap: CGFloat = 8
@@ -49,7 +54,7 @@ final class LineNumberGutterView: NSView {
     }
 
     override func draw(_ dirtyRect: NSRect) {
-        NSColor.textBackgroundColor.setFill()
+        backgroundColor.setFill()
         bounds.fill()
 
         guard let textView,

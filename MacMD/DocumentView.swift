@@ -20,6 +20,12 @@ struct DocumentView: View {
 
     @State private var showWordCount = WordCountPref.isOn
 
+    /// The fixed editor background when Custom is active, else nil (Default
+    /// keeps the appearance-driven `.textBackgroundColor`).
+    private var customBackground: NSColor? {
+        EditorBackground.customColor(mode: theme.backgroundMode, hex: theme.customBackgroundHex)
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             MarkdownTextView(text: $document.text,
@@ -27,11 +33,17 @@ struct DocumentView: View {
                              fontFamily: FontFamily.resolve(id: theme.fontFamilyId),
                              coloring: theme.coloring,
                              palette: palette,
-                             appearance: theme.appearance,
+                             // A custom background owns the look: its luminance
+                             // (not the Mode) decides the forced appearance, so
+                             // body text and heading variants stay readable.
+                             appearance: EditorBackground.effectiveAppearance(mode: theme.backgroundMode,
+                                                                              hex: theme.customBackgroundHex,
+                                                                              appearance: theme.appearance),
+                             customBackground: customBackground,
                              cursorStyle: theme.cursorStyle,
                              cursorBlink: theme.cursorBlink)
                 .frame(minWidth: 520, idealWidth: 760, minHeight: 400, idealHeight: 680)
-                .background(Color(nsColor: .textBackgroundColor))
+                .background(Color(nsColor: customBackground ?? .textBackgroundColor))
             if showWordCount {
                 WordCountBar(text: document.text)
             }

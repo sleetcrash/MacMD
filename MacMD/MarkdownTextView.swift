@@ -8,6 +8,11 @@ struct MarkdownTextView: NSViewRepresentable {
     var coloring: Coloring
     var palette: Palette?
     var appearance: AppAppearance
+    /// Non-nil = paint this fixed color instead of the appearance-driven
+    /// `.textBackgroundColor`. `appearance` is then already the EFFECTIVE
+    /// appearance derived from this color's luminance (see DocumentView), so
+    /// text resolves readable against it.
+    var customBackground: NSColor?
     var cursorStyle: CursorStyle
     var cursorBlink: Bool
 
@@ -26,7 +31,7 @@ struct MarkdownTextView: NSViewRepresentable {
         scrollView.autohidesScrollers = true
         scrollView.borderType = .noBorder
         scrollView.drawsBackground = true
-        scrollView.backgroundColor = .textBackgroundColor
+        scrollView.backgroundColor = customBackground ?? .textBackgroundColor
 
         guard let textView = scrollView.documentView as? ClickableTextView else {
             return scrollView
@@ -54,7 +59,7 @@ struct MarkdownTextView: NSViewRepresentable {
         textView.textContainerInset = NSSize(width: 24, height: 20)
         textView.font = Theme.editorFont
         textView.textColor = Theme.textColor
-        textView.backgroundColor = .textBackgroundColor
+        textView.backgroundColor = customBackground ?? .textBackgroundColor
         textView.drawsBackground = true
         textView.insertionPointColor = Theme.accentColor
         textView.setContentHuggingPriority(.defaultLow, for: .horizontal)
@@ -84,6 +89,7 @@ struct MarkdownTextView: NSViewRepresentable {
 
         context.coordinator.textView = textView
         context.coordinator.scrollView = scrollView
+        context.coordinator.customBackground = customBackground
         context.coordinator.loadInitial(text: text)
         context.coordinator.observeFormatting(textView: textView)
         context.coordinator.syncGutter()
@@ -107,6 +113,13 @@ struct MarkdownTextView: NSViewRepresentable {
             context.coordinator.applyThemeChange(to: textView)
         }
         textView.window?.appearance = appearance.nsAppearance
+        let background = customBackground ?? .textBackgroundColor
+        if textView.backgroundColor != background {
+            textView.backgroundColor = background
+            nsView.backgroundColor = background
+            context.coordinator.customBackground = customBackground
+            context.coordinator.refreshGutter()
+        }
         if Theme.setCursor(style: cursorStyle, blink: cursorBlink) {
             (textView as? ClickableTextView)?.refreshCaret()
         }
@@ -128,6 +141,9 @@ struct MarkdownTextView: NSViewRepresentable {
         private var gutter: LineNumberGutterView?
         private var clipObserver: NSObjectProtocol?
         private var cachedLineCount = 1
+        /// Mirrors MarkdownTextView.customBackground so the gutter's strip can
+        /// match the editor's painted background.
+        var customBackground: NSColor?
 
         static let baseInsetWidth: CGFloat = 24
         static let insetHeight: CGFloat = 20
@@ -257,6 +273,7 @@ struct MarkdownTextView: NSViewRepresentable {
         private func layoutGutter() {
             guard let g = gutter, let scrollView, let tv = textView as? ClickableTextView else { return }
             g.lineCount = cachedLineCount
+            g.backgroundColor = customBackground ?? .textBackgroundColor
             let width = g.requiredWidth()
             tv.textContainerInset = NSSize(width: width, height: Self.insetHeight)
             g.frame = NSRect(x: 0, y: 0, width: width, height: scrollView.contentView.frame.height)

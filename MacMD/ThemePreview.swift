@@ -11,14 +11,14 @@ struct ThemePreview: View {
     let appearance: AppAppearance
     let fontSize: CGFloat
     let family: FontFamily
+    /// Non-nil when a custom editor background is active: the preview paints it
+    /// and derives its light/dark sample from the color instead of the Mode,
+    /// mirroring the document window.
+    var customBackground: NSColor? = nil
 
     @MainActor private var dark: Bool {
-        switch appearance {
-        case .light: return false
-        case .dark: return true
-        case .system:
-            return NSApp.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
-        }
+        if let customBackground { return !EditorBackground.isLight(customBackground) }
+        return appearance.resolvesDark
     }
 
     var body: some View {
@@ -38,7 +38,7 @@ struct ThemePreview: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(dark ? Color(red: 0x1E / 255, green: 0x1E / 255, blue: 0x1E / 255) : Color.white)
+        .background(Color(nsColor: customBackground ?? EditorBackground.defaultBackground(dark: dark)))
         // Border contrasts against the preview's own background, not the window:
         // a black hairline vanishes on the dark preview, so flip to white there.
         .overlay(Rectangle().strokeBorder((dark ? Color.white : Color.black).opacity(0.15), lineWidth: 1))

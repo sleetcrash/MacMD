@@ -49,6 +49,16 @@ enum AppAppearance: String, CaseIterable, Codable {
         case .dark: return NSAppearance(named: .darkAqua)
         }
     }
+
+    /// Whether this Mode resolves dark right now (System follows the OS).
+    @MainActor var resolvesDark: Bool {
+        switch self {
+        case .light: return false
+        case .dark: return true
+        case .system:
+            return NSApp.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+        }
+    }
 }
 
 /// One heading slot's color as a tuned light/dark hex pair. Persisted as hex
