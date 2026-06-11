@@ -986,12 +986,15 @@ private struct ScrollObserver: NSViewRepresentable {
         // Retry attach only until the observer is registered; once attached, skip
         // the redundant re-dispatch on every scroll-driven re-render.
         if !context.coordinator.isAttached {
-            DispatchQueue.main.async { context.coordinator.attach(from: nsView) }
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated { context.coordinator.attach(from: nsView) }
+            }
         }
     }
 
     func makeCoordinator() -> Coordinator { Coordinator(onScroll) }
 
+    @MainActor
     final class Coordinator: NSObject {
         var onScroll: (CGFloat) -> Void
         private weak var clip: NSClipView?

@@ -152,11 +152,13 @@ struct MarkdownTextView: NSViewRepresentable {
         private var isUpdatingFromBinding = false
         private var hasLoaded = false
         private var isOverSoftSizeLimit = false
-        private var formattingObserver: NSObjectProtocol?
-        private var spellingObserver: NSObjectProtocol?
+        // nonisolated(unsafe): written only on the main actor, read again only in
+        // the nonisolated deinit; removeObserver is thread-safe.
+        nonisolated(unsafe) private var formattingObserver: NSObjectProtocol?
+        nonisolated(unsafe) private var spellingObserver: NSObjectProtocol?
         weak var scrollView: NSScrollView?
         private var gutter: LineNumberGutterView?
-        private var clipObserver: NSObjectProtocol?
+        nonisolated(unsafe) private var clipObserver: NSObjectProtocol?
         private var cachedLineCount = 1
         /// Mirrors MarkdownTextView.customBackground so the gutter's strip can
         /// match the editor's painted background.
