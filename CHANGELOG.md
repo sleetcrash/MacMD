@@ -2,6 +2,14 @@
 
 All notable changes to MacMD will be documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.2] - 2026-06-10
+
+### Changed
+- The settings window is now titled Settings, matching the MacMD > Settings menu item that opens it.
+- The Background control shows its selected option by name (Default or Custom+) with the color swatch beside it, like the Theme control.
+- The right-hand settings column (Background, Scheme, Size, Blink) is wider so its contents fit comfortably; the window grew to match and the preview pane follows.
+- The built-in Help now points at MacMD > Settings and covers the newer settings (background, font, cursor).
+
 ## [1.4.1] - 2026-06-10
 
 ### Fixed
