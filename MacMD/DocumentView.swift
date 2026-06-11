@@ -2,6 +2,9 @@ import SwiftUI
 
 struct DocumentView: View {
     @Binding var document: MarkdownDocument
+    /// True for a brand-new Untitled document; sizes its window to the
+    /// preferred New Windows size (reopened files keep their frames).
+    var isNewDocument: Bool = false
     @EnvironmentObject private var theme: ThemeController
     @AppStorage(ThemeSettings.customsKey) private var customsData = Data()
 
@@ -41,8 +44,10 @@ struct DocumentView: View {
                                                                               appearance: theme.appearance),
                              customBackground: customBackground,
                              cursorStyle: theme.cursorStyle,
-                             cursorBlink: theme.cursorBlink)
-                .frame(minWidth: 520, idealWidth: 760, minHeight: 400, idealHeight: 680)
+                             cursorBlink: theme.cursorBlink,
+                             sizeWindowToPreference: isNewDocument)
+                .frame(minWidth: 520, idealWidth: CGFloat(NewWindowSize.width),
+                       minHeight: 400, idealHeight: CGFloat(NewWindowSize.height))
                 .background(Color(nsColor: customBackground ?? .textBackgroundColor))
             if showWordCount {
                 WordCountBar(text: document.text)

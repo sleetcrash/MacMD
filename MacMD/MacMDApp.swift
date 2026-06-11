@@ -7,10 +7,15 @@ struct MacMDApp: App {
     @StateObject private var customDraft = CustomDraft()
     @AppStorage(WordCountPref.key) private var showWordCount = false
     @AppStorage(FormattingPref.key) private var showFormatting = true
+    @AppStorage(SpellingPref.spellingKey) private var checkSpelling = true
+    @AppStorage(SpellingPref.grammarKey) private var checkGrammar = false
 
     var body: some Scene {
         DocumentGroup(newDocument: MarkdownDocument()) { file in
-            DocumentView(document: file.$document)
+            // fileURL is nil for a brand-new Untitled document; those windows
+            // get the preferred New Windows size, while reopened files keep
+            // whatever frame macOS restores for them.
+            DocumentView(document: file.$document, isNewDocument: file.fileURL == nil)
                 .environmentObject(themeController)
         }
         .commands {
@@ -39,9 +44,16 @@ struct MacMDApp: App {
                     }
                     .keyboardShortcut(";", modifiers: .command)
                     Divider()
-                    Button("Check Spelling While Typing") {
-                        NSApp.sendAction(#selector(NSTextView.toggleContinuousSpellChecking(_:)), to: nil, from: nil)
-                    }
+                    // Pref-bound toggles (not per-view NSTextView actions) so the
+                    // change persists and reaches every open editor at once.
+                    Toggle("Check Spelling While Typing", isOn: Binding(
+                        get: { checkSpelling },
+                        set: { SpellingPref.setCheckSpelling($0) }
+                    ))
+                    Toggle("Check Grammar With Spelling", isOn: Binding(
+                        get: { checkGrammar },
+                        set: { SpellingPref.setCheckGrammar($0) }
+                    ))
                 }
             }
             CommandGroup(replacing: .printItem) {

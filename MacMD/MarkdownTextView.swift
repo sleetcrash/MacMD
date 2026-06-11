@@ -15,6 +15,11 @@ struct MarkdownTextView: NSViewRepresentable {
     var customBackground: NSColor?
     var cursorStyle: CursorStyle
     var cursorBlink: Bool
+    /// True for a new Untitled document's editor: size its window to the
+    /// preferred New Windows size once at creation. The SwiftUI ideal frame
+    /// alone cannot do this, because macOS reuses its remembered document
+    /// window size whenever one exists.
+    var sizeWindowToPreference: Bool = false
 
     func makeCoordinator() -> Coordinator {
         Coordinator(text: $text)
@@ -44,7 +49,8 @@ struct MarkdownTextView: NSViewRepresentable {
         textView.isAutomaticDashSubstitutionEnabled = false
         textView.isAutomaticTextReplacementEnabled = false
         textView.isAutomaticSpellingCorrectionEnabled = false
-        textView.isContinuousSpellCheckingEnabled = true
+        textView.isContinuousSpellCheckingEnabled = SpellingPref.checkSpelling
+        textView.isGrammarCheckingEnabled = SpellingPref.checkGrammar
         textView.isAutomaticLinkDetectionEnabled = false
         textView.isAutomaticDataDetectionEnabled = false
         textView.smartInsertDeleteEnabled = false
@@ -92,14 +98,21 @@ struct MarkdownTextView: NSViewRepresentable {
         context.coordinator.customBackground = customBackground
         context.coordinator.loadInitial(text: text)
         context.coordinator.observeFormatting(textView: textView)
+        context.coordinator.observeSpelling(textView: textView)
         context.coordinator.syncGutter()
         // Pick up a saved blink-off at launch: updateNSView's change check only
         // catches LATER pref changes, not the initial load.
         textView.refreshCaret()
 
         let initialAppearance = appearance
+        let applyPreferredSize = sizeWindowToPreference
         DispatchQueue.main.async { [weak textView] in
-            textView?.window?.appearance = initialAppearance.nsAppearance
+            guard let window = textView?.window else { return }
+            window.appearance = initialAppearance.nsAppearance
+            if applyPreferredSize {
+                window.setContentSize(NSSize(width: NewWindowSize.width,
+                                             height: NewWindowSize.height))
+            }
         }
 
         return scrollView
@@ -140,6 +153,7 @@ struct MarkdownTextView: NSViewRepresentable {
         private var hasLoaded = false
         private var isOverSoftSizeLimit = false
         private var formattingObserver: NSObjectProtocol?
+        private var spellingObserver: NSObjectProtocol?
         weak var scrollView: NSScrollView?
         private var gutter: LineNumberGutterView?
         private var clipObserver: NSObjectProtocol?
@@ -240,6 +254,25 @@ struct MarkdownTextView: NSViewRepresentable {
             }
         }
 
+        /// Keep every open editor in sync with the global spelling defaults
+        /// (the Settings Editing tab and the Edit-menu toggles both post this).
+        /// Disabling clears existing underlines at once; re-enabling applies to
+        /// everything typed from then on. Text typed while checking was off
+        /// re-marks when its paragraph is next edited or via Edit > Spelling
+        /// and Grammar > Check Document Now (`checkTextInDocument` does not
+        /// repaint the continuous-checking underlines on this macOS, so a
+        /// forced document re-scan here would be inert).
+        func observeSpelling(textView: NSTextView) {
+            spellingObserver = NotificationCenter.default.addObserver(
+                forName: SpellingPref.didChange, object: nil, queue: .main) { [weak textView] _ in
+                guard let textView else { return }
+                MainActor.assumeIsolated {
+                    textView.isContinuousSpellCheckingEnabled = SpellingPref.checkSpelling
+                    textView.isGrammarCheckingEnabled = SpellingPref.checkGrammar
+                }
+            }
+        }
+
         // MARK: - Line-number gutter (Plain mode only)
 
         /// Install/remove the gutter and widen/restore the left inset to match the
@@ -307,6 +340,7 @@ struct MarkdownTextView: NSViewRepresentable {
 
         deinit {
             if let formattingObserver { NotificationCenter.default.removeObserver(formattingObserver) }
+            if let spellingObserver { NotificationCenter.default.removeObserver(spellingObserver) }
             if let clipObserver { NotificationCenter.default.removeObserver(clipObserver) }
         }
 
