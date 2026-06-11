@@ -1,7 +1,7 @@
 import SwiftUI
 import AppKit
 
-/// The Appearance window's chrome palette: semantic system colors that resolve
+/// The Settings window's chrome palette: semantic system colors that resolve
 /// against the window's appearance. `SystemWindowAppearance` pins the window to
 /// the OS appearance (like the system color picker), so these follow the OS,
 /// light in Light, dark in Dark, independent of the editor Mode. (The preview
@@ -20,7 +20,7 @@ enum Pane {
 /// resolve against whatever appearance a document window last forced via its
 /// editor Mode. SwiftUI re-runs `updateNSView` whenever the window's content
 /// updates, so the pin re-asserts on every interaction. (Like the sibling
-/// `PositionBesideAppearance`, the async hop covers the first pass where the view
+/// `PositionBesideSettings`, the async hop covers the first pass where the view
 /// isn't attached to its window yet.)
 struct SystemWindowAppearance: NSViewRepresentable {
     func makeNSView(context: Context) -> NSView { NSView() }
@@ -35,7 +35,7 @@ struct SystemWindowAppearance: NSViewRepresentable {
 }
 
 /// Keeps an auxiliary window above the document windows: clicking a document
-/// window no longer drops this one behind it. Used on the Appearance and Custom
+/// window no longer drops this one behind it. Used on the Settings and Custom
 /// Theme windows. The shared NSColorPanel is floated to the same level (see
 /// PanelColorWell.activate) so picking a color still comes forward over the
 /// Custom Theme window instead of being trapped behind it.
@@ -77,8 +77,8 @@ enum WindowPlacement {
 }
 
 /// Pulls the host window fully on screen the first time it attaches, using
-/// `WindowPlacement.onScreen`. Applied to the Appearance window (and reused by
-/// `PositionBesideAppearance` for the Custom Theme window). Runs once per
+/// `WindowPlacement.onScreen`. Applied to the Settings window (and reused by
+/// `PositionBesideSettings` for the Custom Theme window). Runs once per
 /// attachment, a frame the user later drags somewhere on-screen is left alone.
 struct KeepOnScreen: NSViewRepresentable {
     func makeNSView(context: Context) -> NSView { NSView() }
@@ -127,7 +127,10 @@ struct SettingsView: View {
 
     static let space = "settingsMenu"
     private let wideWidth: CGFloat = 225
-    private let segWidth: CGFloat = 75
+    // Wide enough for the Background box to show its selected option's label
+    // ("Default" / "Custom+") plus swatch and chevron; Scheme, Size, and the
+    // Blink toggle share it so the right column stays uniform.
+    private let segWidth: CGFloat = 110
     private let rowHeight: CGFloat = 32
 
     private var wcColoring: Coloring { Coloring(rawValue: wcSchemeRaw) ?? .off }
@@ -183,7 +186,7 @@ struct SettingsView: View {
             content
             dropdownLayer
         }
-        .frame(width: 354)
+        .frame(width: 389)   // 20 + wideWidth + 14 + segWidth + 20
         .background(Pane.window)
         .coordinateSpace(name: Self.space)
         .onPreferenceChange(FieldFrameKey.self) { fieldFrames = $0 }
@@ -221,12 +224,12 @@ struct SettingsView: View {
             syncFromSaved()
             // Cascade: the Custom Theme builder and the system color picker are
             // satellites of this window, never leave them orphaned when it closes.
-            // (The builder's own onDisappear only re-focuses "Appearance" while it
+            // (The builder's own onDisappear only re-focuses "Settings" while it
             // is still visible, so this can't resurrect a closing window.)
             NSApp.windows.first { $0.title == "Custom Theme" }?.close()
             // Leave the shared color panel in a known-good state. PanelColorWell
             // forces showsAlpha off and a floating level while picking; resetting
-            // both here makes closing Appearance self-sufficient instead of relying
+            // both here makes closing Settings self-sufficient instead of relying
             // on the Custom Theme window's teardown running first.
             NSColorPanel.shared.close()
             NSColorPanel.shared.level = .normal
@@ -347,13 +350,15 @@ struct SettingsView: View {
         .reportsFrame(.theme)
     }
 
-    /// The Background trigger: a single swatch (the selection's color) plus the
-    /// dropdown chevron. Swatch-only, no name; the swatch sits right-aligned
-    /// against the chevron like the Theme box's swatches.
+    /// The Background trigger: the selected option's name plus its swatch
+    /// right-aligned against the chevron, like the Theme box.
     private var backgroundBox: some View {
         Button { toggle(.background) } label: {
             HStack(spacing: 0) {
-                Spacer(minLength: 4)
+                Text(wcBackgroundMode == .custom ? "Custom+" : "Default")
+                    .font(.system(size: 11))
+                    .lineLimit(1)
+                Spacer(minLength: 8)
                 if wcBackgroundMode == .custom {
                     if let color = wcStoredCustomColor {
                         Swatch(color: Color(nsColor: color))
@@ -368,7 +373,7 @@ struct SettingsView: View {
                     .rotationEffect(.degrees(openMenu == .background ? 180 : 0))
                     .animation(.easeInOut(duration: 0.15), value: openMenu == .background)
             }
-            .padding(.horizontal, 7)
+            .padding(.horizontal, 10)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Pane.field)
             .overlay(Rectangle().strokeBorder(Pane.border, lineWidth: 1))
@@ -426,14 +431,10 @@ struct SettingsView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .contentShape(Rectangle())
                 .onTapGesture { openMenu = nil; NSApp.keyWindow?.makeFirstResponder(nil) }
-            // The Background trigger is swatch-only (segWidth), but its rows
-            // carry "Default" / "Custom+" labels, so that one dropdown is wider
-            // than its trigger and stays right-aligned to it.
-            let width = max(frame.width, field == .background ? 104 : 0)
             InlineDropdown(items: items(for: field), keyboardNav: field != .size)
                 .id(field)
-                .frame(width: width, alignment: .topLeading)
-                .offset(x: frame.maxX - width, y: frame.maxY)
+                .frame(width: frame.width, alignment: .topLeading)
+                .offset(x: frame.minX, y: frame.maxY)
         }
     }
 
@@ -778,12 +779,12 @@ struct InlineDropdown: View {
     // SwiftUI focus: `@FocusState` on this transient overlay (opened, closed, and
     // reopened from the same trigger) failed to re-take focus on reopen, so the
     // keys silently stopped working the second time. A local monitor is
-    // deterministic. It is scoped to the Appearance window (so it never steals
+    // deterministic. It is scoped to the Settings window (so it never steals
     // keys from a document window) and torn down when the dropdown closes.
     private func installKeyMonitor(_ proxy: ScrollViewProxy) {
         guard keyMonitor == nil else { return }
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-            guard NSApp.keyWindow?.title == "Appearance" else { return event }
+            guard NSApp.keyWindow?.title == "Settings" else { return event }
             switch event.keyCode {
             case 126: move(-1, proxy); return nil          // Up
             case 125: move(1, proxy); return nil           // Down

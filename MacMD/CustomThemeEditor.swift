@@ -7,8 +7,8 @@ enum CustomThemeScene {
 }
 
 /// Shared, observable draft of the custom theme being edited. Lives in the app
-/// and is injected into both the Appearance window and the Custom Theme window,
-/// so editing colors here drives the Appearance window's live preview.
+/// and is injected into both the Settings window and the Custom Theme window,
+/// so editing colors here drives the Settings window's live preview.
 @MainActor
 final class CustomDraft: ObservableObject {
     @Published var active = false
@@ -19,7 +19,7 @@ final class CustomDraft: ObservableObject {
     // self-consistent (scheme → slotCount → array counts) before begin/beginEditing.
     @Published var lights: [Color] = [.black, .black, .black]
     @Published var darks: [Color] = [.white, .white, .white]
-    /// Set to the id just saved/applied, so the Appearance window can select it.
+    /// Set to the id just saved/applied, so the Settings window can select it.
     @Published var savedId: String?
     /// (side, slot) of the swatch whose color well is the active panel target, so
     /// only that swatch draws a selection ring. nil = nothing selected.
@@ -71,7 +71,7 @@ final class CustomDraft: ObservableObject {
 
     func end() { active = false; selectedWell = nil }
 
-    /// The in-progress palette, for the Appearance window's preview.
+    /// The in-progress palette, for the Settings window's preview.
     var palette: Palette {
         let slots = (0..<slotCount).map { i in
             ColorPair(light: CustomDraft.hex(lights[i]), dark: CustomDraft.hex(darks[i]))
@@ -90,9 +90,9 @@ final class CustomDraft: ObservableObject {
 
 /// The Custom Theme editor, a separate window styled as an extension of the
 /// Appearance window (same neutral chrome, sharp edges, square buttons). It has
-/// no preview of its own; editing colors live-updates the Appearance window's
+/// no preview of its own; editing colors live-updates the Settings window's
 /// preview through the shared `CustomDraft`. Save commits the palette to the
-/// theme library and selects it in the Appearance window (apply it to the
+/// theme library and selects it in the Settings window (apply it to the
 /// document from there, like any preset); Close (or the red X) returns to the
 /// Appearance window.
 struct CustomThemeEditor: View {
@@ -134,7 +134,7 @@ struct CustomThemeEditor: View {
             .frame(width: 264)   // hugs the swatch row; no Close button to widen for
             .background(Pane.window)
             .background(SystemWindowAppearance())
-            .background(PositionBesideAppearance())
+            .background(PositionBesideSettings())
             .background(RaiseOnOpen())
             .background(FloatAboveDocument())
             .onExitCommand {
@@ -147,14 +147,14 @@ struct CustomThemeEditor: View {
                 // otherwise persists across close/reopen.
                 showDeleteConfirm = false
                 draft.end()
-                // Close the color picker and hand focus back to the Appearance window
+                // Close the color picker and hand focus back to the Settings window
                 // (not the document) however this window was dismissed, but only if
-                // Appearance is still on screen. When Appearance is the one closing (it
+                // Settings is still on screen. When Settings is the one closing (it
                 // cascades this window shut), re-showing it here would resurrect a
                 // closing window, so skip the re-focus in that case.
                 NSColorPanel.shared.orderOut(nil)
                 NSColorPanel.shared.level = .normal   // undo the floating level set while picking
-                if let appWin = NSApp.windows.first(where: { $0.title == "Appearance" }), appWin.isVisible {
+                if let appWin = NSApp.windows.first(where: { $0.title == "Settings" }), appWin.isVisible {
                     appWin.makeKeyAndOrderFront(nil)
                 }
             }
@@ -166,7 +166,7 @@ struct CustomThemeEditor: View {
                 .font(.system(size: 12, weight: .semibold))
                 .frame(maxWidth: .infinity, alignment: .center)
 
-            // One swatch row laid out like the Appearance theme box: light trio │
+            // One swatch row laid out like the Settings window theme box: light trio │
             // dark trio, with a sun (left) and moon (right) marking which is which.
             // Heading labels sit centered above each swatch; the Name field spans
             // the swatch columns just below them. The grid and header are centered.
@@ -288,8 +288,8 @@ struct CustomThemeEditor: View {
     /// Persist the palette into the theme library and select it back in the
     /// Appearance window (via `savedId`), then close. The Custom builder only
     /// DEFINES a palette; choosing it and applying it to the document happens in
-    /// the Appearance window, like any preset. `onDisappear` dismisses the color
-    /// picker and returns focus to the Appearance window.
+    /// the Settings window, like any preset. `onDisappear` dismisses the color
+    /// picker and returns focus to the Settings window.
     private func save() {
         let id = persistPalette()
         draft.savedId = id
@@ -408,11 +408,11 @@ private final class PanelColorWell: NSColorWell {
     }
 }
 
-/// Positions the Custom Theme window (once) just left of the Appearance window,
+/// Positions the Custom Theme window (once) just left of the Settings window,
 /// so that window's live preview stays visible while editing. (Both windows pin
 /// their appearance to the OS via `SystemWindowAppearance`, matching the system
 /// color picker.)
-struct PositionBesideAppearance: NSViewRepresentable {
+struct PositionBesideSettings: NSViewRepresentable {
     func makeNSView(context: Context) -> NSView { NSView() }
     func makeCoordinator() -> Coordinator { Coordinator() }
 
@@ -422,9 +422,9 @@ struct PositionBesideAppearance: NSViewRepresentable {
             guard let w = nsView.window else { return }
             context.coordinator.positioned = true
             let visible = (w.screen ?? NSScreen.main)?.visibleFrame
-            if let appWin = NSApp.windows.first(where: { $0.title == "Appearance" && $0 !== w }) {
+            if let appWin = NSApp.windows.first(where: { $0.title == "Settings" && $0 !== w }) {
                 let f = appWin.frame
-                // Prefer just-left of the Appearance window so its live preview
+                // Prefer just-left of the Settings window so its live preview
                 // stays visible; if that would run off the left edge, place it
                 // just-right instead.
                 var topLeft = NSPoint(x: f.minX - w.frame.width - 14, y: f.maxY)
