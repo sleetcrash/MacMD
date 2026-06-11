@@ -4,7 +4,7 @@ import AppKit
 /// Holds the EFFECTIVE theming selection the editor renders, the coloring
 /// scheme, the selected theme id, the editor font size, and the window
 /// appearance. This is kept separate from the persisted "saved" state
-/// (UserDefaults) so the Appearance window can Apply changes to the live
+/// (UserDefaults) so the Settings window can Apply changes to the live
 /// document without persisting them, and revert them on Close. Saved custom
 /// palettes persist immediately elsewhere.
 @MainActor

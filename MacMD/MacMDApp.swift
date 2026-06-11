@@ -71,12 +71,12 @@ struct MacMDApp: App {
             }
         }
 
-        // These three auxiliary windows are opened programmatically (Format ▸
-        // Appearance, Help ▸ MacMD Help, and Custom+ in the Theme dropdown), so
+        // These three auxiliary windows are opened programmatically (MacMD ▸
+        // Settings, Help ▸ MacMD Help, and Custom+ in the Theme dropdown), so
         // `.commandsRemoved()` strips the open-command SwiftUI would otherwise add
-        // to the Window menu. That command duplicated the Format / Help entries and
-        // cluttered the Window menu; openWindow(id:) still opens each window.
-        Window("Appearance", id: AppearanceScene.id) {
+        // to the Window menu. That command duplicated the app-menu / Help entries
+        // and cluttered the Window menu; openWindow(id:) still opens each window.
+        Window("Settings", id: SettingsScene.id) {
             SettingsView()
                 .environmentObject(themeController)
                 .environmentObject(customDraft)
@@ -102,8 +102,10 @@ struct MacMDApp: App {
     }
 }
 
-/// Identifies the Appearance settings window, opened from Format ▸ Appearance.
-enum AppearanceScene {
+/// Identifies the Settings window (titled "Appearance" before 1.4.2), opened
+/// from MacMD ▸ Settings. The scene id stays "appearance" so the window's
+/// saved frame survives the rename.
+enum SettingsScene {
     static let id = "appearance"
 }
 
@@ -143,14 +145,14 @@ struct FormatCommands: Commands {
 }
 
 /// The app menu's Settings… item (Cmd-,), the standard macOS home for app
-/// preferences. It opens the Appearance window, which holds MacMD's settings;
+/// preferences. It opens the Settings window, which holds MacMD's settings;
 /// this replaces the former Format ▸ Appearance entry so there is a single home.
 struct AppSettingsCommands: Commands {
     @Environment(\.openWindow) private var openWindow
 
     var body: some Commands {
         CommandGroup(replacing: .appSettings) {
-            Button("Settings…") { openWindow(id: AppearanceScene.id) }
+            Button("Settings…") { openWindow(id: SettingsScene.id) }
                 .keyboardShortcut(",", modifiers: .command)
         }
     }

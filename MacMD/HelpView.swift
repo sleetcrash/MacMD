@@ -24,10 +24,10 @@ struct HelpView: View {
                         "Misspelled words are underlined as you type. Manage it from Edit > Spelling and Grammar.")
 
                 section("Appearance and themes",
-                        "Open Format > Appearance to set light, dark, or system appearance, the heading color scheme, and the editor font size. Adjust size quickly with Command-Plus, Command-Minus, and Command-0.")
+                        "Open MacMD > Settings (Command-Comma) to set light, dark, or system appearance, the editor background, the heading color scheme, the editor font and size, and the cursor style. Adjust size quickly with Command-Plus, Command-Minus, and Command-0.")
 
                 section("Custom themes",
-                        "In the Appearance window's Theme dropdown choose Custom+ to open the Custom Theme builder. Pick heading colors for light and dark mode. A Standard theme sets H1, H2, and H3 separately; a Unified theme uses one color for all headings. The Appearance window previews each change live. Name and Save the theme, then choose it in the Appearance window to apply it to your document.")
+                        "In the Settings window's Theme dropdown choose Custom+ to open the Custom Theme builder. Pick heading colors for light and dark mode. A Standard theme sets H1, H2, and H3 separately; a Unified theme uses one color for all headings. The Settings window previews each change live. Name and Save the theme, then choose it in the Settings window to apply it to your document.")
 
                 section("Word count",
                         "Use View > Show Word Count to show a live word count and reading-time estimate under the editor. It is off by default. List markers and ordered-list numbers are not counted.")
