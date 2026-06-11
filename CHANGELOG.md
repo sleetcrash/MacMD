@@ -2,6 +2,13 @@
 
 All notable changes to MacMD will be documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-06-11
+
+### Added
+- The Settings window now has two tabs. Appearance holds the existing theme, font, cursor, and background controls; the new Editing tab holds editing defaults that take effect immediately.
+- Check spelling as you type is now a persisted setting (it stays off across launches if you turn it off), joined by an optional Check grammar with spelling. The Edit menu's spelling items reflect and control the same settings.
+- A New Windows size setting: new documents open at your chosen width and height in points, with a Use Current Window button to capture the size of the window you are using. Reopened files keep their own remembered size.
+
 ## [1.4.2] - 2026-06-10
 
 ### Changed
