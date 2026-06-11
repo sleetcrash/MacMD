@@ -120,6 +120,14 @@ struct SettingsView: View {
     @State private var backgroundPickerActivation = 0
     @State private var sizeText = ""
 
+    // The Editing tab. Its controls take effect immediately (standard macOS
+    // settings behavior), unlike the Appearance tab's transactional Apply/Save.
+    @State private var tab: SettingsTab = .appearance
+    @AppStorage(SpellingPref.spellingKey) private var checkSpelling = true
+    @AppStorage(SpellingPref.grammarKey) private var checkGrammar = false
+    @State private var windowWidthText = ""
+    @State private var windowHeightText = ""
+
     // Which dropdown (if any) is open, and the on-screen frame of each trigger
     // box so the in-window dropdown can sit flush beneath it.
     @State private var openMenu: MenuField?
@@ -183,10 +191,23 @@ struct SettingsView: View {
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            content
-            dropdownLayer
+            VStack(spacing: 0) {
+                tabBar
+                    .padding(EdgeInsets(top: 20, leading: 20, bottom: 0, trailing: 20))
+                if tab == .appearance {
+                    content
+                } else {
+                    editingTab
+                }
+            }
+            if tab == .appearance {
+                dropdownLayer
+            }
         }
         .frame(width: 389)   // 20 + wideWidth + 14 + segWidth + 20
+        // Switching tabs closes any open dropdown so it cannot strand over the
+        // other tab's content.
+        .onChange(of: tab) { _, _ in openMenu = nil }
         .background(Pane.window)
         .coordinateSpace(name: Self.space)
         .onPreferenceChange(FieldFrameKey.self) { fieldFrames = $0 }
@@ -211,7 +232,7 @@ struct SettingsView: View {
         // screen edge; pull it back fully on screen on open (a dragged on-screen
         // position is left untouched).
         .background(KeepOnScreen())
-        .onAppear { syncFromSaved(); reconcileThemeId() }
+        .onAppear { syncFromSaved(); reconcileThemeId(); syncWindowSizeFields() }
         .onChange(of: openMenu) { old, new in
             // Closing the Size dropdown without committing reverts the typed
             // value to the working-copy size (Google-Docs behavior).
@@ -337,6 +358,128 @@ struct SettingsView: View {
         }
         .padding(EdgeInsets(top: 26, leading: 20, bottom: 20, trailing: 20))
         .foregroundStyle(Pane.text)
+    }
+
+    // MARK: - Tabs
+
+    /// The Appearance | Editing segmented bar, styled like the Mode and Cursor
+    /// segments so the window keeps one visual language.
+    private var tabBar: some View {
+        HStack(spacing: 0) {
+            ForEach(SettingsTab.allCases, id: \.self) { t in
+                let selected = tab == t
+                Button { tab = t } label: {
+                    Text(t.rawValue)
+                        .font(.system(size: 11))
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background {
+                            if selected {
+                                Rectangle().fill(
+                                    Color.black.opacity(0.28)
+                                        .shadow(.inner(color: .black.opacity(0.55), radius: 3, y: 1.5))
+                                )
+                            } else {
+                                Rectangle().fill(Color.white.opacity(0.10))
+                            }
+                        }
+                        .foregroundStyle(selected ? Pane.text : Pane.muted)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(selected ? .isSelected : [])
+            }
+        }
+        .frame(height: 28)
+        .background(Pane.field)
+        .overlay(Rectangle().strokeBorder(Pane.border, lineWidth: 1))
+        .foregroundStyle(Pane.text)
+    }
+
+    /// The Editing tab: immediate-effect editing defaults (no Apply/Save).
+    private var editingTab: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            VStack(alignment: .leading, spacing: 10) {
+                caption("Spelling")
+                Toggle("Check spelling as you type", isOn: Binding(
+                    get: { checkSpelling },
+                    set: { SpellingPref.setCheckSpelling($0) }
+                ))
+                .toggleStyle(.checkbox)
+                .font(.system(size: 12))
+                Toggle("Check grammar with spelling", isOn: Binding(
+                    get: { checkGrammar },
+                    set: { SpellingPref.setCheckGrammar($0) }
+                ))
+                .toggleStyle(.checkbox)
+                .font(.system(size: 12))
+            }
+            VStack(alignment: .leading, spacing: 10) {
+                caption("New windows")
+                HStack(spacing: 8) {
+                    Text("Width").font(.system(size: 12))
+                    windowSizeField($windowWidthText)
+                    Text("Height").font(.system(size: 12)).padding(.leading, 8)
+                    windowSizeField($windowHeightText)
+                    Text("points").font(.system(size: 11)).foregroundStyle(Pane.muted).padding(.leading, 4)
+                }
+                Button("Use Current Window") { captureCurrentWindowSize() }
+                    .buttonStyle(SquareButtonStyle())
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(EdgeInsets(top: 26, leading: 20, bottom: 20, trailing: 20))
+        .foregroundStyle(Pane.text)
+    }
+
+    /// The same small uppercase caption the Appearance controls wear.
+    private func caption(_ label: String) -> some View {
+        Text(label.uppercased())
+            .font(.system(size: 9))
+            .tracking(0.6)
+            .foregroundStyle(Pane.muted)
+            .opacity(0.55)
+    }
+
+    /// A bordered numeric field matching the Size box; commits (and clamps)
+    /// on Return or focus loss via onSubmit.
+    private func windowSizeField(_ text: Binding<String>) -> some View {
+        TextField("", text: text)
+            .textFieldStyle(.plain)
+            .multilineTextAlignment(.center)
+            .font(.system(size: 11))
+            .frame(width: 56, height: 26)
+            .background(Pane.field)
+            .overlay(Rectangle().strokeBorder(Pane.border, lineWidth: 1))
+            .onSubmit { commitWindowSizeFields() }
+    }
+
+    /// Parse, clamp, persist, and reformat both size fields.
+    private func commitWindowSizeFields() {
+        let w = Double(windowWidthText.filter(\.isNumber)) ?? NewWindowSize.width
+        let h = Double(windowHeightText.filter(\.isNumber)) ?? NewWindowSize.height
+        NewWindowSize.set(width: w, height: h)
+        syncWindowSizeFields()
+    }
+
+    private func syncWindowSizeFields() {
+        windowWidthText = "\(Int(NewWindowSize.width))"
+        windowHeightText = "\(Int(NewWindowSize.height))"
+    }
+
+    /// Capture the frontmost document window's content size as the new-window
+    /// default. Panels (the color picker) and the auxiliary windows are
+    /// skipped; with no document window open this beeps and changes nothing.
+    private func captureCurrentWindowSize() {
+        let aux: Set<String> = ["Settings", "Custom Theme", "Help"]
+        guard let doc = NSApp.orderedWindows.first(where: {
+            $0.isVisible && !($0 is NSPanel) && !aux.contains($0.title)
+        }) else {
+            NSSound.beep()
+            return
+        }
+        let size = doc.contentLayoutRect.size
+        NewWindowSize.set(width: size.width, height: size.height)
+        syncWindowSizeFields()
     }
 
     // MARK: - Trigger boxes
@@ -564,6 +707,13 @@ struct SettingsView: View {
 
 /// Identifies which trigger box a dropdown belongs to.
 enum MenuField: Hashable { case theme, scheme, size, font, background }
+
+/// The Settings window's tabs: Appearance holds the transactional theme and
+/// editor-look controls; Editing holds the immediate-effect editing defaults.
+enum SettingsTab: String, CaseIterable {
+    case appearance = "Appearance"
+    case editing = "Editing"
+}
 
 /// Collects each trigger box's frame (in the settings coordinate space) so the
 /// root overlay can place the dropdown flush beneath the right box.
