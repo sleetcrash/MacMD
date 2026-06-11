@@ -89,12 +89,12 @@ final class CustomDraft: ObservableObject {
 }
 
 /// The Custom Theme editor, a separate window styled as an extension of the
-/// Appearance window (same neutral chrome, sharp edges, square buttons). It has
+/// Settings window (same neutral chrome, sharp edges, square buttons). It has
 /// no preview of its own; editing colors live-updates the Settings window's
 /// preview through the shared `CustomDraft`. Save commits the palette to the
 /// theme library and selects it in the Settings window (apply it to the
 /// document from there, like any preset); Close (or the red X) returns to the
-/// Appearance window.
+/// Settings window.
 struct CustomThemeEditor: View {
     @EnvironmentObject private var draft: CustomDraft
     @AppStorage(ThemeSettings.customsKey) private var customsData = Data()
@@ -273,7 +273,7 @@ struct CustomThemeEditor: View {
 
     // MARK: - Actions
 
-    /// Remove the saved custom and close. The Appearance window repoints its
+    /// Remove the saved custom and close. The Settings window repoints its
     /// selection via its `onChange(of: customsData)` if it was showing this one.
     private func performDelete() {
         if let id = draft.editingId {
@@ -286,7 +286,7 @@ struct CustomThemeEditor: View {
     }
 
     /// Persist the palette into the theme library and select it back in the
-    /// Appearance window (via `savedId`), then close. The Custom builder only
+    /// Settings window (via `savedId`), then close. The Custom builder only
     /// DEFINES a palette; choosing it and applying it to the document happens in
     /// the Settings window, like any preset. `onDisappear` dismisses the color
     /// picker and returns focus to the Settings window.

@@ -47,7 +47,7 @@ struct ThemePreview: View {
     // Mirrors the editor's font scheme so the preview shows the chosen family and
     // size: body at the base size in the chosen family, headings bumped by
     // (7 - level) and bolded like Theme.headingFont. Uses the same NSFont -> Font
-    // bridge the Appearance font dropdown uses.
+    // bridge the Settings font dropdown uses.
     private var bodyFont: Font { Font(family.font(size: fontSize) as CTFont) }
     private var boldBodyFont: Font { Font(family.boldFont(size: fontSize) as CTFont) }
 

@@ -8,7 +8,7 @@ enum BackgroundMode: String, CaseIterable {
 }
 
 /// The custom editor background's brightness math plus the mode/color
-/// resolution the document views and the Appearance preview share. Separated
+/// resolution the document views and the Settings preview share. Separated
 /// from the views so the light-vs-dark decision stays unit-testable (the
 /// CursorGeometry / LineNumbering pattern).
 enum EditorBackground {
