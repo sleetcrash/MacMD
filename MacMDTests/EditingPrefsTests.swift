@@ -3,11 +3,30 @@ import XCTest
 
 @MainActor
 final class EditingPrefsTests: XCTestCase {
+    // The test host is the real app, so UserDefaults.standard is the user's
+    // live prefs domain. Snapshot the touched keys and RESTORE them (not just
+    // remove), so a suite run never resets prefs the user set on purpose.
+    private static let keys = [SpellingPref.spellingKey, SpellingPref.grammarKey,
+                               NewWindowSize.widthKey, NewWindowSize.heightKey]
+    private var saved: [String: Any] = [:]
+
+    override func setUp() {
+        super.setUp()
+        for key in Self.keys {
+            if let value = UserDefaults.standard.object(forKey: key) { saved[key] = value }
+            UserDefaults.standard.removeObject(forKey: key)
+        }
+    }
+
     override func tearDown() {
-        UserDefaults.standard.removeObject(forKey: SpellingPref.spellingKey)
-        UserDefaults.standard.removeObject(forKey: SpellingPref.grammarKey)
-        UserDefaults.standard.removeObject(forKey: NewWindowSize.widthKey)
-        UserDefaults.standard.removeObject(forKey: NewWindowSize.heightKey)
+        for key in Self.keys {
+            if let value = saved[key] {
+                UserDefaults.standard.set(value, forKey: key)
+            } else {
+                UserDefaults.standard.removeObject(forKey: key)
+            }
+        }
+        saved = [:]
         super.tearDown()
     }
 

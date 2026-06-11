@@ -127,6 +127,9 @@ struct SettingsView: View {
     @AppStorage(SpellingPref.grammarKey) private var checkGrammar = false
     @State private var windowWidthText = ""
     @State private var windowHeightText = ""
+    @FocusState private var focusedSizeField: SizeField?
+
+    enum SizeField: Hashable { case width, height }
 
     // Which dropdown (if any) is open, and the on-screen frame of each trigger
     // box so the in-window dropdown can sit flush beneath it.
@@ -417,10 +420,15 @@ struct SettingsView: View {
                 caption("New windows")
                 HStack(spacing: 8) {
                     Text("Width").font(.system(size: 12))
-                    windowSizeField($windowWidthText)
+                    windowSizeField($windowWidthText, field: .width)
                     Text("Height").font(.system(size: 12)).padding(.leading, 8)
-                    windowSizeField($windowHeightText)
+                    windowSizeField($windowHeightText, field: .height)
                     Text("points").font(.system(size: 11)).foregroundStyle(Pane.muted).padding(.leading, 4)
+                }
+                // Commit when a size field loses focus, not just on Return, so
+                // a typed value is never silently discarded.
+                .onChange(of: focusedSizeField) { old, _ in
+                    if old != nil { commitWindowSizeFields() }
                 }
                 Button("Use Current Window") { captureCurrentWindowSize() }
                     .buttonStyle(SquareButtonStyle())
@@ -441,8 +449,8 @@ struct SettingsView: View {
     }
 
     /// A bordered numeric field matching the Size box; commits (and clamps)
-    /// on Return or focus loss via onSubmit.
-    private func windowSizeField(_ text: Binding<String>) -> some View {
+    /// on Return or focus loss.
+    private func windowSizeField(_ text: Binding<String>, field: SizeField) -> some View {
         TextField("", text: text)
             .textFieldStyle(.plain)
             .multilineTextAlignment(.center)
@@ -450,15 +458,23 @@ struct SettingsView: View {
             .frame(width: 56, height: 26)
             .background(Pane.field)
             .overlay(Rectangle().strokeBorder(Pane.border, lineWidth: 1))
+            .focused($focusedSizeField, equals: field)
             .onSubmit { commitWindowSizeFields() }
     }
 
     /// Parse, clamp, persist, and reformat both size fields.
     private func commitWindowSizeFields() {
-        let w = Double(windowWidthText.filter(\.isNumber)) ?? NewWindowSize.width
-        let h = Double(windowHeightText.filter(\.isNumber)) ?? NewWindowSize.height
-        NewWindowSize.set(width: w, height: h)
+        NewWindowSize.set(width: parseSize(windowWidthText, fallback: NewWindowSize.width),
+                          height: parseSize(windowHeightText, fallback: NewWindowSize.height))
         syncWindowSizeFields()
+    }
+
+    /// Numeric parse that keeps a decimal entry sane: "760.5" reads as 760.5,
+    /// not as digit-stripped 7605 racing into the clamp ceiling.
+    private func parseSize(_ text: String, fallback: Double) -> Double {
+        Double(text.trimmingCharacters(in: .whitespaces))
+            ?? Double(text.filter(\.isNumber))
+            ?? fallback
     }
 
     private func syncWindowSizeFields() {
