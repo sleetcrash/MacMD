@@ -24,7 +24,7 @@ struct HelpView: View {
                         "Misspelled words are underlined as you type. Manage it from Edit > Spelling and Grammar.")
 
                 section("Appearance and themes",
-                        "Open MacMD > Settings (Command-Comma) to set light, dark, or system appearance, the editor background, the heading color scheme, the editor font and size, and the cursor style. Adjust size quickly with Command-Plus, Command-Minus, and Command-0.")
+                        "Open MacMD > Settings (Command-Comma). The Appearance tab sets light, dark, or system appearance, the editor background, the heading color scheme, the editor font and size, and the cursor style. The Editing tab sets the spelling defaults and the size of new windows. Adjust font size quickly with Command-Plus, Command-Minus, and Command-0.")
 
                 section("Custom themes",
                         "In the Settings window's Theme dropdown choose Custom+ to open the Custom Theme builder. Pick heading colors for light and dark mode. A Standard theme sets H1, H2, and H3 separately; a Unified theme uses one color for all headings. The Settings window previews each change live. Name and Save the theme, then choose it in the Settings window to apply it to your document.")

@@ -43,9 +43,11 @@
 		F200000000000000000000D7 /* LineNumbering.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000D7 /* LineNumbering.swift */; };
 		F200000000000000000000D8 /* LineNumberGutterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000D8 /* LineNumberGutterView.swift */; };
 		F200000000000000000000DA /* EditorBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000DA /* EditorBackground.swift */; };
+		F200000000000000000000DC /* EditingPrefs.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000DC /* EditingPrefs.swift */; };
 		F200000000000000000000D6 /* FormattingPrefTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000D6 /* FormattingPrefTests.swift */; };
 		F200000000000000000000D9 /* LineNumberingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000D9 /* LineNumberingTests.swift */; };
 		F200000000000000000000DB /* EditorBackgroundTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000DB /* EditorBackgroundTests.swift */; };
+		F200000000000000000000DD /* EditingPrefsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000DD /* EditingPrefsTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -98,6 +100,8 @@
 		F100000000000000000000D8 /* LineNumberGutterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LineNumberGutterView.swift; sourceTree = "<group>"; };
 		F100000000000000000000DA /* EditorBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorBackground.swift; sourceTree = "<group>"; };
 		F100000000000000000000DB /* EditorBackgroundTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorBackgroundTests.swift; sourceTree = "<group>"; };
+		F100000000000000000000DC /* EditingPrefs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditingPrefs.swift; sourceTree = "<group>"; };
+		F100000000000000000000DD /* EditingPrefsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditingPrefsTests.swift; sourceTree = "<group>"; };
 		F100000000000000000000D6 /* FormattingPrefTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FormattingPrefTests.swift; sourceTree = "<group>"; };
 		F100000000000000000000D9 /* LineNumberingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LineNumberingTests.swift; sourceTree = "<group>"; };
 		F100000000000000000000A4 /* MacMD.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MacMD.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -156,6 +160,7 @@
 				F100000000000000000000D7 /* LineNumbering.swift */,
 				F100000000000000000000D8 /* LineNumberGutterView.swift */,
 				F100000000000000000000DA /* EditorBackground.swift */,
+				F100000000000000000000DC /* EditingPrefs.swift */,
 				F100000000000000000000A0 /* Assets.xcassets */,
 				F100000000000000000000A2 /* Info.plist */,
 				F100000000000000000000A1 /* MacMD.entitlements */,
@@ -182,6 +187,7 @@
 				F100000000000000000000D6 /* FormattingPrefTests.swift */,
 				F100000000000000000000D9 /* LineNumberingTests.swift */,
 				F100000000000000000000DB /* EditorBackgroundTests.swift */,
+				F100000000000000000000DD /* EditingPrefsTests.swift */,
 			);
 			path = MacMDTests;
 			sourceTree = "<group>";
@@ -315,6 +321,7 @@
 				F200000000000000000000D7 /* LineNumbering.swift in Sources */,
 				F200000000000000000000D8 /* LineNumberGutterView.swift in Sources */,
 				F200000000000000000000DA /* EditorBackground.swift in Sources */,
+				F200000000000000000000DC /* EditingPrefs.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -338,6 +345,7 @@
 				F200000000000000000000D6 /* FormattingPrefTests.swift in Sources */,
 				F200000000000000000000D9 /* LineNumberingTests.swift in Sources */,
 				F200000000000000000000DB /* EditorBackgroundTests.swift in Sources */,
+				F200000000000000000000DD /* EditingPrefsTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
