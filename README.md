@@ -2,13 +2,13 @@
 
 A simple, clean, secure markdown editor for macOS. Feels like TextEdit, but for `.md` files and with live syntax highlighting.
 
-Built for editing claude.md, skill definitions, agent configs, READMEs, and similar small-to-medium markdown files.
+Built for editing agent.md/claude.md, skill definitions, agent configs, READMEs, and similar small-to-medium markdown files.
 
 ![MacMD screenshot](docs/screenshot.png)
 
 ## Install
 
-Minimum macOS version: 14 (Sonoma). Tested on 15 (Sequoia) and 26 (Tahoe).
+Minimum macOS version: 14 (Sonoma).
 
 ### 1. Download
 
