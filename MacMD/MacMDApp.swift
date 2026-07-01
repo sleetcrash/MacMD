@@ -209,12 +209,33 @@ enum FontSize {
     }
 }
 
+/// Resolves the document editor regardless of which pane holds first responder.
+/// Once the preview, outline, or workspace sidebar can take first responder, the
+/// key window's first responder may no longer be the editor, so Format/Find/Print
+/// must descend the view tree to find it rather than only checking the responder.
+@MainActor
+enum EditorFocus {
+    static func resolve(in window: NSWindow?) -> ClickableTextView? {
+        guard let window else { return nil }
+        if let editor = window.firstResponder as? ClickableTextView { return editor }
+        return window.contentView.flatMap(firstEditor(in:))
+    }
+
+    private static func firstEditor(in view: NSView) -> ClickableTextView? {
+        if let editor = view as? ClickableTextView { return editor }
+        for subview in view.subviews {
+            if let found = firstEditor(in: subview) { return found }
+        }
+        return nil
+    }
+}
+
 /// The markdown editor that currently holds keyboard focus, or nil. Menu commands
 /// resolve their target this way because `sendAction(_:to:nil)` does not reach an
 /// NSTextView hosted inside the SwiftUI DocumentGroup.
 @MainActor
 private func focusedEditor() -> ClickableTextView? {
-    NSApp.keyWindow?.firstResponder as? ClickableTextView
+    EditorFocus.resolve(in: NSApp.keyWindow)
 }
 
 /// Drive the focused editor's already-active NSTextFinder from a menu command.
@@ -226,5 +247,5 @@ private func focusedEditor() -> ClickableTextView? {
 private func performFindAction(_ action: NSTextFinder.Action) {
     let item = NSMenuItem()
     item.tag = action.rawValue
-    (NSApp.keyWindow?.firstResponder as? NSTextView)?.performTextFinderAction(item)
+    EditorFocus.resolve(in: NSApp.keyWindow)?.performTextFinderAction(item)
 }
