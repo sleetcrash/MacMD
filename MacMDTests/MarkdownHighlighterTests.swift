@@ -263,7 +263,10 @@ final class MarkdownHighlighterTests: XCTestCase {
         storage.delegate = highlighter
         let started = CFAbsoluteTimeGetCurrent()
         highlighter.rehighlightAll(storage)
-        XCTAssertLessThan(CFAbsoluteTimeGetCurrent() - started, 2.0,
+        // A generous ceiling: real O(n^2) backtracking pegs the thread for minutes,
+        // so this cleanly catches it while tolerating a slow/loaded CI runner (the
+        // 2.0s ceiling flaked on GitHub Actions under load).
+        XCTAssertLessThan(CFAbsoluteTimeGetCurrent() - started, 10.0,
                           "Emphasis highlighting must stay linear on long lines")
     }
 
@@ -278,7 +281,10 @@ final class MarkdownHighlighterTests: XCTestCase {
         storage.delegate = highlighter
         let started = CFAbsoluteTimeGetCurrent()
         highlighter.rehighlightAll(storage)
-        XCTAssertLessThan(CFAbsoluteTimeGetCurrent() - started, 2.0,
+        // Generous ceiling for CI tolerance: real backtracking on this 160KB line
+        // runs for minutes, so 10s still catches an O(n^2) regression while the
+        // former 2.0s ceiling flaked on a loaded GitHub Actions runner (3.2s).
+        XCTAssertLessThan(CFAbsoluteTimeGetCurrent() - started, 10.0,
                           "Link highlighting must stay linear on long lines")
     }
 

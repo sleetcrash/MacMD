@@ -65,9 +65,15 @@ enum MarkdownRenderEngine {
     /// is treated purely as a string argument, so a `</script>` in the source is
     /// inert here; markdown-it `html:false` then escapes any raw HTML inside it.
     static func renderInvocation(markdown: String) -> String {
-        let data = (try? JSONSerialization.data(withJSONObject: markdown, options: [.fragmentsAllowed]))
-            ?? Data("\"\"".utf8)
-        let json = String(data: data, encoding: .utf8) ?? "\"\""
-        return "window.render(\(json))"
+        "window.render(\(jsStringLiteral(markdown)))"
+    }
+
+    /// A JSON-encoded JS string literal, so an arbitrary payload (markdown, CSS,
+    /// an appearance name) is delivered to a `window.*` function as an inert
+    /// string argument, never interpolated as code.
+    static func jsStringLiteral(_ s: String) -> String {
+        guard let data = try? JSONSerialization.data(withJSONObject: s, options: [.fragmentsAllowed]),
+              let json = String(data: data, encoding: .utf8) else { return "\"\"" }
+        return json
     }
 }
