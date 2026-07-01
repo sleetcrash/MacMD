@@ -65,6 +65,7 @@
 		19A211418D0630636DA34272 /* PreviewPrefTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B13433DC73A93517149F089 /* PreviewPrefTests.swift */; };
 		1A5438D369A0CEAEDE2F6A81 /* PreviewWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAE02E8A6110F51D9DD6850A /* PreviewWebView.swift */; };
 		FC0B2D1CDC94C12E7776EB53 /* PreviewNavigationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E624FED359A4B6B216BA838 /* PreviewNavigationTests.swift */; };
+		71ACE66F3EFFDCED7B21676A /* PreviewSecurityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4394E496EC6FE89A2E5E6A74 /* PreviewSecurityTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -140,6 +141,7 @@
 		8B13433DC73A93517149F089 /* PreviewPrefTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewPrefTests.swift; sourceTree = "<group>"; };
 		AAE02E8A6110F51D9DD6850A /* PreviewWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewWebView.swift; sourceTree = "<group>"; };
 		5E624FED359A4B6B216BA838 /* PreviewNavigationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewNavigationTests.swift; sourceTree = "<group>"; };
+		4394E496EC6FE89A2E5E6A74 /* PreviewSecurityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewSecurityTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -247,6 +249,7 @@
 				E4239F84B2D84BCE980945F3 /* EditorFocusTests.swift */,
 				8B13433DC73A93517149F089 /* PreviewPrefTests.swift */,
 				5E624FED359A4B6B216BA838 /* PreviewNavigationTests.swift */,
+				4394E496EC6FE89A2E5E6A74 /* PreviewSecurityTests.swift */,
 			);
 			path = MacMDTests;
 			sourceTree = "<group>";
@@ -422,6 +425,7 @@
 				C7A273CEAD89502E8A14E2E5 /* EditorFocusTests.swift in Sources */,
 				19A211418D0630636DA34272 /* PreviewPrefTests.swift in Sources */,
 				FC0B2D1CDC94C12E7776EB53 /* PreviewNavigationTests.swift in Sources */,
+				71ACE66F3EFFDCED7B21676A /* PreviewSecurityTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
