@@ -39,4 +39,16 @@ final class MermaidRenderTests: XCTestCase {
         let after3 = (await h.eval("window.__mermaidRenderCount") as? NSNumber)?.intValue ?? -1
         XCTAssertEqual(after3, 2, "changed diagram source re-renders")
     }
+
+    func testDuplicateDiagramsGetDistinctIds() async {
+        let h = PreviewHarness()
+        await h.load()
+        let block = "```mermaid\nflowchart TD; A-->B\n```\n"
+        await h.renderAndWait("\(block)\n\(block)")   // two identical diagrams in one document
+
+        let svgCount = (await h.eval("document.querySelectorAll('svg').length") as? NSNumber)?.intValue ?? 0
+        XCTAssertEqual(svgCount, 2, "both identical diagrams render")
+        let uniqueIds = (await h.eval("(function(){var s=document.querySelectorAll('svg');var ids={};for(var i=0;i<s.length;i++){ids[s[i].id]=1;}return Object.keys(ids).length;})()") as? NSNumber)?.intValue ?? 0
+        XCTAssertEqual(uniqueIds, 2, "the two rendered SVGs carry distinct ids (no malformed duplicate id)")
+    }
 }

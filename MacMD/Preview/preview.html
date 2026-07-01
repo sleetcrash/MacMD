@@ -70,24 +70,28 @@ function fnv1a(str) {
 // mermaid fence as <pre><code class="language-mermaid">. Cache hits reuse stored
 // SVG and never call mermaid.
 async function renderMermaid(container) {
+  var blocks = container.querySelectorAll("code.language-mermaid");
+  if (blocks.length === 0) return; // no mermaid: skip init and work entirely
   ensureMermaid();
   if (!window.mermaid) return;
-  var blocks = container.querySelectorAll("code.language-mermaid");
   for (var i = 0; i < blocks.length; i++) {
     var code = blocks[i];
     var source = code.textContent;
     var hash = fnv1a(source);
+    // Key the cache by source AND block position so two identical diagrams get
+    // distinct SVG element ids (mermaid bakes the id into the SVG and its defs).
+    var cacheKey = hash + "-" + i;
     var pre = code.parentNode;
     var wrapper = document.createElement("div");
     wrapper.className = "mermaid-diagram";
     wrapper.setAttribute("data-mermaid-hash", hash);
-    if (mermaidCache[hash] !== undefined) {
-      wrapper.innerHTML = mermaidCache[hash];
+    if (mermaidCache[cacheKey] !== undefined) {
+      wrapper.innerHTML = mermaidCache[cacheKey];
     } else {
       try {
-        var out = await window.mermaid.render("mmd-" + hash + "-" + i, source);
+        var out = await window.mermaid.render("mmd-" + cacheKey, source);
         wrapper.innerHTML = out.svg;
-        mermaidCache[hash] = out.svg;
+        mermaidCache[cacheKey] = out.svg;
         window.__mermaidRenderCount++;
       } catch (e) {
         continue; // leave the fenced code block if the diagram fails to render
@@ -101,9 +105,10 @@ window.render = function (markdown) {
   var container = document.getElementById("content");
   container.innerHTML = md.render(markdown);
   rewriteImages(container);
-  renderMermaid(container).then(function () {
-    window.__renderComplete = (window.__renderComplete || 0) + 1;
-  });
+  // Advance the completion flag whether mermaid resolves or rejects, so the flag
+  // never stalls (defense in depth; renderMermaid catches per-block failures).
+  function done() { window.__renderComplete = (window.__renderComplete || 0) + 1; }
+  renderMermaid(container).then(done, done);
 };
 
 // Headless render for HTML export: markdown-it only, NO image rewrite (the
@@ -126,8 +131,9 @@ window.renderForExport = async function (markdown) {
     if (isExternal && !isData) { imgs[i].removeAttribute("src"); }
   }
   // Inline any mermaid diagrams as SVG before serializing, so the export awaits
-  // completion (callAsyncJavaScript awaits the returned promise).
-  await renderMermaid(container);
+  // completion (callAsyncJavaScript awaits the returned promise). A failure falls
+  // back to markdown-only rather than an empty export.
+  try { await renderMermaid(container); } catch (e) { /* markdown-only fallback */ }
   return container.innerHTML;
 };
 

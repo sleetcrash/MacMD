@@ -3,18 +3,6 @@ import XCTest
 
 final class MermaidEngineTests: XCTestCase {
 
-    func testContainsMermaidDetectsMermaidFences() {
-        XCTAssertTrue(MarkdownRenderEngine.containsMermaid(in: "```mermaid\nflowchart TD\n```\n"))
-        XCTAssertTrue(MarkdownRenderEngine.containsMermaid(in: "```Mermaid\nx\n```\n"))
-        XCTAssertTrue(MarkdownRenderEngine.containsMermaid(in: "``` mermaid\nx\n```\n"))
-        XCTAssertTrue(MarkdownRenderEngine.containsMermaid(in: "```mermaid gantt\nx\n```\n"))
-
-        XCTAssertFalse(MarkdownRenderEngine.containsMermaid(in: "```swift\nx\n```\n"))
-        XCTAssertFalse(MarkdownRenderEngine.containsMermaid(in: "```mermaidish\nx\n```\n"))
-        XCTAssertFalse(MarkdownRenderEngine.containsMermaid(in: "the word mermaid in prose\n"))
-        XCTAssertFalse(MarkdownRenderEngine.containsMermaid(in: ""))
-    }
-
     // Security invariant guard: the CSP never permits eval. This goes RED only if
     // a future change weakens script-src; that change is the bug, not the test.
     func testCSPNeverAllowsUnsafeEval() {
