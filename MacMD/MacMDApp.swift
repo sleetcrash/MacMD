@@ -7,6 +7,7 @@ struct MacMDApp: App {
     @StateObject private var customDraft = CustomDraft()
     @AppStorage(WordCountPref.key) private var showWordCount = false
     @AppStorage(FormattingPref.key) private var showFormatting = true
+    @AppStorage(PreviewPref.key) private var showPreview = false
     @AppStorage(SpellingPref.spellingKey) private var checkSpelling = true
     @AppStorage(SpellingPref.grammarKey) private var checkGrammar = false
 
@@ -79,6 +80,11 @@ struct MacMDApp: App {
                     set: { FormattingPref.set($0) }
                 ))
                 .keyboardShortcut("/", modifiers: .command)
+                Toggle("Show Preview", isOn: Binding(
+                    get: { showPreview },
+                    set: { PreviewPref.isVisible = $0 }
+                ))
+                .keyboardShortcut("p", modifiers: [.command, .shift])
                 Divider()
             }
         }

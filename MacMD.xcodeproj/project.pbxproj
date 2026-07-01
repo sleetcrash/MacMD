@@ -61,6 +61,8 @@
 		FC3D9858D250B71EBFAA8A12 /* MarkdownSchemeHandlerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F110A67E5592BF083EFEFAF5 /* MarkdownSchemeHandlerTests.swift */; };
 		99BC00F2F2D755EB926CAB40 /* HostileFixtureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CFFAC05894BAD795958A946 /* HostileFixtureTests.swift */; };
 		C7A273CEAD89502E8A14E2E5 /* EditorFocusTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4239F84B2D84BCE980945F3 /* EditorFocusTests.swift */; };
+		D845B2A7AF12F839E4E52B8B /* PreviewPrefs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04A79871D98C9837F004EB46 /* PreviewPrefs.swift */; };
+		19A211418D0630636DA34272 /* PreviewPrefTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B13433DC73A93517149F089 /* PreviewPrefTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -132,6 +134,8 @@
 		F110A67E5592BF083EFEFAF5 /* MarkdownSchemeHandlerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownSchemeHandlerTests.swift; sourceTree = "<group>"; };
 		0CFFAC05894BAD795958A946 /* HostileFixtureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HostileFixtureTests.swift; sourceTree = "<group>"; };
 		E4239F84B2D84BCE980945F3 /* EditorFocusTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorFocusTests.swift; sourceTree = "<group>"; };
+		04A79871D98C9837F004EB46 /* PreviewPrefs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewPrefs.swift; sourceTree = "<group>"; };
+		8B13433DC73A93517149F089 /* PreviewPrefTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewPrefTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -194,6 +198,7 @@
 				BB0C24D55EDA7CAE0E191A87 /* MarkdownRenderEngine.swift */,
 				06989260B7CBDBB15D3A9570 /* Preview */,
 				CDF99FF96CB5FACF0F1F0145 /* MarkdownSchemeHandler.swift */,
+				04A79871D98C9837F004EB46 /* PreviewPrefs.swift */,
 			);
 			path = MacMD;
 			sourceTree = "<group>";
@@ -235,6 +240,7 @@
 				F110A67E5592BF083EFEFAF5 /* MarkdownSchemeHandlerTests.swift */,
 				0CFFAC05894BAD795958A946 /* HostileFixtureTests.swift */,
 				E4239F84B2D84BCE980945F3 /* EditorFocusTests.swift */,
+				8B13433DC73A93517149F089 /* PreviewPrefTests.swift */,
 			);
 			path = MacMDTests;
 			sourceTree = "<group>";
@@ -376,6 +382,7 @@
 				DADCBF7C62977F1DFDF7E92D /* MarkdownParser.swift in Sources */,
 				1A3A8DA1B4A335C010F5E747 /* MarkdownRenderEngine.swift in Sources */,
 				0387863D1D5B795236E0E06C /* MarkdownSchemeHandler.swift in Sources */,
+				D845B2A7AF12F839E4E52B8B /* PreviewPrefs.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -406,6 +413,7 @@
 				FC3D9858D250B71EBFAA8A12 /* MarkdownSchemeHandlerTests.swift in Sources */,
 				99BC00F2F2D755EB926CAB40 /* HostileFixtureTests.swift in Sources */,
 				C7A273CEAD89502E8A14E2E5 /* EditorFocusTests.swift in Sources */,
+				19A211418D0630636DA34272 /* PreviewPrefTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
