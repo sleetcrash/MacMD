@@ -16,4 +16,29 @@ enum MarkdownRenderEngine {
         precondition(status == errSecSuccess, "SecRandomCopyBytes failed with status \(status)")
         return Data(bytes).base64EncodedString()
     }
+
+    /// The locked Content-Security-Policy, delivered as a real HTTP header by the
+    /// scheme handler. Only the single `script-src 'nonce-...'` slot is
+    /// parameterized. `script-src` carries the nonce and NO `'unsafe-inline'`, so
+    /// untrusted inline scripts, `onerror` handlers, and `javascript:` URLs are
+    /// denied execution. `style-src` uses `'unsafe-inline'` with NO nonce: per
+    /// CSP3 a nonce on `style-src` makes `'unsafe-inline'` ignored, which would
+    /// block mermaid's runtime-injected styles (inline styles are not code
+    /// execution and markdown-it `html:false` escapes untrusted `<style>`).
+    /// `'unsafe-eval'` is never present (a red line). Network is fully denied
+    /// (`connect-src 'none'`, remote `img-src`/`frame-src` blocked).
+    static func cspHeaderValue(nonce: String) -> String {
+        "default-src 'none'; "
+            + "script-src 'nonce-\(nonce)'; "
+            + "style-src 'unsafe-inline' macmd-resource:; "
+            + "img-src macmd-resource: data:; "
+            + "font-src macmd-resource:; "
+            + "connect-src 'none'; "
+            + "object-src 'none'; "
+            + "base-uri 'none'; "
+            + "form-action 'none'; "
+            + "frame-ancestors 'none'; "
+            + "frame-src 'none'; "
+            + "sandbox allow-scripts"
+    }
 }
