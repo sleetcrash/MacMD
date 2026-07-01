@@ -10,8 +10,11 @@ import WebKit
 enum HTMLExporter {
 
     /// Produce the self-contained HTML string for `markdown` under `theme`.
+    /// `documentDirectory` (the edited file's folder) lets contained local images
+    /// be inlined as data: URIs; external image references are always dropped.
     @MainActor
-    static func makeSelfContainedHTML(markdown: String, theme: ThemeController) async -> String {
+    static func makeSelfContainedHTML(markdown: String, theme: ThemeController,
+                                      documentDirectory: URL? = nil) async -> String {
         let baseCSS = bundledCSS("preview-base")
         let themeCSS = PreviewCSS.css(theme: theme)
         let appearanceClass = EditorBackground.effectiveAppearance(
@@ -34,6 +37,7 @@ enum HTMLExporter {
             body = (result as? String) ?? ""
         }
         // The local `webView` stays alive for the whole scope, including the awaits.
+        body = inlineLocalImages(in: body, documentDirectory: documentDirectory)
 
         return """
         <!DOCTYPE html>
@@ -57,8 +61,10 @@ enum HTMLExporter {
     @MainActor
     static func export(markdown: String, theme: ThemeController, in window: NSWindow?) {
         let name = suggestedFilename(representedURL: window?.representedURL, windowTitle: window?.title)
+        let documentDirectory = window?.representedURL?.deletingLastPathComponent()
         Task { @MainActor in
-            let html = await makeSelfContainedHTML(markdown: markdown, theme: theme)
+            let html = await makeSelfContainedHTML(markdown: markdown, theme: theme,
+                                                   documentDirectory: documentDirectory)
             let panel = NSSavePanel()
             panel.allowedContentTypes = [.html]
             panel.nameFieldStringValue = name
@@ -69,7 +75,17 @@ enum HTMLExporter {
                 response = panel.runModal()
             }
             guard response == .OK, let url = panel.url else { return }
-            try? html.write(to: url, atomically: true, encoding: .utf8)
+            do {
+                try html.write(to: url, atomically: true, encoding: .utf8)
+            } catch {
+                let alert = NSAlert(error: error)
+                alert.messageText = "Could not export to HTML"
+                if let window {
+                    alert.beginSheetModal(for: window, completionHandler: nil)
+                } else {
+                    alert.runModal()
+                }
+            }
         }
     }
 
@@ -85,6 +101,36 @@ enum HTMLExporter {
             raw = ""
         }
         return (raw.isEmpty ? "Untitled" : raw) + ".html"
+    }
+
+    /// Rewrite each document-relative `<img src="...">` to a self-contained data:
+    /// URI (read from `documentDirectory` with the same canonicalize + containment
+    /// check the preview uses), or drop the src if it cannot be safely resolved.
+    /// External srcs were already removed in the render JS, and data: URIs are
+    /// left as-is, so the output holds no network references.
+    private static func inlineLocalImages(in html: String, documentDirectory: URL?) -> String {
+        guard let regex = try? NSRegularExpression(pattern: "<img\\b[^>]*?\\ssrc=\"([^\"]*)\"") else { return html }
+        let handler = MarkdownSchemeHandler()
+        handler.documentDirectory = documentDirectory
+
+        var result = html
+        let matches = regex.matches(in: html, range: NSRange(location: 0, length: (html as NSString).length))
+        // Replace from the end so earlier match ranges stay valid.
+        for match in matches.reversed() {
+            let srcRange = match.range(at: 1)
+            guard srcRange.location != NSNotFound else { continue }
+            let src = (html as NSString).substring(with: srcRange)
+            if src.hasPrefix("data:") { continue }
+
+            let replacement: String
+            if let fileURL = handler.imageURL(forToken: src), let data = try? Data(contentsOf: fileURL) {
+                replacement = "data:\(MarkdownSchemeHandler.imageMIME(for: fileURL));base64,\(data.base64EncodedString())"
+            } else {
+                replacement = ""   // unresolvable or escaping: drop the reference
+            }
+            result = (result as NSString).replacingCharacters(in: srcRange, with: replacement)
+        }
+        return result
     }
 
     private static func bundledCSS(_ name: String) -> String {

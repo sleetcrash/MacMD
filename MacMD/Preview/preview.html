@@ -53,6 +53,18 @@ window.render = function (markdown) {
 window.renderForExport = function (markdown) {
   var container = document.getElementById("content");
   container.innerHTML = md.render(markdown);
+  // Drop external image references so the exported file makes NO network request
+  // (no tracking beacon) when opened elsewhere. Only data: URIs and document-
+  // relative paths survive; anything with a scheme (http:, https:, ...) or a
+  // protocol-relative "//host" URL is removed. Relative images are then inlined
+  // as data: URIs by HTMLExporter in Swift.
+  var imgs = container.querySelectorAll("img");
+  for (var i = 0; i < imgs.length; i++) {
+    var src = imgs[i].getAttribute("src") || "";
+    var isData = /^data:/i.test(src);
+    var isExternal = /^[a-z][a-z0-9+.-]*:/i.test(src) || src.slice(0, 2) === "//";
+    if (isExternal && !isData) { imgs[i].removeAttribute("src"); }
+  }
   return container.innerHTML;
 };
 

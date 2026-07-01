@@ -101,7 +101,7 @@ final class MarkdownSchemeHandler: NSObject, WKURLSchemeHandler {
         task.didFinish()
     }
 
-    private static func imageMIME(for url: URL) -> String {
+    static func imageMIME(for url: URL) -> String {
         switch url.pathExtension.lowercased() {
         case "png": return "image/png"
         case "jpg", "jpeg": return "image/jpeg"
