@@ -46,6 +46,28 @@ window.render = function (markdown) {
   window.__renderComplete = (window.__renderComplete || 0) + 1;
 };
 
+// Headless render for HTML export: markdown-it only, NO image rewrite (the
+// macmd-resource scheme only resolves inside the app, so a self-contained export
+// keeps the original relative src). Returns the rendered body. M4 makes this
+// async and inlines mermaid SVG.
+window.renderForExport = function (markdown) {
+  var container = document.getElementById("content");
+  container.innerHTML = md.render(markdown);
+  // Drop external image references so the exported file makes NO network request
+  // (no tracking beacon) when opened elsewhere. Only data: URIs and document-
+  // relative paths survive; anything with a scheme (http:, https:, ...) or a
+  // protocol-relative "//host" URL is removed. Relative images are then inlined
+  // as data: URIs by HTMLExporter in Swift.
+  var imgs = container.querySelectorAll("img");
+  for (var i = 0; i < imgs.length; i++) {
+    var src = imgs[i].getAttribute("src") || "";
+    var isData = /^data:/i.test(src);
+    var isExternal = /^[a-z][a-z0-9+.-]*:/i.test(src) || src.slice(0, 2) === "//";
+    if (isExternal && !isData) { imgs[i].removeAttribute("src"); }
+  }
+  return container.innerHTML;
+};
+
 // Theme CSS is injected after load and on every ThemeController change.
 window.setThemeCSS = function (css) {
   var el = document.getElementById("macmd-theme");
