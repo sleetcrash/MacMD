@@ -7,6 +7,7 @@ struct MacMDApp: App {
     @StateObject private var customDraft = CustomDraft()
     @AppStorage(WordCountPref.key) private var showWordCount = false
     @AppStorage(FormattingPref.key) private var showFormatting = true
+    @AppStorage(PreviewPref.key) private var showPreview = false
     @AppStorage(SpellingPref.spellingKey) private var checkSpelling = true
     @AppStorage(SpellingPref.grammarKey) private var checkGrammar = false
 
@@ -15,7 +16,8 @@ struct MacMDApp: App {
             // fileURL is nil for a brand-new Untitled document; those windows
             // get the preferred New Windows size, while reopened files keep
             // whatever frame macOS restores for them.
-            DocumentView(document: file.$document, isNewDocument: file.fileURL == nil)
+            DocumentView(document: file.$document, isNewDocument: file.fileURL == nil,
+                         documentDirectory: file.fileURL?.deletingLastPathComponent())
                 .environmentObject(themeController)
         }
         .commands {
@@ -79,6 +81,11 @@ struct MacMDApp: App {
                     set: { FormattingPref.set($0) }
                 ))
                 .keyboardShortcut("/", modifiers: .command)
+                Toggle("Show Preview", isOn: Binding(
+                    get: { showPreview },
+                    set: { PreviewPref.isVisible = $0 }
+                ))
+                .keyboardShortcut("p", modifiers: [.command, .shift])
                 Divider()
             }
         }
@@ -209,12 +216,33 @@ enum FontSize {
     }
 }
 
+/// Resolves the document editor regardless of which pane holds first responder.
+/// Once the preview, outline, or workspace sidebar can take first responder, the
+/// key window's first responder may no longer be the editor, so Format/Find/Print
+/// must descend the view tree to find it rather than only checking the responder.
+@MainActor
+enum EditorFocus {
+    static func resolve(in window: NSWindow?) -> ClickableTextView? {
+        guard let window else { return nil }
+        if let editor = window.firstResponder as? ClickableTextView { return editor }
+        return window.contentView.flatMap(firstEditor(in:))
+    }
+
+    private static func firstEditor(in view: NSView) -> ClickableTextView? {
+        if let editor = view as? ClickableTextView { return editor }
+        for subview in view.subviews {
+            if let found = firstEditor(in: subview) { return found }
+        }
+        return nil
+    }
+}
+
 /// The markdown editor that currently holds keyboard focus, or nil. Menu commands
 /// resolve their target this way because `sendAction(_:to:nil)` does not reach an
 /// NSTextView hosted inside the SwiftUI DocumentGroup.
 @MainActor
 private func focusedEditor() -> ClickableTextView? {
-    NSApp.keyWindow?.firstResponder as? ClickableTextView
+    EditorFocus.resolve(in: NSApp.keyWindow)
 }
 
 /// Drive the focused editor's already-active NSTextFinder from a menu command.
@@ -226,5 +254,5 @@ private func focusedEditor() -> ClickableTextView? {
 private func performFindAction(_ action: NSTextFinder.Action) {
     let item = NSMenuItem()
     item.tag = action.rawValue
-    (NSApp.keyWindow?.firstResponder as? NSTextView)?.performTextFinderAction(item)
+    EditorFocus.resolve(in: NSApp.keyWindow)?.performTextFinderAction(item)
 }
