@@ -59,6 +59,7 @@
 		F0FA7635A1615D15203BD034 /* BundledResourcesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E771F07DEC19A4F1D122998A /* BundledResourcesTests.swift */; };
 		0387863D1D5B795236E0E06C /* MarkdownSchemeHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDF99FF96CB5FACF0F1F0145 /* MarkdownSchemeHandler.swift */; };
 		FC3D9858D250B71EBFAA8A12 /* MarkdownSchemeHandlerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F110A67E5592BF083EFEFAF5 /* MarkdownSchemeHandlerTests.swift */; };
+		99BC00F2F2D755EB926CAB40 /* HostileFixtureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CFFAC05894BAD795958A946 /* HostileFixtureTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -128,6 +129,7 @@
 		E771F07DEC19A4F1D122998A /* BundledResourcesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BundledResourcesTests.swift; sourceTree = "<group>"; };
 		CDF99FF96CB5FACF0F1F0145 /* MarkdownSchemeHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownSchemeHandler.swift; sourceTree = "<group>"; };
 		F110A67E5592BF083EFEFAF5 /* MarkdownSchemeHandlerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownSchemeHandlerTests.swift; sourceTree = "<group>"; };
+		0CFFAC05894BAD795958A946 /* HostileFixtureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HostileFixtureTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -229,6 +231,7 @@
 				F3F6A9F6757BC251095C0001 /* MarkdownRenderEngineTests.swift */,
 				E771F07DEC19A4F1D122998A /* BundledResourcesTests.swift */,
 				F110A67E5592BF083EFEFAF5 /* MarkdownSchemeHandlerTests.swift */,
+				0CFFAC05894BAD795958A946 /* HostileFixtureTests.swift */,
 			);
 			path = MacMDTests;
 			sourceTree = "<group>";
@@ -398,6 +401,7 @@
 				DB835E63A91FA9D630E10747 /* MarkdownRenderEngineTests.swift in Sources */,
 				F0FA7635A1615D15203BD034 /* BundledResourcesTests.swift in Sources */,
 				FC3D9858D250B71EBFAA8A12 /* MarkdownSchemeHandlerTests.swift in Sources */,
+				99BC00F2F2D755EB926CAB40 /* HostileFixtureTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
