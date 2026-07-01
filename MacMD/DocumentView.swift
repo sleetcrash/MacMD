@@ -92,7 +92,9 @@ struct DocumentView: View {
                              cursorStyle: theme.cursorStyle,
                              cursorBlink: theme.cursorBlink,
                              sizeWindowToPreference: isNewDocument,
-                             onTopVisibleLine: { topLine = $0 })
+                             // Only track the top line while the preview is showing,
+                             // so a hidden preview costs no per-scroll work.
+                             onTopVisibleLine: showPreview ? { topLine = $0 } : nil)
                 .background(Color(nsColor: customBackground ?? .textBackgroundColor))
             if showWordCount {
                 WordCountBar(text: document.text)

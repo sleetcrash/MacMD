@@ -36,6 +36,8 @@ struct PreviewWebView: NSViewRepresentable {
     var topVisibleLine: Int?
     var documentDirectory: URL?
 
+    static let ruleListID = "macmd-preview-block-network"
+
     // MARK: - Pure seams (unit tested)
 
     /// A WKContentRuleList (as JSON) that blocks every URL, then ignores previous
@@ -64,14 +66,6 @@ struct PreviewWebView: NSViewRepresentable {
         "scrollToLine(\(line))"
     }
 
-    /// A JSON-encoded JS string literal, so an arbitrary CSS/appearance payload is
-    /// delivered as an inert string argument to a `window.*` function.
-    static func jsStringLiteral(_ s: String) -> String {
-        guard let data = try? JSONSerialization.data(withJSONObject: s, options: [.fragmentsAllowed]),
-              let json = String(data: data, encoding: .utf8) else { return "\"\"" }
-        return json
-    }
-
     /// Push this view's inputs onto the coordinator (its desired state). Split out
     /// so the input-to-handler wiring can be unit tested without a live web view.
     func applyState(to coordinator: Coordinator) {
@@ -98,13 +92,20 @@ struct PreviewWebView: NSViewRepresentable {
         applyState(to: coordinator)
 
         // Defense in depth: kill all network at the WebKit layer even if the CSP
-        // is somehow bypassed. Compiles async; the CSP + custom scheme already
-        // block network during the brief compile window.
-        WKContentRuleListStore.default().compileContentRuleList(
-            forIdentifier: "macmd-preview-block-network",
-            encodedContentRuleList: Self.contentRuleListJSON()
-        ) { list, _ in
-            if let list { webView.configuration.userContentController.add(list) }
+        // is somehow bypassed. The rule list is compiled once and cached by the
+        // store; reuse the compiled copy across web views, compiling only on a
+        // miss. The CSP + custom scheme already block network during the brief
+        // async window.
+        let store: WKContentRuleListStore = WKContentRuleListStore.default()
+        store.lookUpContentRuleList(forIdentifier: Self.ruleListID) { existing, _ in
+            if let existing {
+                webView.configuration.userContentController.add(existing)
+            } else {
+                store.compileContentRuleList(forIdentifier: Self.ruleListID,
+                                             encodedContentRuleList: Self.contentRuleListJSON()) { compiled, _ in
+                    if let compiled { webView.configuration.userContentController.add(compiled) }
+                }
+            }
         }
 
         if let url = URL(string: "\(MarkdownSchemeHandler.scheme)://app/index.html") {
@@ -135,24 +136,32 @@ struct PreviewWebView: NSViewRepresentable {
         private var lastTopLine: Int?
         private var lastCSS: String?
         private var lastAppearanceClass: String?
+        private var lastThemeFingerprint: Int?
 
         /// Reconcile the desired state into the live DOM (theme CSS, appearance
         /// class, rendered content, scroll position), pushing only what changed.
         func sync() {
             guard hasLoadedShell, let webView, let theme else { return }
 
-            let css = PreviewCSS.css(theme: theme)
-            if css != lastCSS {
-                lastCSS = css
-                webView.evaluateJavaScript("window.setThemeCSS(\(PreviewWebView.jsStringLiteral(css)))")
-            }
-
-            let cls = EditorBackground.effectiveAppearance(
-                mode: theme.backgroundMode, hex: theme.customBackgroundHex, appearance: theme.appearance
-            ).resolvesDark ? "darkAqua" : "aqua"
-            if cls != lastAppearanceClass {
-                lastAppearanceClass = cls
-                webView.evaluateJavaScript("window.setAppearance(\(PreviewWebView.jsStringLiteral(cls)))")
+            // Theme CSS + appearance are expensive to build (palette resolve, a
+            // customs decode, ~24 per-appearance color resolutions), so recompute
+            // them only when a cheap theme fingerprint changes, not on every
+            // scroll/text sync.
+            let fingerprint = themeFingerprint(theme)
+            if fingerprint != lastThemeFingerprint {
+                lastThemeFingerprint = fingerprint
+                let css = PreviewCSS.css(theme: theme)
+                if css != lastCSS {
+                    lastCSS = css
+                    webView.evaluateJavaScript("window.setThemeCSS(\(MarkdownRenderEngine.jsStringLiteral(css)))")
+                }
+                let cls = EditorBackground.effectiveAppearance(
+                    mode: theme.backgroundMode, hex: theme.customBackgroundHex, appearance: theme.appearance
+                ).resolvesDark ? "darkAqua" : "aqua"
+                if cls != lastAppearanceClass {
+                    lastAppearanceClass = cls
+                    webView.evaluateJavaScript("window.setAppearance(\(MarkdownRenderEngine.jsStringLiteral(cls)))")
+                }
             }
 
             if text != lastText {
@@ -166,6 +175,25 @@ struct PreviewWebView: NSViewRepresentable {
                 lastTopLine = line
                 webView.evaluateJavaScript(PreviewWebView.scrollInvocation(line: line))
             }
+        }
+
+        /// A cheap fingerprint of every input to PreviewCSS: the theme scalars,
+        /// the resolved light/dark state (so an OS appearance flip is caught even
+        /// under System mode), and the raw customs bytes (no JSON decode).
+        private func themeFingerprint(_ t: ThemeController) -> Int {
+            var h = Hasher()
+            h.combine(t.coloring)
+            h.combine(t.themeId)
+            h.combine(t.fontSize)
+            h.combine(t.fontFamilyId)
+            h.combine(t.appearance)
+            h.combine(t.backgroundMode)
+            h.combine(t.customBackgroundHex)
+            h.combine(EditorBackground.effectiveAppearance(mode: t.backgroundMode,
+                                                           hex: t.customBackgroundHex,
+                                                           appearance: t.appearance).resolvesDark)
+            h.combine(UserDefaults.standard.data(forKey: ThemeSettings.customsKey))
+            return h.finalize()
         }
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {

@@ -126,6 +126,10 @@ struct MarkdownTextView: NSViewRepresentable {
 
     func updateNSView(_ nsView: NSScrollView, context: Context) {
         guard let textView = nsView.documentView as? NSTextView else { return }
+        // Refresh the scroll-sync callback each update so it goes nil when the
+        // preview pane is hidden (DocumentView passes nil then), short-circuiting
+        // the observer's layout query.
+        context.coordinator.onTopVisibleLine = onTopVisibleLine
         let sizeChanged = Theme.setEditorFontSize(fontSize)
         let familyChanged = Theme.setEditorFontFamily(fontFamily)
         if sizeChanged || familyChanged {
@@ -360,8 +364,11 @@ struct MarkdownTextView: NSViewRepresentable {
                 forName: NSView.boundsDidChangeNotification, object: clip, queue: .main) { [weak self] _ in
                 guard let self else { return }
                 MainActor.assumeIsolated {
-                    guard let tv = self.textView as? ClickableTextView else { return }
-                    self.onTopVisibleLine?(tv.topVisibleLineNumber())
+                    // Skip the layout query entirely when nothing consumes the top
+                    // line (the preview pane is hidden, so onTopVisibleLine is nil).
+                    guard let callback = self.onTopVisibleLine,
+                          let tv = self.textView as? ClickableTextView else { return }
+                    callback(tv.topVisibleLineNumber())
                 }
             }
         }

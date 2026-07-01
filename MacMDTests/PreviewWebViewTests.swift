@@ -28,7 +28,7 @@ final class PreviewWebViewTests: XCTestCase {
         d.removePersistentDomain(forName: suite)
 
         let css = PreviewCSS.css(theme: theme)
-        await h.eval("window.setThemeCSS(\(PreviewWebView.jsStringLiteral(css)))")
+        await h.eval("window.setThemeCSS(\(MarkdownRenderEngine.jsStringLiteral(css)))")
         let styleText = await h.eval("document.getElementById('macmd-theme').textContent") as? String
         XCTAssertNotNil(styleText?.range(of: "c13f50", options: .caseInsensitive),
                         "the injected theme CSS reaches the live style element")
