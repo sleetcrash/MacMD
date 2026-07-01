@@ -68,6 +68,15 @@ enum MarkdownRenderEngine {
         "window.render(\(jsStringLiteral(markdown)))"
     }
 
+    /// Whether the document contains at least one mermaid fence (an opening fence
+    /// whose info string's first token is `mermaid`, case-insensitive). The
+    /// render/export path uses this to decide whether to await mermaid completion.
+    static func containsMermaid(in markdown: String) -> Bool {
+        MarkdownParser.openingFenceInfo(in: markdown).contains {
+            $0.info.split(separator: " ", maxSplits: 1).first?.lowercased() == "mermaid"
+        }
+    }
+
     /// A JSON-encoded JS string literal, so an arbitrary payload (markdown, CSS,
     /// an appearance name) is delivered to a `window.*` function as an inert
     /// string argument, never interpolated as code.
