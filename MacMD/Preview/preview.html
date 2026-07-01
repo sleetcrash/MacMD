@@ -46,6 +46,16 @@ window.render = function (markdown) {
   window.__renderComplete = (window.__renderComplete || 0) + 1;
 };
 
+// Headless render for HTML export: markdown-it only, NO image rewrite (the
+// macmd-resource scheme only resolves inside the app, so a self-contained export
+// keeps the original relative src). Returns the rendered body. M4 makes this
+// async and inlines mermaid SVG.
+window.renderForExport = function (markdown) {
+  var container = document.getElementById("content");
+  container.innerHTML = md.render(markdown);
+  return container.innerHTML;
+};
+
 // Theme CSS is injected after load and on every ThemeController change.
 window.setThemeCSS = function (css) {
   var el = document.getElementById("macmd-theme");
