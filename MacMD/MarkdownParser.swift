@@ -1,5 +1,14 @@
 import Foundation
 
+/// A parsed markdown heading for the outline and render pre-pass. `lineRange` is
+/// the heading text line (for setext, the title line, not the underline),
+/// excluding the trailing newline.
+struct MarkdownHeading: Equatable {
+    let level: Int
+    let title: String
+    let lineRange: NSRange
+}
+
 /// Pure markdown structural parsing, extracted from `MarkdownHighlighter`'s
 /// file-private `MarkdownRules` so the render pre-pass and the outline can reuse
 /// it off the main actor. A non-isolated enum: on this toolchain
@@ -69,6 +78,88 @@ enum MarkdownParser {
         let nsString = text as NSString
         let full = NSRange(location: 0, length: nsString.length)
         return spansFromFences(fenceLines(in: nsString, fullRange: full), fullRange: full)
+    }
+
+    // MARK: - Headings
+
+    struct HeadingLine: Equatable {
+        let range: NSRange
+        let level: Int
+    }
+
+    static let headingPattern: NSRegularExpression =
+        makeRegex("^(#{1,6})[ \\t]+.+$", options: [.anchorsMatchLines])
+
+    static func headingLines(in nsString: NSString, fullRange: NSRange) -> [HeadingLine] {
+        var lines: [HeadingLine] = []
+        headingPattern.enumerateMatches(in: nsString as String, options: [], range: fullRange) { match, _, _ in
+            guard let m = match else { return }
+            let hashes = m.range(at: 1)
+            lines.append(HeadingLine(range: m.range, level: min(6, max(1, hashes.length))))
+        }
+        return lines
+    }
+
+    /// Every heading in document order: ATX (`#`..`######`) plus setext (a text
+    /// line underlined by a run of `=` for H1 or `-` for H2), with any heading
+    /// inside a fenced code block excluded. `MarkdownHeading.lineRange` is the
+    /// heading text line (the title line for setext), excluding the trailing
+    /// newline. Purely additive: the editor highlighter stays ATX-only and does
+    /// not call this.
+    static func headings(in text: String) -> [MarkdownHeading] {
+        let nsString = text as NSString
+        let full = NSRange(location: 0, length: nsString.length)
+        guard full.length > 0 else { return [] }
+        let fences = fenceSpans(in: text)
+        var result: [MarkdownHeading] = []
+
+        // ATX: reuse the existing primitive; drop any heading inside a fence.
+        for line in headingLines(in: nsString, fullRange: full)
+        where !intersectsAny(line.range, ranges: fences) {
+            let raw = nsString.substring(with: line.range)
+            let title = String(raw.drop(while: { $0 == "#" })).trimmingCharacters(in: .whitespaces)
+            result.append(MarkdownHeading(level: line.level, title: title, lineRange: line.range))
+        }
+
+        // Setext: a non-blank text line immediately followed by an underline line
+        // of only `=` (H1) or only `-` (H2). A blank line before the underline (a
+        // thematic break) or a fenced region breaks the pattern.
+        let lineRanges = contentLineRanges(in: nsString)
+        for i in lineRanges.indices where i + 1 < lineRanges.count {
+            let titleRange = lineRanges[i]
+            let underlineRange = lineRanges[i + 1]
+            guard titleRange.length > 0, underlineRange.length > 0 else { continue }
+            guard !intersectsAny(titleRange, ranges: fences),
+                  !intersectsAny(underlineRange, ranges: fences) else { continue }
+            let title = nsString.substring(with: titleRange).trimmingCharacters(in: .whitespaces)
+            guard !title.isEmpty, !title.hasPrefix("#") else { continue }
+            let underline = nsString.substring(with: underlineRange).trimmingCharacters(in: .whitespaces)
+            let level: Int
+            if isUnderlineRun(underline, "=") { level = 1 }
+            else if isUnderlineRun(underline, "-") { level = 2 }
+            else { continue }
+            result.append(MarkdownHeading(level: level, title: title, lineRange: titleRange))
+        }
+
+        return result.sorted { $0.lineRange.location < $1.lineRange.location }
+    }
+
+    /// Content ranges (each excluding its trailing newline) of every line, in order.
+    private static func contentLineRanges(in nsString: NSString) -> [NSRange] {
+        var ranges: [NSRange] = []
+        var idx = 0
+        while idx < nsString.length {
+            var ls = 0, le = 0, ce = 0
+            nsString.getLineStart(&ls, end: &le, contentsEnd: &ce, for: NSRange(location: idx, length: 0))
+            ranges.append(NSRange(location: ls, length: ce - ls))
+            guard le > idx else { break }
+            idx = le
+        }
+        return ranges
+    }
+
+    private static func isUnderlineRun(_ trimmed: String, _ ch: Character) -> Bool {
+        !trimmed.isEmpty && trimmed.allSatisfy { $0 == ch }
     }
 
     // MARK: - Range helpers

@@ -6,7 +6,7 @@ final class MarkdownHighlighter: NSObject, @preconcurrency NSTextStorageDelegate
     var isSuppressed = false
     var isDisabled = false
     private var lastFenceLines: [MarkdownParser.FenceLine] = []
-    private var lastHeadingLines: [MarkdownRules.HeadingLine] = []
+    private var lastHeadingLines: [MarkdownParser.HeadingLine] = []
     private var lastFrontMatter: NSRange?
 
     func textStorage(_ textStorage: NSTextStorage,
@@ -29,9 +29,9 @@ final class MarkdownHighlighter: NSObject, @preconcurrency NSTextStorageDelegate
         let frontMatterChanged = frontMatter != lastFrontMatter
         lastFrontMatter = frontMatter
 
-        let headings: [MarkdownRules.HeadingLine] = Theme.activeColoring == .off
+        let headings: [MarkdownParser.HeadingLine] = Theme.activeColoring == .off
             ? []
-            : MarkdownRules.headingLines(in: nsString, fullRange: total)
+            : MarkdownParser.headingLines(in: nsString, fullRange: total)
         let headingsChanged = headings != lastHeadingLines
         lastHeadingLines = headings
         let sectionMap = MarkdownRules.sectionMap(from: headings, excluding: codeSpans)
@@ -61,9 +61,9 @@ final class MarkdownHighlighter: NSObject, @preconcurrency NSTextStorageDelegate
         let spans = MarkdownParser.spansFromFences(fenceLines, fullRange: full)
         let frontMatter = MarkdownRules.frontMatterSpan(in: nsString, fullRange: full)
         lastFrontMatter = frontMatter
-        let headings: [MarkdownRules.HeadingLine] = Theme.activeColoring == .off
+        let headings: [MarkdownParser.HeadingLine] = Theme.activeColoring == .off
             ? []
-            : MarkdownRules.headingLines(in: nsString, fullRange: full)
+            : MarkdownParser.headingLines(in: nsString, fullRange: full)
         lastHeadingLines = headings
         let sectionMap = MarkdownRules.sectionMap(from: headings, excluding: spans)
         MarkdownRules.applyHighlighting(to: textStorage, in: full, fencedSpans: spans, frontMatter: frontMatter, sectionMap: sectionMap)
@@ -107,24 +107,7 @@ private enum MarkdownRules {
         }
     }
 
-    static let headingPattern: NSRegularExpression = r("^(#{1,6})[ \\t]+.+$", options: [.anchorsMatchLines])
-
-    struct HeadingLine: Equatable {
-        let range: NSRange
-        let level: Int
-    }
-
-    static func headingLines(in nsString: NSString, fullRange: NSRange) -> [HeadingLine] {
-        var lines: [HeadingLine] = []
-        headingPattern.enumerateMatches(in: nsString as String, options: [], range: fullRange) { match, _, _ in
-            guard let m = match else { return }
-            let hashes = m.range(at: 1)
-            lines.append(HeadingLine(range: m.range, level: min(6, max(1, hashes.length))))
-        }
-        return lines
-    }
-
-    static func sectionMap(from headings: [HeadingLine], excluding fencedSpans: [NSRange]) -> SectionMap {
+    static func sectionMap(from headings: [MarkdownParser.HeadingLine], excluding fencedSpans: [NSRange]) -> SectionMap {
         let usable = headings.filter { !MarkdownParser.intersectsAny($0.range, ranges: fencedSpans) }
         return SectionMap(headings: usable.map { (location: $0.range.location, level: $0.level) })
     }
@@ -145,7 +128,7 @@ private enum MarkdownRules {
                 }
             }
         },
-        Rule(regex: headingPattern) { ts, m, _ in
+        Rule(regex: MarkdownParser.headingPattern) { ts, m, _ in
             let full = m.range
             let hashes = m.range(at: 1)
             let level = min(6, max(1, hashes.length))
