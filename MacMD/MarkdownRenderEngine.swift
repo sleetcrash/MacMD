@@ -57,4 +57,17 @@ enum MarkdownRenderEngine {
             .replacingOccurrences(of: "__MACMD_NONCE__", with: nonce)
             .replacingOccurrences(of: "__MACMD_CSS__", with: css)
     }
+
+    /// The JS call delivered via `evaluateJavaScript` to push a document into the
+    /// live preview: `window.render(<json>)`, where `<json>` is the markdown
+    /// JSON-encoded as a single string fragment. Because it is delivered through
+    /// `evaluateJavaScript` (never embedded in an inline `<script>`), the payload
+    /// is treated purely as a string argument, so a `</script>` in the source is
+    /// inert here; markdown-it `html:false` then escapes any raw HTML inside it.
+    static func renderInvocation(markdown: String) -> String {
+        let data = (try? JSONSerialization.data(withJSONObject: markdown, options: [.fragmentsAllowed]))
+            ?? Data("\"\"".utf8)
+        let json = String(data: data, encoding: .utf8) ?? "\"\""
+        return "window.render(\(json))"
+    }
 }

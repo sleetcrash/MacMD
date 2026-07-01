@@ -49,4 +49,18 @@ final class MarkdownRenderEngineTests: XCTestCase {
         XCTAssertFalse(html.contains("__MACMD_NONCE__"), "every nonce placeholder stamped")
         XCTAssertFalse(html.contains("__MACMD_CSS__"), "the css placeholder stamped")
     }
+
+    // MARK: - Render invocation
+
+    func testRenderInvocationJSONEncodesMarkdownArgument() {
+        let input = "# Hi \"q\"\n</script>\nline\twith\ttabs"
+        let call = MarkdownRenderEngine.renderInvocation(markdown: input)
+        XCTAssertTrue(call.hasPrefix("window.render("))
+        XCTAssertTrue(call.hasSuffix(")"))
+        let start = call.index(call.startIndex, offsetBy: "window.render(".count)
+        let end = call.index(before: call.endIndex)
+        let jsonPart = String(call[start..<end])
+        let decoded = try? JSONSerialization.jsonObject(with: Data(jsonPart.utf8), options: [.fragmentsAllowed])
+        XCTAssertEqual(decoded as? String, input, "the markdown round-trips losslessly through JSON")
+    }
 }
