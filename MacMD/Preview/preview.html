@@ -39,11 +39,71 @@ function rewriteImages(container) {
   }
 }
 
+// Mermaid: rendered ONLY here (preview) and in export, never in the editor. Under
+// securityLevel:'strict' mermaid DOMPurify-sanitizes the SVG and disables click/JS
+// bindings. The CSP forbids 'unsafe-eval' (RED LINE); a diagram type that needs
+// eval surfaces as a securitypolicyviolation and is dropped, never accommodated.
+window.__mermaidConfig = null;
+window.__mermaidRenderCount = 0;
+var mermaidCache = {};
+var mermaidReady = false;
+
+function ensureMermaid() {
+  if (!mermaidReady && window.mermaid) {
+    window.mermaid.initialize({ startOnLoad: false, securityLevel: "strict" });
+    window.__mermaidConfig = { startOnLoad: false, securityLevel: "strict" };
+    mermaidReady = true;
+  }
+}
+
+// FNV-1a hash of the diagram source, so an unchanged diagram skips re-render.
+function fnv1a(str) {
+  var h = 0x811c9dc5;
+  for (var i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+  }
+  return ("0000000" + h.toString(16)).slice(-8);
+}
+
+// Replace each ```mermaid fenced block with its inline SVG. markdown-it emits a
+// mermaid fence as <pre><code class="language-mermaid">. Cache hits reuse stored
+// SVG and never call mermaid.
+async function renderMermaid(container) {
+  ensureMermaid();
+  if (!window.mermaid) return;
+  var blocks = container.querySelectorAll("code.language-mermaid");
+  for (var i = 0; i < blocks.length; i++) {
+    var code = blocks[i];
+    var source = code.textContent;
+    var hash = fnv1a(source);
+    var pre = code.parentNode;
+    var wrapper = document.createElement("div");
+    wrapper.className = "mermaid-diagram";
+    wrapper.setAttribute("data-mermaid-hash", hash);
+    if (mermaidCache[hash] !== undefined) {
+      wrapper.innerHTML = mermaidCache[hash];
+    } else {
+      try {
+        var out = await window.mermaid.render("mmd-" + hash + "-" + i, source);
+        wrapper.innerHTML = out.svg;
+        mermaidCache[hash] = out.svg;
+        window.__mermaidRenderCount++;
+      } catch (e) {
+        continue; // leave the fenced code block if the diagram fails to render
+      }
+    }
+    if (pre && pre.parentNode) { pre.parentNode.replaceChild(wrapper, pre); }
+  }
+}
+
 window.render = function (markdown) {
   var container = document.getElementById("content");
   container.innerHTML = md.render(markdown);
   rewriteImages(container);
-  window.__renderComplete = (window.__renderComplete || 0) + 1;
+  renderMermaid(container).then(function () {
+    window.__renderComplete = (window.__renderComplete || 0) + 1;
+  });
 };
 
 // Headless render for HTML export: markdown-it only, NO image rewrite (the

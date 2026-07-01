@@ -76,6 +76,7 @@
 		B67932FD9D286704C4251EE6 /* HTMLExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E0C7911740CA5F59979C9F5 /* HTMLExporter.swift */; };
 		320E2A9F53F1E24831379A2C /* HTMLExporterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A4127FF9B63108E0487420E /* HTMLExporterTests.swift */; };
 		56F9ED4BC0444AB1C3F86D72 /* MermaidEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 365B79165C8B0514EA5E8693 /* MermaidEngineTests.swift */; };
+		85710D3D04A50B073EE1E8FA /* MermaidRenderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E00920617D5025775E93E76 /* MermaidRenderTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -162,6 +163,7 @@
 		6E0C7911740CA5F59979C9F5 /* HTMLExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTMLExporter.swift; sourceTree = "<group>"; };
 		4A4127FF9B63108E0487420E /* HTMLExporterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTMLExporterTests.swift; sourceTree = "<group>"; };
 		365B79165C8B0514EA5E8693 /* MermaidEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MermaidEngineTests.swift; sourceTree = "<group>"; };
+		1E00920617D5025775E93E76 /* MermaidRenderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MermaidRenderTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -280,6 +282,7 @@
 				0B5A56CCC2E05D31A58426CD /* DocumentLayoutTests.swift */,
 				4A4127FF9B63108E0487420E /* HTMLExporterTests.swift */,
 				365B79165C8B0514EA5E8693 /* MermaidEngineTests.swift */,
+				1E00920617D5025775E93E76 /* MermaidRenderTests.swift */,
 			);
 			path = MacMDTests;
 			sourceTree = "<group>";
@@ -466,6 +469,7 @@
 				D02796CE9CA7F9318B960BFB /* DocumentLayoutTests.swift in Sources */,
 				320E2A9F53F1E24831379A2C /* HTMLExporterTests.swift in Sources */,
 				56F9ED4BC0444AB1C3F86D72 /* MermaidEngineTests.swift in Sources */,
+				85710D3D04A50B073EE1E8FA /* MermaidRenderTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -45,6 +45,18 @@ final class PreviewHarness: NSObject, WKNavigationDelegate {
     func render(_ markdown: String) async {
         await eval(MarkdownRenderEngine.renderInvocation(markdown: markdown))
     }
+
+    /// Render and wait for `window.__renderComplete` to advance, so async mermaid
+    /// rendering has settled before assertions run.
+    func renderAndWait(_ markdown: String) async {
+        let before = (await eval("window.__renderComplete || 0") as? NSNumber)?.intValue ?? 0
+        await eval(MarkdownRenderEngine.renderInvocation(markdown: markdown))
+        for _ in 0..<120 {
+            let now = (await eval("window.__renderComplete || 0") as? NSNumber)?.intValue ?? 0
+            if now > before { return }
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
+    }
 }
 
 @MainActor
