@@ -16,6 +16,10 @@
 		F2000000000000000000000E /* MarkdownHighlighter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000000E /* MarkdownHighlighter.swift */; };
 		F2000000000000000000000F /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000000F /* Theme.swift */; };
 		F200000000000000000000A0 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000A0 /* Assets.xcassets */; };
+		AC91DB8B15E7CE2E46E9E3F9 /* preview.html in Resources */ = {isa = PBXBuildFile; fileRef = FD5B50E7485D1E257343F4A8 /* preview.html */; };
+		485D1110C7C23BA265AED3B5 /* markdown-it.min.js in Resources */ = {isa = PBXBuildFile; fileRef = 560F1D9BCB9A65950A0AE24F /* markdown-it.min.js */; };
+		C1B7AE8865A89FA7446FF993 /* mermaid.min.js in Resources */ = {isa = PBXBuildFile; fileRef = 9D12BD6EDC1CD88FBCD24B1E /* mermaid.min.js */; };
+		572F64A1E46A1D8BB8843F5C /* preview-base.css in Resources */ = {isa = PBXBuildFile; fileRef = 03D3AB61423C2428203180D6 /* preview-base.css */; };
 		F200000000000000000000A1 /* MarkdownHighlighterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000A3 /* MarkdownHighlighterTests.swift */; };
 		F2000000000000000000001B /* WordCountTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000001B /* WordCountTests.swift */; };
 		F200000000000000000000A7 /* MarkdownDocumentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000A6 /* MarkdownDocumentTests.swift */; };
@@ -74,6 +78,10 @@
 		F1000000000000000000000E /* MarkdownHighlighter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownHighlighter.swift; sourceTree = "<group>"; };
 		F1000000000000000000000F /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		F100000000000000000000A0 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		FD5B50E7485D1E257343F4A8 /* preview.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "preview.html"; sourceTree = "<group>"; };
+		560F1D9BCB9A65950A0AE24F /* markdown-it.min.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "markdown-it.min.js"; sourceTree = "<group>"; };
+		9D12BD6EDC1CD88FBCD24B1E /* mermaid.min.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "mermaid.min.js"; sourceTree = "<group>"; };
+		03D3AB61423C2428203180D6 /* preview-base.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = "preview-base.css"; sourceTree = "<group>"; };
 		F100000000000000000000A1 /* MacMD.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MacMD.entitlements; sourceTree = "<group>"; };
 		F100000000000000000000A2 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		F100000000000000000000A3 /* MarkdownHighlighterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownHighlighterTests.swift; sourceTree = "<group>"; };
@@ -174,8 +182,20 @@
 				F100000000000000000000A1 /* MacMD.entitlements */,
 				AFA3156A338EAC0962E21285 /* MarkdownParser.swift */,
 				BB0C24D55EDA7CAE0E191A87 /* MarkdownRenderEngine.swift */,
+				06989260B7CBDBB15D3A9570 /* Preview */,
 			);
 			path = MacMD;
+			sourceTree = "<group>";
+		};
+		06989260B7CBDBB15D3A9570 /* Preview */ = {
+			isa = PBXGroup;
+			children = (
+				FD5B50E7485D1E257343F4A8 /* preview.html */,
+				560F1D9BCB9A65950A0AE24F /* markdown-it.min.js */,
+				9D12BD6EDC1CD88FBCD24B1E /* mermaid.min.js */,
+				03D3AB61423C2428203180D6 /* preview-base.css */,
+			);
+			path = Preview;
 			sourceTree = "<group>";
 		};
 		DDDDDDDDDDDDDDDDDDDDDDDD /* MacMDTests */ = {
@@ -294,6 +314,10 @@
 			buildActionMask = 2147483647;
 			files = (
 				F200000000000000000000A0 /* Assets.xcassets in Resources */,
+				AC91DB8B15E7CE2E46E9E3F9 /* preview.html in Resources */,
+				485D1110C7C23BA265AED3B5 /* markdown-it.min.js in Resources */,
+				C1B7AE8865A89FA7446FF993 /* mermaid.min.js in Resources */,
+				572F64A1E46A1D8BB8843F5C /* preview-base.css in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
