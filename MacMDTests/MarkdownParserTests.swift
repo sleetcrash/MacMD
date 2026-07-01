@@ -44,4 +44,19 @@ final class MarkdownParserTests: XCTestCase {
         // The fenced "# not a heading" is not returned.
         XCTAssertFalse(headings.contains { $0.title.contains("not a heading") })
     }
+
+    // MARK: - Opening fence info strings
+
+    func testOpeningFenceInfoReturnsLanguageTags() {
+        let text = "```swift\nx\n```\n~~~\ny\n~~~\n```mermaid\nflowchart TD\n```\n"
+        let info = MarkdownParser.openingFenceInfo(in: text)
+
+        XCTAssertEqual(info.map(\.info), ["swift", "", "mermaid"])
+        // Each lineRange is the opening fence line only, not the closing line.
+        XCTAssertEqual(info.map(\.lineRange), [
+            NSRange(location: 0, length: 8),    // ```swift
+            NSRange(location: 15, length: 3),   // ~~~
+            NSRange(location: 25, length: 10),  // ```mermaid
+        ])
+    }
 }

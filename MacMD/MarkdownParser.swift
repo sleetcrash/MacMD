@@ -80,6 +80,35 @@ enum MarkdownParser {
         return spansFromFences(fenceLines(in: nsString, fullRange: full), fullRange: full)
     }
 
+    /// The language/info string of every OPENING fence, in document order. The
+    /// highlighter discards these, but the render pre-pass needs them to detect
+    /// mermaid fences. `info` is the opening line minus its leading indent and
+    /// fence-character run, trimmed; `lineRange` is the opening fence line only.
+    static func openingFenceInfo(in text: String) -> [(lineRange: NSRange, info: String)] {
+        let nsString = text as NSString
+        let full = NSRange(location: 0, length: nsString.length)
+        let lines = fenceLines(in: nsString, fullRange: full)
+        var result: [(lineRange: NSRange, info: String)] = []
+        var i = 0
+        while i < lines.count {
+            let open = lines[i]
+            let lineText = nsString.substring(with: open.range)
+            let afterIndent = lineText.drop(while: { $0 == " " || $0 == "\t" })
+            let info = String(afterIndent.drop(while: { $0 == open.marker }))
+                .trimmingCharacters(in: .whitespaces)
+            result.append((lineRange: open.range, info: info))
+            // Skip past the matching closing fence, mirroring spansFromFences.
+            var closeIndex: Int? = nil
+            var j = i + 1
+            while j < lines.count {
+                if lines[j].marker == open.marker { closeIndex = j; break }
+                j += 1
+            }
+            i = closeIndex.map { $0 + 1 } ?? (i + 1)
+        }
+        return result
+    }
+
     // MARK: - Headings
 
     struct HeadingLine: Equatable {
