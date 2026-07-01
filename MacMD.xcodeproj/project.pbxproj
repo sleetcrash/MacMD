@@ -72,6 +72,7 @@
 		E919BFC961A82DB88595EADC /* PreviewWebViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F12C0A4A1F40FD405C0C4AE /* PreviewWebViewTests.swift */; };
 		E1F082155B8A5CA4884A7F2E /* PreviewDOMTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3128175A770BB56CB19FA09A /* PreviewDOMTests.swift */; };
 		7499AE5294479D4DD7AB0778 /* EditorScrollSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E977311A63A8D16C5792EC5 /* EditorScrollSyncTests.swift */; };
+		D02796CE9CA7F9318B960BFB /* DocumentLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B5A56CCC2E05D31A58426CD /* DocumentLayoutTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -154,6 +155,7 @@
 		6F12C0A4A1F40FD405C0C4AE /* PreviewWebViewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewWebViewTests.swift; sourceTree = "<group>"; };
 		3128175A770BB56CB19FA09A /* PreviewDOMTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewDOMTests.swift; sourceTree = "<group>"; };
 		6E977311A63A8D16C5792EC5 /* EditorScrollSyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorScrollSyncTests.swift; sourceTree = "<group>"; };
+		0B5A56CCC2E05D31A58426CD /* DocumentLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentLayoutTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -268,6 +270,7 @@
 				6F12C0A4A1F40FD405C0C4AE /* PreviewWebViewTests.swift */,
 				3128175A770BB56CB19FA09A /* PreviewDOMTests.swift */,
 				6E977311A63A8D16C5792EC5 /* EditorScrollSyncTests.swift */,
+				0B5A56CCC2E05D31A58426CD /* DocumentLayoutTests.swift */,
 			);
 			path = MacMDTests;
 			sourceTree = "<group>";
@@ -450,6 +453,7 @@
 				E919BFC961A82DB88595EADC /* PreviewWebViewTests.swift in Sources */,
 				E1F082155B8A5CA4884A7F2E /* PreviewDOMTests.swift in Sources */,
 				7499AE5294479D4DD7AB0778 /* EditorScrollSyncTests.swift in Sources */,
+				D02796CE9CA7F9318B960BFB /* DocumentLayoutTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

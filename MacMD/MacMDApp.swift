@@ -16,7 +16,8 @@ struct MacMDApp: App {
             // fileURL is nil for a brand-new Untitled document; those windows
             // get the preferred New Windows size, while reopened files keep
             // whatever frame macOS restores for them.
-            DocumentView(document: file.$document, isNewDocument: file.fileURL == nil)
+            DocumentView(document: file.$document, isNewDocument: file.fileURL == nil,
+                         documentDirectory: file.fileURL?.deletingLastPathComponent())
                 .environmentObject(themeController)
         }
         .commands {
