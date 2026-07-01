@@ -48,6 +48,8 @@
 		F200000000000000000000D9 /* LineNumberingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000D9 /* LineNumberingTests.swift */; };
 		F200000000000000000000DB /* EditorBackgroundTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000DB /* EditorBackgroundTests.swift */; };
 		F200000000000000000000DD /* EditingPrefsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000DD /* EditingPrefsTests.swift */; };
+		DADCBF7C62977F1DFDF7E92D /* MarkdownParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFA3156A338EAC0962E21285 /* MarkdownParser.swift */; };
+		F74F75DE08A320A080A2D7B9 /* MarkdownParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 982E59ADE94C406195D25D40 /* MarkdownParserTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -106,6 +108,8 @@
 		F100000000000000000000D9 /* LineNumberingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LineNumberingTests.swift; sourceTree = "<group>"; };
 		F100000000000000000000A4 /* MacMD.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MacMD.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F100000000000000000000A5 /* MacMDTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MacMDTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		AFA3156A338EAC0962E21285 /* MarkdownParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownParser.swift; sourceTree = "<group>"; };
+		982E59ADE94C406195D25D40 /* MarkdownParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownParserTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -164,6 +168,7 @@
 				F100000000000000000000A0 /* Assets.xcassets */,
 				F100000000000000000000A2 /* Info.plist */,
 				F100000000000000000000A1 /* MacMD.entitlements */,
+				AFA3156A338EAC0962E21285 /* MarkdownParser.swift */,
 			);
 			path = MacMD;
 			sourceTree = "<group>";
@@ -188,6 +193,7 @@
 				F100000000000000000000D9 /* LineNumberingTests.swift */,
 				F100000000000000000000DB /* EditorBackgroundTests.swift */,
 				F100000000000000000000DD /* EditingPrefsTests.swift */,
+				982E59ADE94C406195D25D40 /* MarkdownParserTests.swift */,
 			);
 			path = MacMDTests;
 			sourceTree = "<group>";
@@ -322,6 +328,7 @@
 				F200000000000000000000D8 /* LineNumberGutterView.swift in Sources */,
 				F200000000000000000000DA /* EditorBackground.swift in Sources */,
 				F200000000000000000000DC /* EditingPrefs.swift in Sources */,
+				DADCBF7C62977F1DFDF7E92D /* MarkdownParser.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -346,6 +353,7 @@
 				F200000000000000000000D9 /* LineNumberingTests.swift in Sources */,
 				F200000000000000000000DB /* EditorBackgroundTests.swift in Sources */,
 				F200000000000000000000DD /* EditingPrefsTests.swift in Sources */,
+				F74F75DE08A320A080A2D7B9 /* MarkdownParserTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

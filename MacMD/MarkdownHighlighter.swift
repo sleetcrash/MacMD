@@ -5,7 +5,7 @@ final class MarkdownHighlighter: NSObject, @preconcurrency NSTextStorageDelegate
 
     var isSuppressed = false
     var isDisabled = false
-    private var lastFenceLines: [MarkdownRules.FenceLine] = []
+    private var lastFenceLines: [MarkdownParser.FenceLine] = []
     private var lastHeadingLines: [MarkdownRules.HeadingLine] = []
     private var lastFrontMatter: NSRange?
 
@@ -19,11 +19,11 @@ final class MarkdownHighlighter: NSObject, @preconcurrency NSTextStorageDelegate
         let total = NSRange(location: 0, length: nsString.length)
         guard editedRange.location <= nsString.length else { return }
 
-        let fenceLines = MarkdownRules.fenceLines(in: nsString, fullRange: total)
+        let fenceLines = MarkdownParser.fenceLines(in: nsString, fullRange: total)
         let fencesChanged = fenceLines != lastFenceLines
         lastFenceLines = fenceLines
 
-        let codeSpans = MarkdownRules.spansFromFences(fenceLines, fullRange: total)
+        let codeSpans = MarkdownParser.spansFromFences(fenceLines, fullRange: total)
 
         let frontMatter = MarkdownRules.frontMatterSpan(in: nsString, fullRange: total)
         let frontMatterChanged = frontMatter != lastFrontMatter
@@ -56,9 +56,9 @@ final class MarkdownHighlighter: NSObject, @preconcurrency NSTextStorageDelegate
         guard !isDisabled else { return }
         let nsString = textStorage.string as NSString
         let full = NSRange(location: 0, length: nsString.length)
-        let fenceLines = MarkdownRules.fenceLines(in: nsString, fullRange: full)
+        let fenceLines = MarkdownParser.fenceLines(in: nsString, fullRange: full)
         lastFenceLines = fenceLines
-        let spans = MarkdownRules.spansFromFences(fenceLines, fullRange: full)
+        let spans = MarkdownParser.spansFromFences(fenceLines, fullRange: full)
         let frontMatter = MarkdownRules.frontMatterSpan(in: nsString, fullRange: full)
         lastFrontMatter = frontMatter
         let headings: [MarkdownRules.HeadingLine] = Theme.activeColoring == .off
@@ -107,13 +107,6 @@ private enum MarkdownRules {
         }
     }
 
-    static let fencePattern: NSRegularExpression = r("^[ \\t]*(`{3,}|~{3,})[^\\n]*$", options: [.anchorsMatchLines])
-
-    struct FenceLine: Equatable {
-        let range: NSRange
-        let marker: Character
-    }
-
     static let headingPattern: NSRegularExpression = r("^(#{1,6})[ \\t]+.+$", options: [.anchorsMatchLines])
 
     struct HeadingLine: Equatable {
@@ -132,7 +125,7 @@ private enum MarkdownRules {
     }
 
     static func sectionMap(from headings: [HeadingLine], excluding fencedSpans: [NSRange]) -> SectionMap {
-        let usable = headings.filter { !intersectsAny($0.range, ranges: fencedSpans) }
+        let usable = headings.filter { !MarkdownParser.intersectsAny($0.range, ranges: fencedSpans) }
         return SectionMap(headings: usable.map { (location: $0.range.location, level: $0.level) })
     }
 
@@ -259,57 +252,10 @@ private enum MarkdownRules {
         for rule in inlineRules {
             rule.regex.enumerateMatches(in: source, options: [], range: range) { match, _, _ in
                 guard let m = match else { return }
-                if intersectsAny(m.range, ranges: excluded) { return }
+                if MarkdownParser.intersectsAny(m.range, ranges: excluded) { return }
                 rule.apply(ts, m, sectionMap)
             }
         }
-    }
-
-    static func fenceLines(in nsString: NSString, fullRange: NSRange) -> [FenceLine] {
-        var lines: [FenceLine] = []
-        fencePattern.enumerateMatches(in: nsString as String, options: [], range: fullRange) { match, _, _ in
-            guard let m = match else { return }
-            let markerGroup = m.range(at: 1)
-            guard markerGroup.location != NSNotFound else { return }
-            let markerString = nsString.substring(with: NSRange(location: markerGroup.location, length: 1))
-            guard let marker = markerString.first else { return }
-            lines.append(FenceLine(range: m.range, marker: marker))
-        }
-        return lines
-    }
-
-    static func spansFromFences(_ lines: [FenceLine], fullRange: NSRange) -> [NSRange] {
-        var spans: [NSRange] = []
-        var i = 0
-        while i < lines.count {
-            let open = lines[i]
-            var closeIndex: Int? = nil
-            var j = i + 1
-            while j < lines.count {
-                if lines[j].marker == open.marker {
-                    closeIndex = j
-                    break
-                }
-                j += 1
-            }
-            if let close = closeIndex {
-                let start = open.range.location
-                let end = lines[close].range.location + lines[close].range.length
-                spans.append(NSRange(location: start, length: end - start))
-                i = close + 1
-            } else {
-                let start = open.range.location
-                let end = fullRange.location + fullRange.length
-                spans.append(NSRange(location: start, length: end - start))
-                i += 1
-            }
-        }
-        return spans
-    }
-
-    static func intersectsAny(_ range: NSRange, ranges: [NSRange]) -> Bool {
-        for r in ranges where NSIntersectionRange(r, range).length > 0 { return true }
-        return false
     }
 
     /// A leading YAML (`---`) or TOML (`+++`) front-matter block. Recognized only
