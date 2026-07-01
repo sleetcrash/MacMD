@@ -23,6 +23,15 @@ final class HTMLExporterTests: XCTestCase {
         }
     }
 
+    func testExportInlinesMermaidSVG() async {
+        let html = await HTMLExporter.makeSelfContainedHTML(markdown: "```mermaid\nflowchart TD; A-->B\n```\n",
+                                                            theme: ThemeController())
+        XCTAssertTrue(html.contains("<svg"), "the mermaid fence exports as inline SVG")
+        XCTAssertFalse(html.contains("class=\"language-mermaid\""), "no unrendered mermaid code block")
+        XCTAssertFalse(html.contains("<pre><code"), "no code remnant of the diagram")
+        XCTAssertFalse(html.contains("<script"), "the export carries no script")
+    }
+
     func testStripsExternalImageReferences() async {
         // A hostile remote image must not survive as a live reference (a tracking
         // beacon that fetches when the exported file is opened elsewhere).

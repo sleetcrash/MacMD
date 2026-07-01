@@ -96,6 +96,20 @@ final class MarkdownHighlighterTests: XCTestCase {
         XCTAssertEqual(color(at: insideIndex, in: storage), Theme.mutedColor)
     }
 
+    // The editor must keep a mermaid fence as muted fenced code (it renders only
+    // in the preview/export). Goes RED only if M4 wrongly special-cases mermaid in
+    // the highlighter; revert that change rather than editing this test.
+    func testMermaidFenceStaysMutedFencedCode() {
+        let text = """
+        ```mermaid
+        graph TD; A-->B
+        ```
+        """
+        let storage = highlight(text)
+        let insideIndex = (text as NSString).range(of: "A-->B").location
+        XCTAssertEqual(color(at: insideIndex, in: storage), Theme.mutedColor)
+    }
+
     func testUnclosedFenceStylesToEndOfDocument() {
         let text = """
         Before
