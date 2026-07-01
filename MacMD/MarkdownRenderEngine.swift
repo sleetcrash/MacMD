@@ -41,4 +41,20 @@ enum MarkdownRenderEngine {
             + "frame-src 'none'; "
             + "sandbox allow-scripts"
     }
+
+    /// The shell HTML loaded ONCE per web view, with the per-render `nonce` and
+    /// the theme `css` stamped into the bundled `preview.html` template's
+    /// `__MACMD_NONCE__` / `__MACMD_CSS__` placeholders. In M1 the scheme handler
+    /// passes `css: ""`; M2 passes `PreviewCSS.css(theme:)`. Returns "" only if
+    /// the bundled template is missing (a packaging error the BundledResources
+    /// tests gate against), so the preview degrades to blank rather than crashing.
+    static func shellHTML(nonce: String, css: String) -> String {
+        guard let url = Bundle.main.url(forResource: "preview", withExtension: "html"),
+              let template = try? String(contentsOf: url, encoding: .utf8) else {
+            return ""
+        }
+        return template
+            .replacingOccurrences(of: "__MACMD_NONCE__", with: nonce)
+            .replacingOccurrences(of: "__MACMD_CSS__", with: css)
+    }
 }

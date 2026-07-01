@@ -36,4 +36,17 @@ final class MarkdownRenderEngineTests: XCTestCase {
         XCTAssertEqual(imgSrc?.contains("http"), false, "img-src must not allow remote images")
         XCTAssertEqual(imgSrc?.contains("*"), false, "img-src must not use a wildcard")
     }
+
+    // MARK: - Shell HTML
+
+    func testShellHTMLStampsNonceAndCSSWithoutPlaceholders() {
+        let html = MarkdownRenderEngine.shellHTML(nonce: "NTEST", css: "body{color:red}")
+        XCTAssertTrue(html.contains("nonce=\"NTEST\""))
+        XCTAssertTrue(html.contains("body{color:red}"))
+        XCTAssertTrue(html.contains("macmd-resource://app/markdown-it.min.js"))
+        XCTAssertTrue(html.contains("macmd-resource://app/mermaid.min.js"))
+        XCTAssertTrue(html.contains("macmd-resource://app/preview-base.css"))
+        XCTAssertFalse(html.contains("__MACMD_NONCE__"), "every nonce placeholder stamped")
+        XCTAssertFalse(html.contains("__MACMD_CSS__"), "the css placeholder stamped")
+    }
 }
