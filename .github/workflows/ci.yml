@@ -21,7 +21,10 @@ jobs:
         run: |
           # Em dash U+2014 is the UTF-8 bytes E2 80 94. Match the bytes via a shell
           # escape so this workflow file itself contains no literal em dash.
-          if git grep -nIF $'\xe2\x80\x94' -- .; then
+          # The vendored minified markdown-it / mermaid bundles legitimately
+          # contain U+2014 bytes; exclude exactly those two files so first-party
+          # sources stay covered.
+          if git grep -nIF $'\xe2\x80\x94' -- . ':(exclude)MacMD/Preview/markdown-it.min.js' ':(exclude)MacMD/Preview/mermaid.min.js'; then
             echo "::error::Em dash found in tracked files. House rule is no em dashes."
             exit 1
           fi
