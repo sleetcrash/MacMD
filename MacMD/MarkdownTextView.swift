@@ -20,6 +20,10 @@ struct MarkdownTextView: NSViewRepresentable {
     /// alone cannot do this, because macOS reuses its remembered document
     /// window size whenever one exists.
     var sizeWindowToPreference: Bool = false
+    /// Reports the top visible document line as the editor scrolls, for
+    /// editor-to-preview scroll sync. Default nil so existing constructions and
+    /// tests compile unchanged.
+    var onTopVisibleLine: ((Int) -> Void)? = nil
 
     func makeCoordinator() -> Coordinator {
         Coordinator(text: $text)
@@ -100,6 +104,8 @@ struct MarkdownTextView: NSViewRepresentable {
         context.coordinator.observeFormatting(textView: textView)
         context.coordinator.observeSpelling(textView: textView)
         context.coordinator.syncGutter()
+        context.coordinator.onTopVisibleLine = onTopVisibleLine
+        context.coordinator.observeScrollForSync(scrollView: scrollView)
         // Pick up a saved blink-off at launch: updateNSView's change check only
         // catches LATER pref changes, not the initial load.
         textView.refreshCaret()
@@ -159,6 +165,10 @@ struct MarkdownTextView: NSViewRepresentable {
         weak var scrollView: NSScrollView?
         private var gutter: LineNumberGutterView?
         nonisolated(unsafe) private var clipObserver: NSObjectProtocol?
+        // Always-on (not gutter-gated) clip observer that reports the top visible
+        // line for editor-to-preview scroll sync.
+        nonisolated(unsafe) private var scrollSyncObserver: NSObjectProtocol?
+        var onTopVisibleLine: ((Int) -> Void)?
         private var cachedLineCount = 1
         /// Mirrors MarkdownTextView.customBackground so the gutter's strip can
         /// match the editor's painted background.
@@ -340,10 +350,27 @@ struct MarkdownTextView: NSViewRepresentable {
             layoutGutter()
         }
 
+        /// Install an always-on clip-bounds observer (independent of the gutter's,
+        /// which only runs in Plain mode) that reports the top visible line as the
+        /// editor scrolls, so the preview can follow.
+        func observeScrollForSync(scrollView: NSScrollView) {
+            let clip = scrollView.contentView
+            clip.postsBoundsChangedNotifications = true
+            scrollSyncObserver = NotificationCenter.default.addObserver(
+                forName: NSView.boundsDidChangeNotification, object: clip, queue: .main) { [weak self] _ in
+                guard let self else { return }
+                MainActor.assumeIsolated {
+                    guard let tv = self.textView as? ClickableTextView else { return }
+                    self.onTopVisibleLine?(tv.topVisibleLineNumber())
+                }
+            }
+        }
+
         deinit {
             if let formattingObserver { NotificationCenter.default.removeObserver(formattingObserver) }
             if let spellingObserver { NotificationCenter.default.removeObserver(spellingObserver) }
             if let clipObserver { NotificationCenter.default.removeObserver(clipObserver) }
+            if let scrollSyncObserver { NotificationCenter.default.removeObserver(scrollSyncObserver) }
         }
 
         func textDidChange(_ notification: Notification) {
@@ -402,6 +429,17 @@ struct MarkdownTextView: NSViewRepresentable {
 
 final class ClickableTextView: NSTextView {
     weak var highlighter: MarkdownHighlighter?
+
+    /// The 1-based document line at the top of the visible rect, for
+    /// editor-to-preview scroll sync. Mirrors the gutter's first-visible-line
+    /// computation (LineNumberGutterView) exactly.
+    func topVisibleLineNumber() -> Int {
+        guard let lm = layoutManager, let tc = textContainer else { return 1 }
+        let glyphRange = lm.glyphRange(forBoundingRect: visibleRect, in: tc)
+        let charRange = lm.characterRange(forGlyphRange: glyphRange, actualGlyphRange: nil)
+        let ns = string as NSString
+        return LineNumbering.lineNumber(forCharacterIndex: min(charRange.location, ns.length), in: ns)
+    }
 
     /// The style-adjusted rect of the caret as last drawn. AppKit only
     /// invalidates the thin default caret rect on moves and erases, so the

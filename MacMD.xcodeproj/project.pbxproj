@@ -71,6 +71,7 @@
 		839640A07555EA93D52B6FDF /* PreviewRenderGateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4A577C7187DD75D3F7E807D /* PreviewRenderGateTests.swift */; };
 		E919BFC961A82DB88595EADC /* PreviewWebViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F12C0A4A1F40FD405C0C4AE /* PreviewWebViewTests.swift */; };
 		E1F082155B8A5CA4884A7F2E /* PreviewDOMTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3128175A770BB56CB19FA09A /* PreviewDOMTests.swift */; };
+		7499AE5294479D4DD7AB0778 /* EditorScrollSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E977311A63A8D16C5792EC5 /* EditorScrollSyncTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -152,6 +153,7 @@
 		D4A577C7187DD75D3F7E807D /* PreviewRenderGateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewRenderGateTests.swift; sourceTree = "<group>"; };
 		6F12C0A4A1F40FD405C0C4AE /* PreviewWebViewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewWebViewTests.swift; sourceTree = "<group>"; };
 		3128175A770BB56CB19FA09A /* PreviewDOMTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewDOMTests.swift; sourceTree = "<group>"; };
+		6E977311A63A8D16C5792EC5 /* EditorScrollSyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorScrollSyncTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -265,6 +267,7 @@
 				D4A577C7187DD75D3F7E807D /* PreviewRenderGateTests.swift */,
 				6F12C0A4A1F40FD405C0C4AE /* PreviewWebViewTests.swift */,
 				3128175A770BB56CB19FA09A /* PreviewDOMTests.swift */,
+				6E977311A63A8D16C5792EC5 /* EditorScrollSyncTests.swift */,
 			);
 			path = MacMDTests;
 			sourceTree = "<group>";
@@ -446,6 +449,7 @@
 				839640A07555EA93D52B6FDF /* PreviewRenderGateTests.swift in Sources */,
 				E919BFC961A82DB88595EADC /* PreviewWebViewTests.swift in Sources */,
 				E1F082155B8A5CA4884A7F2E /* PreviewDOMTests.swift in Sources */,
+				7499AE5294479D4DD7AB0778 /* EditorScrollSyncTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
