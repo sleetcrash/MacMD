@@ -50,6 +50,20 @@ enum HTMLExporter {
         """
     }
 
+    /// The default export filename: the document's name with a `.html` extension,
+    /// falling back to the window title (extension stripped) then `Untitled`.
+    static func suggestedFilename(representedURL: URL?, windowTitle: String?) -> String {
+        let raw: String
+        if let url = representedURL {
+            raw = url.deletingPathExtension().lastPathComponent
+        } else if let title = windowTitle, !title.isEmpty {
+            raw = (title as NSString).deletingPathExtension
+        } else {
+            raw = ""
+        }
+        return (raw.isEmpty ? "Untitled" : raw) + ".html"
+    }
+
     private static func bundledCSS(_ name: String) -> String {
         guard let url = Bundle.main.url(forResource: name, withExtension: "css"),
               let css = try? String(contentsOf: url, encoding: .utf8) else { return "" }

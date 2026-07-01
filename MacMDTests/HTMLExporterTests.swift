@@ -22,4 +22,10 @@ final class HTMLExporterTests: XCTestCase {
             XCTAssertFalse(html.contains(token), "no external reference: \(token)")
         }
     }
+
+    func testSuggestedFilename() {
+        XCTAssertEqual(HTMLExporter.suggestedFilename(representedURL: URL(fileURLWithPath: "/tmp/Notes.md"),
+                                                      windowTitle: "Notes.md"), "Notes.html")
+        XCTAssertEqual(HTMLExporter.suggestedFilename(representedURL: nil, windowTitle: "Untitled"), "Untitled.html")
+    }
 }
