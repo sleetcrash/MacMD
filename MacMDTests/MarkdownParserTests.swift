@@ -45,6 +45,22 @@ final class MarkdownParserTests: XCTestCase {
         XCTAssertFalse(headings.contains { $0.title.contains("not a heading") })
     }
 
+    func testHeadingsExcludeFrontMatterAndNonParagraphSetext() {
+        // A front-matter field above the closing `---` must NOT become a phantom H2.
+        let withFrontMatter = MarkdownParser.headings(in: "---\ntitle: x\n---\n# Real\nTwo\n===\n")
+        XCTAssertEqual(withFrontMatter.map(\.title), ["Real", "Two"])
+        XCTAssertFalse(withFrontMatter.contains { $0.title.contains("title") })
+
+        // A list item above a `---` run is not a setext heading.
+        XCTAssertTrue(MarkdownParser.headings(in: "- item\n---\n").isEmpty)
+        // An empty front-matter block (--- then ---) yields no heading.
+        XCTAssertTrue(MarkdownParser.headings(in: "---\n---\n").isEmpty)
+        // A blockquote above a `===` run is not a setext heading.
+        XCTAssertTrue(MarkdownParser.headings(in: "> quote\n===\n").isEmpty)
+        // A genuine paragraph above `===` still is one.
+        XCTAssertEqual(MarkdownParser.headings(in: "Intro\n===\n").map(\.title), ["Intro"])
+    }
+
     // MARK: - Opening fence info strings
 
     func testOpeningFenceInfoReturnsLanguageTags() {

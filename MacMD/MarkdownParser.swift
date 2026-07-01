@@ -139,29 +139,33 @@ enum MarkdownParser {
         let nsString = text as NSString
         let full = NSRange(location: 0, length: nsString.length)
         guard full.length > 0 else { return [] }
+        // Headings inside a fenced code block or the leading front-matter block are
+        // not real headings; the highlighter excludes both the same way.
         let fences = fenceSpans(in: text)
+        let excluded = frontMatterSpan(in: nsString, fullRange: full).map { fences + [$0] } ?? fences
         var result: [MarkdownHeading] = []
 
-        // ATX: reuse the existing primitive; drop any heading inside a fence.
+        // ATX: reuse the existing primitive; drop any heading inside an excluded span.
         for line in headingLines(in: nsString, fullRange: full)
-        where !intersectsAny(line.range, ranges: fences) {
+        where !intersectsAny(line.range, ranges: excluded) {
             let raw = nsString.substring(with: line.range)
             let title = String(raw.drop(while: { $0 == "#" })).trimmingCharacters(in: .whitespaces)
             result.append(MarkdownHeading(level: line.level, title: title, lineRange: line.range))
         }
 
-        // Setext: a non-blank text line immediately followed by an underline line
-        // of only `=` (H1) or only `-` (H2). A blank line before the underline (a
-        // thematic break) or a fenced region breaks the pattern.
+        // Setext: a paragraph line immediately followed by an underline line of only
+        // `=` (H1) or only `-` (H2). Lines inside a fence or the front-matter block,
+        // and non-paragraph lines (lists, blockquotes, thematic breaks), never
+        // qualify as a title.
         let lineRanges = contentLineRanges(in: nsString)
         for i in lineRanges.indices where i + 1 < lineRanges.count {
             let titleRange = lineRanges[i]
             let underlineRange = lineRanges[i + 1]
             guard titleRange.length > 0, underlineRange.length > 0 else { continue }
-            guard !intersectsAny(titleRange, ranges: fences),
-                  !intersectsAny(underlineRange, ranges: fences) else { continue }
+            guard !intersectsAny(titleRange, ranges: excluded),
+                  !intersectsAny(underlineRange, ranges: excluded) else { continue }
             let title = nsString.substring(with: titleRange).trimmingCharacters(in: .whitespaces)
-            guard !title.isEmpty, !title.hasPrefix("#") else { continue }
+            guard isSetextTitle(title) else { continue }
             let underline = nsString.substring(with: underlineRange).trimmingCharacters(in: .whitespaces)
             let level: Int
             if isUnderlineRun(underline, "=") { level = 1 }
@@ -189,6 +193,62 @@ enum MarkdownParser {
 
     private static func isUnderlineRun(_ trimmed: String, _ ch: Character) -> Bool {
         !trimmed.isEmpty && trimmed.allSatisfy { $0 == ch }
+    }
+
+    /// A setext title is paragraph content: non-empty, not an ATX heading or
+    /// blockquote, not a thematic-break/underline-only run, and not a list item.
+    private static func isSetextTitle(_ trimmed: String) -> Bool {
+        guard !trimmed.isEmpty, !trimmed.hasPrefix("#"), !trimmed.hasPrefix(">") else { return false }
+        for ch in "-=*_" where isUnderlineRun(trimmed, ch) { return false }
+        for marker in ["- ", "* ", "+ ", "-\t", "*\t", "+\t"] where trimmed.hasPrefix(marker) { return false }
+        // Ordered list marker: digits, then `.` or `)`, then a space or tab.
+        if let sep = trimmed.firstIndex(where: { $0 == "." || $0 == ")" }) {
+            let digits = trimmed[trimmed.startIndex..<sep]
+            let after = trimmed.index(after: sep)
+            if !digits.isEmpty, digits.allSatisfy(\.isNumber),
+               after < trimmed.endIndex, trimmed[after] == " " || trimmed[after] == "\t" {
+                return false
+            }
+        }
+        return true
+    }
+
+    // MARK: - Front matter
+
+    /// A leading YAML (`---`) or TOML (`+++`) front-matter block. Recognized only
+    /// when the document's first line is exactly the delimiter and a matching
+    /// closing delimiter line appears on a later line (content between the
+    /// delimiters is not validated). Returns the block span (from index 0 through
+    /// the end of the closing delimiter line) or nil.
+    static func frontMatterSpan(in nsString: NSString, fullRange: NSRange) -> NSRange? {
+        guard nsString.length > 0 else { return nil }
+        var lineStart = 0, lineEnd = 0, contentsEnd = 0
+        nsString.getLineStart(&lineStart, end: &lineEnd, contentsEnd: &contentsEnd,
+                              for: NSRange(location: 0, length: 0))
+        // Delimiters are exactly three characters, so only a 3-char first line can
+        // open a block. Gate on the length first so the common case (every other
+        // first line) returns without allocating a substring on every keystroke.
+        guard contentsEnd == 3 else { return nil }
+        let delimiter: String
+        switch nsString.substring(with: NSRange(location: 0, length: 3)) {
+        case "---": delimiter = "---"
+        case "+++": delimiter = "+++"
+        default: return nil
+        }
+        guard lineEnd > 0, lineEnd < nsString.length else { return nil }
+        var idx = lineEnd
+        while idx < nsString.length {
+            var ls = 0, le = 0, ce = 0
+            nsString.getLineStart(&ls, end: &le, contentsEnd: &ce, for: NSRange(location: idx, length: 0))
+            // Same 3-char gate inside the loop: only a 3-char line can be the
+            // closing delimiter, so non-matching lines never allocate a substring.
+            if ce - ls == 3, nsString.substring(with: NSRange(location: ls, length: 3)) == delimiter {
+                return NSRange(location: 0, length: le)
+            }
+            guard le > ls else { break }
+            idx = le
+        }
+        return nil
     }
 
     // MARK: - Range helpers

@@ -25,7 +25,7 @@ final class MarkdownHighlighter: NSObject, @preconcurrency NSTextStorageDelegate
 
         let codeSpans = MarkdownParser.spansFromFences(fenceLines, fullRange: total)
 
-        let frontMatter = MarkdownRules.frontMatterSpan(in: nsString, fullRange: total)
+        let frontMatter = MarkdownParser.frontMatterSpan(in: nsString, fullRange: total)
         let frontMatterChanged = frontMatter != lastFrontMatter
         lastFrontMatter = frontMatter
 
@@ -59,7 +59,7 @@ final class MarkdownHighlighter: NSObject, @preconcurrency NSTextStorageDelegate
         let fenceLines = MarkdownParser.fenceLines(in: nsString, fullRange: full)
         lastFenceLines = fenceLines
         let spans = MarkdownParser.spansFromFences(fenceLines, fullRange: full)
-        let frontMatter = MarkdownRules.frontMatterSpan(in: nsString, fullRange: full)
+        let frontMatter = MarkdownParser.frontMatterSpan(in: nsString, fullRange: full)
         lastFrontMatter = frontMatter
         let headings: [MarkdownParser.HeadingLine] = Theme.activeColoring == .off
             ? []
@@ -239,42 +239,6 @@ private enum MarkdownRules {
                 rule.apply(ts, m, sectionMap)
             }
         }
-    }
-
-    /// A leading YAML (`---`) or TOML (`+++`) front-matter block. Recognized only
-    /// when the document's first line is exactly the delimiter and a matching
-    /// closing delimiter line appears on a later line (content between the
-    /// delimiters is not validated). Returns the block span (from index 0 through
-    /// the end of the closing delimiter line) or nil.
-    static func frontMatterSpan(in nsString: NSString, fullRange: NSRange) -> NSRange? {
-        guard nsString.length > 0 else { return nil }
-        var lineStart = 0, lineEnd = 0, contentsEnd = 0
-        nsString.getLineStart(&lineStart, end: &lineEnd, contentsEnd: &contentsEnd,
-                              for: NSRange(location: 0, length: 0))
-        // Delimiters are exactly three characters, so only a 3-char first line can
-        // open a block. Gate on the length first so the common case (every other
-        // first line) returns without allocating a substring on every keystroke.
-        guard contentsEnd == 3 else { return nil }
-        let delimiter: String
-        switch nsString.substring(with: NSRange(location: 0, length: 3)) {
-        case "---": delimiter = "---"
-        case "+++": delimiter = "+++"
-        default: return nil
-        }
-        guard lineEnd > 0, lineEnd < nsString.length else { return nil }
-        var idx = lineEnd
-        while idx < nsString.length {
-            var ls = 0, le = 0, ce = 0
-            nsString.getLineStart(&ls, end: &le, contentsEnd: &ce, for: NSRange(location: idx, length: 0))
-            // Same 3-char gate inside the loop: only a 3-char line can be the
-            // closing delimiter, so non-matching lines never allocate a substring.
-            if ce - ls == 3, nsString.substring(with: NSRange(location: ls, length: 3)) == delimiter {
-                return NSRange(location: 0, length: le)
-            }
-            guard le > ls else { break }
-            idx = le
-        }
-        return nil
     }
 
     static let taskListPattern: NSRegularExpression = r(
