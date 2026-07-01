@@ -96,6 +96,24 @@ final class MarkdownSchemeHandlerTests: XCTestCase {
         XCTAssertEqual((task.response as? HTTPURLResponse)?.statusCode, 404)
     }
 
+    func testPercentEncodedImageTokenResolvesLiteralPercentFilename() throws {
+        let fm = FileManager.default
+        let tempDir = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try fm.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempDir) }
+        try Data("png".utf8).write(to: tempDir.appendingPathComponent("50%.png"))
+
+        let handler = MarkdownSchemeHandler()
+        handler.documentDirectory = tempDir
+        // A contained file named `50%.png` is referenced as `50%25.png`; the token
+        // must be decoded exactly once and serve, not double-decode into a 404.
+        let url = URL(string: "macmd-resource://img/50%25.png")!
+        let task = FakeSchemeTask(url: url)
+        handler.webView(WKWebView(), start: task)
+        XCTAssertEqual((task.response as? HTTPURLResponse)?.statusCode, 200)
+        XCTAssertFalse(task.data.isEmpty)
+    }
+
     private func firstNonce(in html: String) -> String? {
         guard let open = html.range(of: "nonce=\"") else { return nil }
         let rest = html[open.upperBound...]

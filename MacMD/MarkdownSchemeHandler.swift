@@ -80,7 +80,11 @@ final class MarkdownSchemeHandler: NSObject, WKURLSchemeHandler {
     /// `img/<token>` serves a path-validated local image, or 404s if the token
     /// escapes the document directory or the file cannot be read.
     private func serveImage(url: URL, to task: WKURLSchemeTask) {
-        let token = String(url.path.dropFirst())
+        // Use the still-encoded path so imageURL(forToken:) decodes exactly once;
+        // url.path is already percent-decoded, which would double-decode a token
+        // and 404 a legit filename containing a literal `%`.
+        let encodedPath = URLComponents(url: url, resolvingAgainstBaseURL: false)?.percentEncodedPath ?? url.path
+        let token = String(encodedPath.dropFirst())
         guard let fileURL = imageURL(forToken: token),
               let data = try? Data(contentsOf: fileURL) else {
             respond(task, url: url, status: 404, headers: [:], data: Data())
