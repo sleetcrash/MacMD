@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" nonce="__MACMD_NONCE__" href="macmd-resource://app/preview-base.css">
-<style nonce="__MACMD_NONCE__">__MACMD_CSS__</style>
+<style id="macmd-theme" nonce="__MACMD_NONCE__">__MACMD_CSS__</style>
 <script nonce="__MACMD_NONCE__" src="macmd-resource://app/markdown-it.min.js"></script>
 <script nonce="__MACMD_NONCE__" src="macmd-resource://app/mermaid.min.js"></script>
 </head>
@@ -12,13 +12,61 @@
 <div id="content" class="markdown-body"></div>
 <script nonce="__MACMD_NONCE__">
 "use strict";
-// M1: markdown-it only. mermaid.min.js is bundled and loaded here but is NOT
-// invoked; mermaid.run() / mermaid.initialize() wiring is added in M4.
-// html:false escapes any raw HTML in the untrusted document (security model).
+// markdown-it only in M2. mermaid.min.js is bundled and loaded but NOT invoked;
+// mermaid.run() / mermaid.initialize() wiring is added in M4. html:false escapes
+// any raw HTML in the untrusted document (the security model).
 var md = window.markdownit({ html: false, linkify: true, typographer: false });
+
+// Stamp each top-level block with its 1-based source line (from token.map) so the
+// editor's top visible line can drive editor-to-preview scroll sync.
+md.core.ruler.push("macmd_source_line", function (state) {
+  state.tokens.forEach(function (token) {
+    if (token.map && token.level === 0) {
+      token.attrSet("data-source-line", String(token.map[0] + 1));
+    }
+  });
+});
+
+// Route relative image srcs through the validated img scheme; Swift does the
+// containment check. Absolute paths and any explicit scheme are left as-is
+// (remote schemes are blocked by the CSP and the content rule list).
+function rewriteImages(container) {
+  var imgs = container.querySelectorAll("img");
+  for (var i = 0; i < imgs.length; i++) {
+    var src = imgs[i].getAttribute("src") || "";
+    if (src === "" || src.charAt(0) === "/" || /^[a-z][a-z0-9+.-]*:/i.test(src)) continue;
+    imgs[i].setAttribute("src", "macmd-resource://img/" + encodeURIComponent(src));
+  }
+}
+
 window.render = function (markdown) {
-  document.getElementById("content").innerHTML = md.render(markdown);
+  var container = document.getElementById("content");
+  container.innerHTML = md.render(markdown);
+  rewriteImages(container);
   window.__renderComplete = (window.__renderComplete || 0) + 1;
+};
+
+// Theme CSS is injected after load and on every ThemeController change.
+window.setThemeCSS = function (css) {
+  var el = document.getElementById("macmd-theme");
+  if (el) { el.textContent = css; }
+};
+
+// Activate the resolved light/dark block by class on the document element, so the
+// choice follows the editor appearance, not the system prefers-color-scheme.
+window.setAppearance = function (name) {
+  document.documentElement.className = name;
+};
+
+// Scroll the nearest block at or after the given 1-based source line into view.
+window.scrollToLine = function (line) {
+  var els = document.querySelectorAll("[data-source-line]");
+  var target = null;
+  for (var i = 0; i < els.length; i++) {
+    if (parseInt(els[i].getAttribute("data-source-line"), 10) >= line) { target = els[i]; break; }
+  }
+  if (!target && els.length) { target = els[els.length - 1]; }
+  if (target) { target.scrollIntoView({ block: "start" }); }
 };
 </script>
 </body>
