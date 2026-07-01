@@ -1,0 +1,43 @@
+/* Base structural reset and layout for the rendered preview. Theme colors,
+   fonts, and sizes are NOT set here; they are injected per document via the
+   shell's __MACMD_CSS__ slot (PreviewCSS, added in M2) so the preview mirrors
+   the editor's active palette. Keep this file color-agnostic (borders inherit
+   currentColor) so the injected theme owns every color decision. */
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+
+body {
+  padding: 24px 28px;
+  line-height: 1.55;
+  word-wrap: break-word;
+  -webkit-text-size-adjust: 100%;
+}
+
+.markdown-body { max-width: 760px; margin: 0 auto; }
+.markdown-body > *:first-child { margin-top: 0; }
+.markdown-body > *:last-child { margin-bottom: 0; }
+
+h1, h2, h3, h4, h5, h6 { margin: 1.2em 0 0.5em; line-height: 1.25; }
+p, ul, ol, blockquote, pre, table, hr { margin: 0 0 1em; }
+
+ul, ol { padding-left: 1.6em; }
+li + li { margin-top: 0.2em; }
+
+img { max-width: 100%; height: auto; }
+
+code { padding: 0.15em 0.35em; border-radius: 4px; }
+pre { padding: 12px 14px; overflow: auto; border-radius: 6px; }
+pre code { display: block; padding: 0; white-space: pre; }
+
+blockquote { margin-left: 0; padding-left: 1em; border-left: 3px solid; }
+
+table { border-collapse: collapse; }
+th, td { padding: 6px 10px; border: 1px solid; }
+
+hr { border: 0; border-top: 1px solid; }
+
+a { text-decoration: underline; }
+
+/* Rendered mermaid diagrams (wired in M4) scale to the column width. */
+svg { max-width: 100%; height: auto; }
