@@ -110,7 +110,7 @@ window.render = function (markdown) {
 // macmd-resource scheme only resolves inside the app, so a self-contained export
 // keeps the original relative src). Returns the rendered body. M4 makes this
 // async and inlines mermaid SVG.
-window.renderForExport = function (markdown) {
+window.renderForExport = async function (markdown) {
   var container = document.getElementById("content");
   container.innerHTML = md.render(markdown);
   // Drop external image references so the exported file makes NO network request
@@ -125,6 +125,9 @@ window.renderForExport = function (markdown) {
     var isExternal = /^[a-z][a-z0-9+.-]*:/i.test(src) || src.slice(0, 2) === "//";
     if (isExternal && !isData) { imgs[i].removeAttribute("src"); }
   }
+  // Inline any mermaid diagrams as SVG before serializing, so the export awaits
+  // completion (callAsyncJavaScript awaits the returned promise).
+  await renderMermaid(container);
   return container.innerHTML;
 };
 
