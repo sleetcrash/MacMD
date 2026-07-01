@@ -23,6 +23,12 @@ final class HostileFixtureTests: XCTestCase {
     <iframe src="https://evil.example"></iframe>
     ![escape](../../../etc/passwd)
     ![ok](local.png)
+
+    ```mermaid
+    flowchart TD
+      A["<img src=x onerror='window.__pwned=true'>"]
+      A-->B
+    ```
     """
 
     private func directive(_ name: String, in csp: String) -> String? {
@@ -78,5 +84,25 @@ final class HostileFixtureTests: XCTestCase {
         handler.documentDirectory = tempDir
         XCTAssertNil(handler.imageURL(forToken: "../../../etc/passwd"))
         XCTAssertNotNil(handler.imageURL(forToken: "local.png"))
+    }
+
+    /// The hostile document (now carrying a mermaid block with an injection label)
+    /// renders its legitimate flowchart while the injection never executes and no
+    /// script-src (eval/execution) violation fires. The blocked remote image
+    /// legitimately triggers an img-src violation (the CSP doing its job), so this
+    /// asserts specifically on script-src, not on zero violations.
+    @MainActor
+    func testHostileDocumentRendersMermaidWhileBlockingInjection() async {
+        let h = PreviewHarness()
+        await h.load()
+        await h.eval("window.__cspViolations = []; window.__pwned = false; document.addEventListener('securitypolicyviolation', function(e){ window.__cspViolations.push(e.violatedDirective); });")
+        await h.renderAndWait(Self.hostileFixture)
+
+        let svg = (await h.eval("document.querySelectorAll('svg').length") as? NSNumber)?.intValue ?? 0
+        XCTAssertGreaterThanOrEqual(svg, 1, "the mermaid flowchart renders inside the hostile document")
+        let pwned = (await h.eval("window.__pwned === true") as? NSNumber)?.boolValue ?? false
+        XCTAssertFalse(pwned, "the injected onerror / click binding did not execute")
+        let scriptViolations = (await h.eval("window.__cspViolations.filter(function(v){return v.indexOf('script') >= 0;}).length") as? NSNumber)?.intValue ?? -1
+        XCTAssertEqual(scriptViolations, 0, "no script-src (eval/execution) violation with the mermaid block present")
     }
 }

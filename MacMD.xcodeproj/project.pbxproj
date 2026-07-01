@@ -77,6 +77,7 @@
 		320E2A9F53F1E24831379A2C /* HTMLExporterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A4127FF9B63108E0487420E /* HTMLExporterTests.swift */; };
 		56F9ED4BC0444AB1C3F86D72 /* MermaidEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 365B79165C8B0514EA5E8693 /* MermaidEngineTests.swift */; };
 		85710D3D04A50B073EE1E8FA /* MermaidRenderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E00920617D5025775E93E76 /* MermaidRenderTests.swift */; };
+		39CFDECAD3251AD4C4A063BD /* MermaidSecurityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 490547A2EA5007B2C7D4163E /* MermaidSecurityTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -164,6 +165,7 @@
 		4A4127FF9B63108E0487420E /* HTMLExporterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTMLExporterTests.swift; sourceTree = "<group>"; };
 		365B79165C8B0514EA5E8693 /* MermaidEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MermaidEngineTests.swift; sourceTree = "<group>"; };
 		1E00920617D5025775E93E76 /* MermaidRenderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MermaidRenderTests.swift; sourceTree = "<group>"; };
+		490547A2EA5007B2C7D4163E /* MermaidSecurityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MermaidSecurityTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -283,6 +285,7 @@
 				4A4127FF9B63108E0487420E /* HTMLExporterTests.swift */,
 				365B79165C8B0514EA5E8693 /* MermaidEngineTests.swift */,
 				1E00920617D5025775E93E76 /* MermaidRenderTests.swift */,
+				490547A2EA5007B2C7D4163E /* MermaidSecurityTests.swift */,
 			);
 			path = MacMDTests;
 			sourceTree = "<group>";
@@ -470,6 +473,7 @@
 				320E2A9F53F1E24831379A2C /* HTMLExporterTests.swift in Sources */,
 				56F9ED4BC0444AB1C3F86D72 /* MermaidEngineTests.swift in Sources */,
 				85710D3D04A50B073EE1E8FA /* MermaidRenderTests.swift in Sources */,
+				39CFDECAD3251AD4C4A063BD /* MermaidSecurityTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
