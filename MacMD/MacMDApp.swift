@@ -23,6 +23,14 @@ struct MacMDApp: App {
         .commands {
             HelpCommands()
             AppSettingsCommands()
+            CommandGroup(after: .importExport) {
+                Button("Export to HTML…") {
+                    if let editor = focusedEditor() {
+                        HTMLExporter.export(markdown: editor.string, theme: themeController, in: editor.window)
+                    }
+                }
+                .keyboardShortcut("e", modifiers: [.command, .shift])
+            }
             CommandGroup(after: .pasteboard) {
                 Menu("Find") {
                     Button("Find…") { performFindAction(.showFindInterface) }

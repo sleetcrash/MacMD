@@ -1,3 +1,5 @@
+import AppKit
+import UniformTypeIdentifiers
 import WebKit
 
 /// Exports the current document to a single self-contained `.html` file: the
@@ -48,6 +50,27 @@ enum HTMLExporter {
         </body>
         </html>
         """
+    }
+
+    /// Render the document and present a save panel to write a self-contained
+    /// `.html` file. Fire-and-forget from a menu command; the render is async.
+    @MainActor
+    static func export(markdown: String, theme: ThemeController, in window: NSWindow?) {
+        let name = suggestedFilename(representedURL: window?.representedURL, windowTitle: window?.title)
+        Task { @MainActor in
+            let html = await makeSelfContainedHTML(markdown: markdown, theme: theme)
+            let panel = NSSavePanel()
+            panel.allowedContentTypes = [.html]
+            panel.nameFieldStringValue = name
+            let response: NSApplication.ModalResponse
+            if let window {
+                response = await panel.beginSheetModal(for: window)
+            } else {
+                response = panel.runModal()
+            }
+            guard response == .OK, let url = panel.url else { return }
+            try? html.write(to: url, atomically: true, encoding: .utf8)
+        }
     }
 
     /// The default export filename: the document's name with a `.html` extension,
