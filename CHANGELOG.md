@@ -2,6 +2,18 @@
 
 All notable changes to MacMD will be documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-07-06
+
+MacMD grows from a pure editor into an editor with a rendered view, while keeping its plain-text guarantees. Everything renders offline with a bundled engine; the app still makes no network connections.
+
+### Added
+- Live preview pane: View → Show Preview (Cmd-Shift-P) splits the window with a rendered view that updates as you type and follows your scroll position. It mirrors the editor's theme, fonts, and background in light and dark, renders GitHub Flavored Markdown (tables, task lists, strikethrough), loads images from the document's folder, and opens links in your browser. Documents still open editor-only; the preview is opt-in per window.
+- Mermaid diagrams: fenced mermaid code blocks render as diagrams in the preview and in exports. Twelve diagram types ship: flowchart, sequence, class, state, entity-relationship, gantt, pie, mindmap, git graph, journey, timeline, and quadrant.
+- Export to HTML: File → Export to HTML (Cmd-Shift-E) writes a single self-contained file that opens anywhere, offline. Styling is inlined and matches your theme, images from the document folder are embedded, mermaid diagrams are baked in as SVG, and remote image references are stripped so the exported file loads nothing from the network when opened.
+
+### Security
+- The renderer is locked down: it runs in a sandboxed web view with no network access, script execution from document content is blocked, and every mermaid diagram type was gate-tested to render without relaxing that policy. Hostile-input fixtures (script injection, path traversal, malicious diagram payloads) are part of the test suite, which now stands at 352 tests.
+
 ## [1.0.0] - 2026-06-11
 
 The first official release of MacMD, a native Markdown editor for the Mac. Requires macOS 14 (Sonoma) or later. The development builds previously published from this repository were retired when this release was cut; their history remains in the repository's git log.
@@ -27,4 +39,5 @@ The first official release of MacMD, a native Markdown editor for the Mac. Requi
 ### Help
 - A built-in, offline Help window covering the editor, files, settings, and keyboard shortcuts.
 
+[2.0.0]: https://github.com/sleetcrash/MacMD/releases/tag/v2.0.0
 [1.0.0]: https://github.com/sleetcrash/MacMD/releases/tag/v1.0.0
