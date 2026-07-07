@@ -26,8 +26,8 @@ Or open `MacMD.xcodeproj` in Xcode and press Cmd-R.
     MacMD/            App source (Swift, SwiftUI + AppKit)
     MacMDTests/       Unit and integration tests
     MacMD.xcodeproj/  Xcode project
-    Scripts/          Icon, social-preview, and release-packaging scripts (see Scripts/README.md)
-    docs/             Screenshot and social-preview images
+    Scripts/          Icon, link-preview, and release-packaging scripts (see Scripts/README.md)
+    docs/             Screenshot and link-preview images
 
 ## House rules
 
