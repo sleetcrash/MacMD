@@ -3,12 +3,13 @@ import CoreGraphics
 import ImageIO
 import UniformTypeIdentifiers
 
-// Produce a 1280x640 GitHub social preview card from docs/screenshot.png.
-// The screenshot is scaled to fit inside the card with padding, centered on a
-// black background that matches the app's aesthetic.
+// Produce the 1280x640 link-preview card (the image GitHub shows when the repo
+// link is shared) from docs/screenshot.png. The screenshot is scaled to fit
+// inside the card with padding, centered on a black background that matches
+// the app's aesthetic.
 
 guard CommandLine.arguments.count >= 3 else {
-    FileHandle.standardError.write("usage: make_social_preview.swift <input.png> <output.png>\n".data(using: .utf8)!)
+    FileHandle.standardError.write("usage: make_link_preview.swift <input.png> <output.png>\n".data(using: .utf8)!)
     exit(1)
 }
 let inputPath = CommandLine.arguments[1]
