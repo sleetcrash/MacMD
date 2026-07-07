@@ -1,6 +1,6 @@
 # Security Policy
 
-MacMD is a local macOS markdown editor. It has no network access, no analytics, and no background services, so its attack surface is limited to the files it opens and saves. Reports that fit that surface are taken seriously.
+MacMD is a local macOS Markdown editor. It has no network access, no analytics, and no background services, so its attack surface is limited to the files it opens and saves. Reports that fit that surface are taken seriously.
 
 ## Supported versions
 
@@ -25,7 +25,7 @@ Helpful details to include:
 
 - The MacMD version (from the app's About window or the release tag).
 - Your macOS version.
-- A minimal markdown file or sequence of steps that triggers the issue.
+- A minimal Markdown file or sequence of steps that triggers the issue.
 - What you observed (crash, hang, unexpected file write, and so on) and what you expected.
 
 ## Scope
@@ -39,7 +39,7 @@ In scope:
 Out of scope (these are documented design decisions, not vulnerabilities):
 
 - The app is signed ad-hoc and is not Apple-notarized. The README covers the one-time first-launch Gatekeeper approval.
-- The app is not sandboxed as of 1.0.2. The Security section of the README explains why.
+- The app is not sandboxed. The Security section of the README explains why.
 - Issues that require an attacker to already have local access to your account, or to modify the installed app bundle.
 
 ## Response
