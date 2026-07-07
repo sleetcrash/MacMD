@@ -1,0 +1,44 @@
+name: Bug report
+description: Something in MacMD is broken or behaving unexpectedly
+labels: [bug]
+body:
+  - type: input
+    id: macmd-version
+    attributes:
+      label: MacMD version
+      description: From the About window, or the release tag you downloaded.
+      placeholder: "1.0.0"
+    validations:
+      required: true
+  - type: input
+    id: macos-version
+    attributes:
+      label: macOS version
+      placeholder: "15.5 (Sequoia)"
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What did you see, and what did you expect instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open a file containing ...
+        2. Type ...
+        3. See ...
+    validations:
+      required: true
+  - type: textarea
+    id: sample
+    attributes:
+      label: Sample Markdown
+      description: If the bug involves highlighting or file handling, paste the smallest Markdown snippet that triggers it.
+      render: markdown
+    validations:
+      required: false
