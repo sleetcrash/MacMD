@@ -27,13 +27,13 @@ Notes for maintainers:
 - The DMG staging dir is cleaned with a `trap` on `EXIT`, so an `hdiutil` failure under `set -e` doesn't leak `/tmp/macmd-dmg.*`.
 - Ad-hoc signed, not Apple-notarized. The README's Install section documents the one-time Gatekeeper approval that end users perform.
 
-## make_link_preview.swift
+## make_social_preview.swift
 
-Generates the 1280x640 link-preview card (`docs/link-preview.png`), the image GitHub shows when the repo link is shared (uploaded by hand at Settings > General > Social preview). It wraps an existing `docs/screenshot.png` in a padded card, so capture the window screenshot first.
+Generates the 1280x640 social preview card (`docs/social-preview.png`), the image GitHub shows when the repo link is shared. GitHub reads it from the Settings > General > Social preview upload, not from the repo, so upload it there by hand after regenerating. The script wraps an existing `docs/screenshot.png` in a padded card; capture the window screenshot first.
 
 Run from the repo root:
 
-    swift Scripts/make_link_preview.swift docs/screenshot.png docs/link-preview.png
+    swift Scripts/make_social_preview.swift docs/screenshot.png docs/social-preview.png
 
 ## build-preview-assets.sh
 
