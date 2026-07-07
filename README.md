@@ -1,201 +1,86 @@
 # MacMD
 
-A lightweight, native, open source Markdown editor for macOS. MacMD feels like TextEdit built for `.md` files: open a Markdown file, edit it as plain text with live syntax highlighting, and save exactly the bytes you typed. The download is about 1.5 MB, and the app makes no network connections of any kind.
+A fast, native Markdown editor for macOS with live syntax highlighting, a rendered preview, and Mermaid diagrams. Free and open source, MIT licensed, and a download smaller than 3 MB with zero telemetry.
 
-MacMD is made for the Markdown files developers touch every day: `README.md`, `CLAUDE.md`, `AGENTS.md`, agent and skill configs, notes, and docs.
+Built for the Markdown files developers actually live in: `README.md`, `CLAUDE.md`, `AGENTS.md`, agent and skill configs, notes, and docs.
 
-**[Download the latest release](../../releases/latest)** for macOS 14 (Sonoma) or later. Free, MIT licensed.
+**[Download the latest release](../../releases/latest)** (macOS 14 or later)
 
-![MacMD editing a CLAUDE.md agent config file with live Markdown syntax highlighting in dark mode](docs/screenshot.png)
+![MacMD editing a CLAUDE.md file, with the live preview rendering a Mermaid flowchart and three-color headings](docs/screenshot.png)
 
-## Why MacMD
+## Live preview
 
-- **Native and lightweight.** Swift and AppKit, not an Electron wrapper. The installer is about 1.5 MB, and uninstalling is dragging one app to the Trash.
-- **Live syntax highlighting.** Headings, bold, italic, code, links, lists, task lists, blockquotes, and front matter are styled as you type. The text stays plain Markdown; nothing is hidden or rewritten.
-- **Plain text in, plain text out.** No smart quotes, no dash substitution, no autocorrect, no link detection. Paste always comes in as plain text. What you save is what you typed.
-- **Private by design.** No network access, no telemetry, no analytics, no accounts. The app contains no networking code at all.
-- **Free and open source.** MIT licensed, with the full Swift source in this repository.
+View → Show Preview (Cmd-Shift-P) splits the window with a rendered view that updates as you type and follows the editor as you scroll. It renders tables, strikethrough, and autolinked URLs, mirrors your editor theme, fonts, and background in light and dark, loads images from the document's folder, and opens links in your browser.
 
-## Built for editing CLAUDE.md, AGENTS.md, and agent configs
+Documents open editor-only. Like the formatting toggle, Show Preview applies to every open window at once.
 
-Markdown is the config language of AI coding tools, and those files break in editors designed for prose. MacMD is a safe place to edit `CLAUDE.md`, `AGENTS.md`, `agent.md`, skill definitions, and rule files:
+## Mermaid diagrams
 
-- No smart punctuation or autocorrect, so prompts, code fences, and flags survive editing byte-for-byte.
-- YAML (`---`) and TOML (`+++`) front matter is recognized at the top of the file and styled as muted metadata.
-- Fenced code blocks suppress inline formatting, so example code stays code.
-- Task lists highlight, and checkboxes toggle with a click.
-- Byte-exact saves mean clean `git diff`s. The only exceptions are POSIX conventions: a single trailing newline is added if missing, and a leading UTF-8 BOM is stripped on read.
+Fenced `mermaid` code blocks render as real diagrams in the preview and in exports, as in the screenshot above. Twelve diagram types ship: flowchart, sequence, class, state, entity relationship, gantt, pie, mindmap, git graph, journey, timeline, and quadrant. Rendering happens locally in a locked-down sandbox: document content cannot run script, and nothing touches the network.
 
-## Install
+## Export to HTML
 
-Minimum macOS version: 14 (Sonoma).
+File → Export to HTML (Cmd-Shift-E) writes a single self-contained file. Styling is inlined and matches your theme, images from the document folder are embedded, and Mermaid diagrams are baked in as SVG. Remote image references are stripped, so the exported file loads nothing from the network when someone opens it.
 
-### 1. Download
+## The editor
 
-Go to the [latest release](../../releases/latest). You'll see several files; grab just one (version numbers will match whatever the current release is):
+![The MacMD editor with a unified red theme, showing highlighted headings, code, task lists, and a blockquote](docs/editor.png)
 
-| File | What it is | Who should click it |
-|---|---|---|
-| **`MacMD-<version>.dmg`** | The installer. ~1.5 MB. | **Most people: this is the one you want.** |
-| `MacMD-<version>.zip` | Same app, zipped instead of in a DMG. | Alternative if your browser doesn't like DMGs. |
-| `*.sha256` | Tiny checksum files. | Optional; for verifying your download wasn't tampered with. |
-| `Source code (zip / tar.gz)` | The Swift source. | Only if you want to build it yourself. Ignore otherwise. |
+Everything stays plain text; the editor styles it live and never rewrites it:
 
-### 2. Copy to Applications
+- Headings, bold, italic, strikethrough, inline code, fenced code blocks (backtick and tilde), links, ordered and unordered lists, blockquotes, horizontal rules, and YAML/TOML front matter
+- Task lists with clickable checkboxes (or Cmd-Shift-L on the current line)
+- Return continues lists and keeps ordered-list numbering going
+- Cmd-/ flips every window between styled Markdown and plain source with line numbers
+- Find and Replace, Print, spell check with optional grammar, and an optional word count with reading time
+- Format commands that wrap or unwrap the selection: bold (Cmd-B), italic (Cmd-I), strikethrough (Cmd-Shift-X), inline code, link (Cmd-K)
 
-Double-click the DMG. A Finder window opens with `MacMD.app` and an `Applications` shortcut. Drag `MacMD.app` onto `Applications`. You can eject the DMG after.
+## Themes
 
-### 3. First launch (one-time Gatekeeper approval)
+<p>
+  <img src="docs/settings.png" width="49%" alt="The Settings window: Appearance tab with mode, background, theme, scheme, font, and cursor controls plus a live preview" />
+  <img src="docs/themes.png" width="49%" alt="The theme dropdown open, showing six preset palettes with light and dark swatches plus Custom+" />
+</p>
 
-MacMD is signed ad-hoc, not Apple-notarized (notarization requires a paid Apple Developer account), so macOS blocks it the first time.
+Settings (Cmd-,) covers Light, Dark, or System mode, the editor background (any custom color, with text that adjusts to stay readable), the body font (eight families) and size, and the cursor style (bar, block, or underline, blink optional), all with a live preview in the window.
 
-**On macOS 15 Sequoia or newer:**
+Heading color is a scheme choice: Default (no color), Unified (one color for every level, eight presets), or Standard (three colors for H1/H2/H3, six preset palettes). The hero screenshot above is Standard with the CMY(K) palette.
 
-1. Double-click `MacMD` in Applications.
-2. macOS shows "cannot verify this app is free from malware." Click **Done**.
-3. Open **System Settings → Privacy & Security**. Scroll to the **Security** section.
-4. Next to "MacMD was blocked to protect your Mac", click **Open Anyway**.
-5. Confirm once more, authenticate with Touch ID or password.
-6. MacMD launches.
+<img src="docs/theme-builder.png" width="45%" alt="The Custom Theme builder with separate H1, H2, and H3 colors for light and dark" />
 
-**On macOS 14 Sonoma:**
+Custom+ opens the theme builder: pick your own colors, separately for light and dark, name the palette, and it saves into the theme list.
 
-Right-click `MacMD.app` → **Open** → **Open** in the confirmation dialog.
+## Plain text you can trust
 
-After this one-time approval, MacMD launches normally every time.
+What you save is what you typed: UTF-8, no smart quotes, no dash substitution, no autocorrect, and paste always comes in plain. The two exceptions are old text-editor conventions, a single trailing newline added on save if missing and a leading BOM stripped on read. A file that is not valid UTF-8 is refused with an error instead of silently corrupted. Files over 8 MiB open unstyled so typing stays fast; over 64 MiB they are refused.
 
-### 4. Open .md files
+## Privacy and security
 
-Any of these work:
+MacMD makes no network connections: no update checks, no crash reporting, no analytics. The preview and export render fully offline from a bundled engine, inside a web view with a strict content security policy, all network access denied, and no script execution from document content. The binary is code-signed with the hardened runtime enabled.
 
-- Right-click any `.md` file and choose **Open With → MacMD** (or set it as default via File → Get Info → Open with → Change All).
-- Drag a `.md` file onto the MacMD icon in the Dock.
-- File → Open inside MacMD.
-- Cmd-N for a new untitled document.
+The app is not sandboxed (the App Sandbox broke saving to external drives; BBEdit, Sublime Text, and VS Code make the same call). It only touches files you open or save through the standard panels. Verify the entitlements yourself:
 
-MacMD opens `.md`, `.markdown`, `.mdown`, and `.mkd` files.
-
-### Uninstall
-
-Drag `MacMD.app` from Applications to Trash. No daemons, no receipts, no login items. The only trace left behind is the standard small preferences file every Mac app keeps; remove `~/Library/Preferences/com.sleetcrash.MacMD.plist` too if you want zero trace.
-
-## Write and save
-
-The File menu works exactly as you'd expect, and all commands use standard Mac keybindings:
-
-    Cmd-N     New document
-    Cmd-O     Open an existing .md file
-    Cmd-S     Save (prompts for filename + location on first save)
-    Cmd-Shift-S   Save As
-    Cmd-P     Print
-    Cmd-W     Close window (prompts to save if dirty)
-    Cmd-Z / Cmd-Shift-Z   Undo / Redo
-    Cmd-F     Find (inline find bar)
-    Cmd-Opt-F     Find and Replace
-    Cmd-B / Cmd-I     Bold / Italic the selection (wraps or unwraps)
-    Cmd-Shift-X   Strikethrough the selection
-    Cmd-K     Wrap the selection as a link
-    Cmd-Shift-L   Toggle the task checkbox on the current line
-    Cmd-/     Show Formatting: switch between styled Markdown and plain
-              source text with line numbers
-    Cmd-+ / Cmd--   Increase / decrease editor font size
-    Cmd-0     Reset editor font size to the default
-    Cmd-,     Settings (appearance, themes, fonts, cursor, editing defaults)
-
-Pressing Return on a list item continues the list: the next marker is inserted for you, with ordered-list numbering continued automatically. Spell check underlines misspellings as you type, with an optional grammar check. An optional word count and reading-time estimate sits under the editor (View → Show Word Count).
-
-The editor autosaves in the background. If the app quits unexpectedly, reopening recovers your work. Recent files appear under File → Open Recent, and a built-in offline Help window (Help → MacMD Help) covers the editor, files, settings, and shortcuts.
-
-## What gets highlighted
-
-As you type, MacMD styles these Markdown constructs live:
-
-    # Heading 1 through ###### Heading 6   → bold, theme color, sized per level
-    **bold** and __bold__                  → bold
-    *italic* and _italic_                  → italic
-    ***bold italic***                      → bold + italic compose correctly
-    ~~strikethrough~~                      → single-line strike
-    `inline code`                          → subtle background tint
-    ```        ~~~                         → fenced code blocks get the same tint,
-    fenced     fenced                         and style to end of document if you
-    ```        ~~~                            haven't closed them yet (backtick and
-                                              tilde fences both work; a fence can
-                                              only be closed by the same marker)
-    [link label](https://example.com)      → label underlined in link color, URL muted
-    - unordered, * and + also valid        → marker inherits its section's heading color
-    1. ordered list, 1) also valid         → marker inherits its section's heading color
-    - [ ] todo                             → bracket inherits section color; click to toggle
-    - [x] done                             → bracket inherits section color + body strike-through
-    > blockquote                           → muted + italic, composes with bold inside
-    ---  (or +++)  front matter            → muted metadata block, recognized at the
-                                              top of the document (YAML and TOML)
-    ---                                    → horizontal rule, muted
-
-Highlighting updates only the paragraph you're editing, so typing stays smooth on long files. Inside fenced code blocks, inline rules are intentionally suppressed, so code stays code.
-
-Semantic colors are used throughout, so Dark Mode adapts automatically when you toggle system appearance.
-
-## What gets saved
-
-Plain UTF-8 text. Byte-for-byte what you typed: no smart quotes, no dash substitution, no link detection, no autocorrect. Paste from another app always comes in as plain text.
-
-Two narrow exceptions to byte fidelity, both long-standing text-editor conventions:
-
-- A single trailing newline is appended on save when the document doesn't already end with one (POSIX text-file convention; matters for shell pipelines, `wc -l`, and `git diff`).
-- A leading UTF-8 BOM (`EF BB BF`) is stripped on read, since BOMs are how some Windows editors and web tools sign their UTF-8 output and most editors silently strip it on import.
-
-If you try to open a file that isn't valid UTF-8, MacMD refuses and surfaces a clear error rather than silently corrupting it with replacement characters.
-
-Files larger than 64 MiB are rejected outright with a standard document-open error. Files between 8 MiB and 64 MiB open with syntax highlighting disabled so typing stays responsive; they're still fully editable, just unstyled.
-
-## Themes and settings
-
-Open Settings (Cmd-,) for a tabbed settings window with a live preview.
-
-The **Appearance** tab:
-
-- **Mode**: Light, Dark, or System (follows macOS).
-- **Background**: the default that follows your mode, or any custom color, with the text adjusting itself to stay readable.
-- **Scheme**: Default (headings bold and sized but uncolored), Unified (one color for every heading level), or Standard (three colors: H1, H2, H3, with H4 through H6 inheriting H3).
-- **Theme**: preset palettes, or a custom palette you build, name, and save, with separate colors for light and dark.
-- **Font**: eight body font families, monospaced and proportional, plus the size (also on the View menu: Cmd-+, Cmd--, Cmd-0).
-- **Cursor**: Bar, Block, or Underline, with an optional blink.
-
-The **Editing** tab sets the spelling and grammar defaults, plus the size new windows open at, with a Use Current Window button to capture the size of the window you're using. Reopened files keep their own remembered size.
-
-List markers inherit the color of the heading section they sit under. Body text always uses the adaptive label color.
-
-## Security and privacy
-
-MacMD makes no network connections: no update checks, no crash reporting, no analytics, no telemetry. The source contains no networking code, and the app requests no access to the camera, microphone, location, photos, contacts, or calendars. It registers no URL schemes, daemons, or background services. The hardened runtime is enabled and the binary is code-signed.
-
-The app only ever opens and saves files you explicitly choose through the standard Open and Save panels; it doesn't browse your filesystem on its own.
-
-MacMD is **not sandboxed**. The App Sandbox was removed because it caused intermittent save failures on external and USB volumes (the security-scoped URL granted at file-open time stopped being valid after the drive slept or was re-mounted, a known limitation of SwiftUI's `DocumentGroup`). This matches the posture of editors like BBEdit, Sublime Text, and VS Code.
-
-You can verify at any time:
-
-    codesign -dv --entitlements - /path/to/MacMD.app
+    codesign -dv --entitlements - /Applications/MacMD.app
 
 Security reports: see [SECURITY.md](SECURITY.md).
 
-## Scope
+## Install
 
-The current release is deliberately an editor, not an IDE: there is no rendered preview pane, no export, no multi-cursor editing, no outline pane, and no file browser. A rendered preview with HTML export is in development on `main` and will ship as version 2.0.
+Grab the DMG from the [latest release](../../releases/latest) and drag MacMD to Applications. It is signed but not notarized, so approve it once on first launch: on macOS 15 or newer, System Settings → Privacy & Security → Open Anyway; on macOS 14, right-click the app → Open.
 
-## Build from source
+MacMD opens `.md`, `.markdown`, `.mdown`, and `.mkd`. Uninstalling is dragging it to the Trash; the only leftover is a small preferences file in `~/Library/Preferences`.
 
-Requires Xcode 16 or newer.
+## Building
+
+Requires Xcode 16 or newer. Open `MacMD.xcodeproj` and hit Cmd-R, or:
 
     xcodebuild -project MacMD.xcodeproj -scheme MacMD -configuration Release -destination 'platform=macOS' build
 
-The built app lands in Xcode's DerivedData under `Build/Products/Release/MacMD.app`, or you can open the project in Xcode and press Cmd-R to run it directly.
+Run the tests the same way with `xcodebuild test`. The suite (352 tests) pins every highlighting rule, the file-handling guarantees, the render pipeline, and a hostile-input security gate. Project layout and house rules are in [CONTRIBUTING.md](CONTRIBUTING.md).
 
-Run tests:
+## Roadmap
 
-    xcodebuild test -project MacMD.xcodeproj -scheme MacMD -destination 'platform=macOS'
-
-The test suite covers every highlighting rule and the tricky edge cases: bold and italic composition, unclosed and reopened code fences, list-marker versus italic disambiguation, BOM stripping, the trailing-newline policy, the document size guards, and the task-list toggle. See [CONTRIBUTING.md](CONTRIBUTING.md) for the project layout and release packaging.
+A formatting toolbar, an outline pane, and a file browser are in development for 2.1. Multi-cursor editing is not planned.
 
 ## License
 
