@@ -78,7 +78,7 @@ struct MacMDApp: App {
                     .keyboardShortcut("+", modifiers: .command)
                 Button("Decrease Font Size") { themeController.adjustFontSize(by: -1) }
                     .keyboardShortcut("-", modifiers: .command)
-                Button("Actual Size") { themeController.resetFontSize() }
+                Button("Reset Font Size") { themeController.resetFontSize() }
                     .keyboardShortcut("0", modifiers: .command)
                 Divider()
                 Button(showWordCount ? "Hide Word Count" : "Show Word Count") {
