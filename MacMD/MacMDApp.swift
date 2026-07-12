@@ -31,6 +31,7 @@ struct MacMDApp: App {
         .commands {
             HelpCommands()
             AppSettingsCommands()
+            TemplateCommands()
             CommandGroup(after: .importExport) {
                 Button("Export to HTML…") {
                     if let editor = focusedEditor() {
