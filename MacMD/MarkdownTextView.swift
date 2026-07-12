@@ -187,6 +187,7 @@ struct MarkdownTextView: NSViewRepresentable {
         // nonisolated(unsafe): written only on the main actor, read again only in
         // the nonisolated deinit; removeObserver is thread-safe.
         nonisolated(unsafe) private var formattingObserver: NSObjectProtocol?
+        nonisolated(unsafe) private var lineNumbersObserver: NSObjectProtocol?
         nonisolated(unsafe) private var spellingObserver: NSObjectProtocol?
         weak var scrollView: NSScrollView?
         private var gutter: LineNumberGutterView?
@@ -290,6 +291,11 @@ struct MarkdownTextView: NSViewRepresentable {
                 guard let self, let textView else { return }
                 MainActor.assumeIsolated { self.applyFormattingChange(to: textView) }
             }
+            lineNumbersObserver = NotificationCenter.default.addObserver(
+                forName: LineNumbersPref.didChange, object: nil, queue: .main) { [weak self] _ in
+                guard let self else { return }
+                MainActor.assumeIsolated { self.syncGutter() }
+            }
         }
 
         /// Keep every open editor in sync with the global spelling defaults
@@ -311,15 +317,14 @@ struct MarkdownTextView: NSViewRepresentable {
             }
         }
 
-        // MARK: - Line-number gutter (Plain mode only)
+        // MARK: - Line-number gutter
 
-        /// Install/remove the gutter and widen/restore the left inset to match the
-        /// current FormattingPref. The gutter shows only when formatting is OFF
-        /// (Plain). Restores the base 24pt inset in Styled mode so defaults are
-        /// byte-identical to today.
+        /// Install/remove the gutter and widen/restore the left inset to match
+        /// LineNumbersPref. Shown in BOTH Styled and Plain modes (Plain-only
+        /// before 2.1); off restores the base 24pt inset.
         func syncGutter() {
             guard let tv = textView as? ClickableTextView, let scrollView else { return }
-            if FormattingPref.isOn {
+            if !LineNumbersPref.isOn {
                 gutter?.removeFromSuperview()
                 gutter = nil
                 if let clipObserver {
@@ -370,9 +375,9 @@ struct MarkdownTextView: NSViewRepresentable {
         }
 
         /// Recompute width + inset + redraw after the text or font changed (digit
-        /// count or line height may change). No-op in Styled mode.
+        /// count or line height may change). No-op while line numbers are off.
         func refreshGutter() {
-            guard !FormattingPref.isOn, gutter != nil else { return }
+            guard LineNumbersPref.isOn, gutter != nil else { return }
             layoutGutter()
         }
 
@@ -397,6 +402,7 @@ struct MarkdownTextView: NSViewRepresentable {
 
         deinit {
             if let formattingObserver { NotificationCenter.default.removeObserver(formattingObserver) }
+            if let lineNumbersObserver { NotificationCenter.default.removeObserver(lineNumbersObserver) }
             if let spellingObserver { NotificationCenter.default.removeObserver(spellingObserver) }
             if let clipObserver { NotificationCenter.default.removeObserver(clipObserver) }
             if let scrollSyncObserver { NotificationCenter.default.removeObserver(scrollSyncObserver) }
