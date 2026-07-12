@@ -7,9 +7,17 @@ struct MacMDApp: App {
     @StateObject private var customDraft = CustomDraft()
     @AppStorage(WordCountPref.key) private var showWordCount = false
     @AppStorage(FormattingPref.key) private var showFormatting = true
-    @AppStorage(PreviewPref.key) private var showPreview = false
+    @AppStorage(LineNumbersPref.key) private var showLineNumbers = true
+    @AppStorage(ToolbarPref.key) private var showToolbar = true
+    @AppStorage(PaneModePref.key) private var paneModeRaw = PaneMode.editor.rawValue
     @AppStorage(SpellingPref.spellingKey) private var checkSpelling = true
     @AppStorage(SpellingPref.grammarKey) private var checkGrammar = false
+
+    init() {
+        PaneModePref.migrate()
+    }
+
+    private var paneMode: PaneMode { PaneMode(rawValue: paneModeRaw) ?? .editor }
 
     var body: some Scene {
         DocumentGroup(newDocument: MarkdownDocument()) { file in
@@ -23,14 +31,8 @@ struct MacMDApp: App {
         .commands {
             HelpCommands()
             AppSettingsCommands()
-            CommandGroup(after: .importExport) {
-                Button("Export to HTML…") {
-                    if let editor = focusedEditor() {
-                        HTMLExporter.export(markdown: editor.string, theme: themeController, in: editor.window)
-                    }
-                }
-                .keyboardShortcut("e", modifiers: [.command, .shift])
-            }
+            TemplateCommands()
+            ExportCommands(themeController: themeController)
             CommandGroup(after: .pasteboard) {
                 Menu("Find") {
                     Button("Find…") { performFindAction(.showFindInterface) }
@@ -78,7 +80,7 @@ struct MacMDApp: App {
                     .keyboardShortcut("+", modifiers: .command)
                 Button("Decrease Font Size") { themeController.adjustFontSize(by: -1) }
                     .keyboardShortcut("-", modifiers: .command)
-                Button("Actual Size") { themeController.resetFontSize() }
+                Button("Reset Font Size") { themeController.resetFontSize() }
                     .keyboardShortcut("0", modifiers: .command)
                 Divider()
                 Button(showWordCount ? "Hide Word Count" : "Show Word Count") {
@@ -89,11 +91,27 @@ struct MacMDApp: App {
                     set: { FormattingPref.set($0) }
                 ))
                 .keyboardShortcut("/", modifiers: .command)
+                Toggle("Show Line Numbers", isOn: Binding(
+                    get: { showLineNumbers },
+                    set: { LineNumbersPref.set($0) }
+                ))
+                Toggle("Show Toolbar", isOn: Binding(
+                    get: { showToolbar },
+                    set: { ToolbarPref.set($0) }
+                ))
                 Toggle("Show Preview", isOn: Binding(
-                    get: { showPreview },
-                    set: { PreviewPref.isVisible = $0 }
+                    get: { _ = paneMode; return PaneModePref.previewVisible },
+                    set: { PaneModePref.set($0 ? .split : .editor) }
                 ))
                 .keyboardShortcut("p", modifiers: [.command, .shift])
+                Picker("Layout", selection: Binding(
+                    get: { paneMode },
+                    set: { PaneModePref.set($0) }
+                )) {
+                    ForEach(PaneMode.allCases, id: \.self) { mode in
+                        Text(mode.displayName).tag(mode)
+                    }
+                }
                 Divider()
             }
         }
@@ -136,37 +154,73 @@ enum SettingsScene {
     static let id = "appearance"
 }
 
+/// File > Export to HTML / PDF. The markdown comes from the focused document's
+/// scene value (not the editor view), so exporting works in every pane layout
+/// including preview-only, where no editor exists.
+struct ExportCommands: Commands {
+    let themeController: ThemeController
+    @FocusedValue(\.exportMarkdown) private var exportMarkdown
+
+    var body: some Commands {
+        CommandGroup(after: .importExport) {
+            Button("Export to HTML…") {
+                if let markdown = exportMarkdown {
+                    HTMLExporter.export(markdown: markdown, theme: themeController, in: NSApp.keyWindow)
+                }
+            }
+            .keyboardShortcut("e", modifiers: [.command, .shift])
+            .disabled(exportMarkdown == nil)
+            Button("Export to PDF…") {
+                if let markdown = exportMarkdown {
+                    PDFExporter.export(markdown: markdown, theme: themeController, in: NSApp.keyWindow)
+                }
+            }
+            .disabled(exportMarkdown == nil)
+        }
+    }
+}
+
 /// The Format menu: markdown emphasis (Bold, Italic, Strikethrough, Inline
 /// Code), Link, and the task-checkbox toggle, all acting on the focused editor.
+/// Disabled in preview-only layout, where no editor exists to receive them.
 /// App preferences moved to the standard app-menu Settings… item (see
 /// `AppSettingsCommands`), so there is no longer a Format ▸ Appearance entry.
 struct FormatCommands: Commands {
+    @AppStorage(PaneModePref.key) private var paneModeRaw = PaneMode.editor.rawValue
+
+    private var editorAvailable: Bool {
+        (PaneMode(rawValue: paneModeRaw) ?? .editor) != .preview
+    }
+
     var body: some Commands {
         CommandMenu("Format") {
-            Button("Bold") {
-                focusedEditor()?.macmdBold(nil)
+            Group {
+                Button("Bold") {
+                    focusedEditor()?.macmdBold(nil)
+                }
+                .keyboardShortcut("b", modifiers: .command)
+                Button("Italic") {
+                    focusedEditor()?.macmdItalic(nil)
+                }
+                .keyboardShortcut("i", modifiers: .command)
+                Button("Strikethrough") {
+                    focusedEditor()?.macmdStrikethrough(nil)
+                }
+                .keyboardShortcut("x", modifiers: [.command, .shift])
+                Button("Inline Code") {
+                    focusedEditor()?.macmdCode(nil)
+                }
+                Button("Link…") {
+                    focusedEditor()?.macmdLink(nil)
+                }
+                .keyboardShortcut("k", modifiers: .command)
+                Divider()
+                Button("Toggle Task Checkbox") {
+                    focusedEditor()?.toggleTaskCheckbox(nil)
+                }
+                .keyboardShortcut("l", modifiers: [.command, .shift])
             }
-            .keyboardShortcut("b", modifiers: .command)
-            Button("Italic") {
-                focusedEditor()?.macmdItalic(nil)
-            }
-            .keyboardShortcut("i", modifiers: .command)
-            Button("Strikethrough") {
-                focusedEditor()?.macmdStrikethrough(nil)
-            }
-            .keyboardShortcut("x", modifiers: [.command, .shift])
-            Button("Inline Code") {
-                focusedEditor()?.macmdCode(nil)
-            }
-            Button("Link…") {
-                focusedEditor()?.macmdLink(nil)
-            }
-            .keyboardShortcut("k", modifiers: .command)
-            Divider()
-            Button("Toggle Task Checkbox") {
-                focusedEditor()?.toggleTaskCheckbox(nil)
-            }
-            .keyboardShortcut("l", modifiers: [.command, .shift])
+            .disabled(!editorAvailable)
         }
     }
 }

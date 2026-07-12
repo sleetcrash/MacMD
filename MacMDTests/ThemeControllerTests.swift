@@ -63,18 +63,18 @@ final class ThemeControllerTests: XCTestCase {
         XCTAssertEqual(c.appearance, .dark)
     }
 
-    func testInitDefaultsToSystemAppearance() {
+    func testInitDefaultsToDarkAppearance() {
         let c = ThemeController(defaults: freshDefaults())
-        XCTAssertEqual(c.appearance, .system)
+        XCTAssertEqual(c.appearance, .dark)
     }
 
     func testApplyAppearanceDoesNotPersist() {
         let d = freshDefaults()
         let c = ThemeController(defaults: d)
-        c.apply(coloring: .off, themeId: "std.rgb", fontSize: 14, appearance: .dark)
-        XCTAssertEqual(c.appearance, .dark)
+        c.apply(coloring: .off, themeId: "std.rgb", fontSize: 14, appearance: .light)
+        XCTAssertEqual(c.appearance, .light)
         XCTAssertNil(d.string(forKey: ThemeSettings.appearanceKey))
-        XCTAssertEqual(c.savedAppearance, .system)
+        XCTAssertEqual(c.savedAppearance, .dark)
     }
 
     func testSaveAppearancePersists() {

@@ -118,6 +118,8 @@ struct SettingsView: View {
     /// Bump to open the shared color panel on the background well (picking
     /// Custom with no color yet, or the pencil).
     @State private var backgroundPickerActivation = 0
+    /// Bumped when a saved background is deleted, so the dropdown re-derives.
+    @State private var backgroundLibraryVersion = 0
     @State private var sizeText = ""
 
     // The Editing tab. Its controls take effect immediately (standard macOS
@@ -125,6 +127,7 @@ struct SettingsView: View {
     @State private var tab: SettingsTab = .appearance
     @AppStorage(SpellingPref.spellingKey) private var checkSpelling = true
     @AppStorage(SpellingPref.grammarKey) private var checkGrammar = false
+    @AppStorage(ToolbarPref.key) private var showToolbar = true
     @State private var windowWidthText = ""
     @State private var windowHeightText = ""
     @FocusState private var focusedSizeField: SizeField?
@@ -352,6 +355,11 @@ struct SettingsView: View {
                     theme.saveFontFamily(wcFontFamilyId)
                     theme.saveCursor(style: CursorStyle(rawValue: wcCursorStyleRaw) ?? .bar, blink: wcCursorBlink)
                     theme.saveBackground(mode: wcBackgroundMode, hex: wcCustomBackgroundHex)
+                    // A saved custom background joins the library, so it stays
+                    // one dropdown pick away after trying other colors.
+                    if wcBackgroundMode == .custom, let hex = wcCustomBackgroundHex {
+                        BackgroundLibrary.add(hex)
+                    }
                     dismiss()
                 }
                     .buttonStyle(SquareButtonStyle())
@@ -401,6 +409,15 @@ struct SettingsView: View {
     /// The Editing tab: immediate-effect editing defaults (no Apply/Save).
     private var editingTab: some View {
         VStack(alignment: .leading, spacing: 22) {
+            VStack(alignment: .leading, spacing: 10) {
+                caption("Toolbar")
+                Toggle("Show toolbar", isOn: Binding(
+                    get: { showToolbar },
+                    set: { ToolbarPref.set($0) }
+                ))
+                .toggleStyle(.checkbox)
+                .font(.system(size: 12))
+            }
             VStack(alignment: .leading, spacing: 10) {
                 caption("Spelling")
                 Toggle("Check spelling as you type", isOn: Binding(
@@ -640,17 +657,36 @@ struct SettingsView: View {
                              action: { pickFont(fam.id) })
             }
         case .background:
-            return [
+            _ = backgroundLibraryVersion   // re-derive rows after a delete
+            var rows = [
                 DropdownItem(id: "bg.default",
                              kind: .backgroundSwatch(EditorBackground.defaultBackground(dark: wcAppearance.resolvesDark)),
                              selected: wcBackgroundMode == .default,
                              action: { pickBackground(.default) }),
-                DropdownItem(id: "bg.custom",
-                             kind: .backgroundCustom(wcStoredCustomColor),
-                             selected: wcBackgroundMode == .custom,
-                             action: { pickBackground(.custom) },
-                             onEdit: wcStoredCustomColor == nil ? nil : { openBackgroundPicker() }),
             ]
+            let saved = BackgroundLibrary.all()
+            if !saved.isEmpty {
+                rows.append(DropdownItem(id: "hdr.savedBackgrounds", kind: .header("Saved")))
+                rows.append(contentsOf: saved.compactMap { hex in
+                    guard let color = NSColor(hex: hex) else { return nil }
+                    return DropdownItem(
+                        id: "bg.saved.\(hex)",
+                        kind: .backgroundSaved(hex: hex, color: color),
+                        selected: wcBackgroundMode == .custom
+                            && wcCustomBackgroundHex?.caseInsensitiveCompare(hex) == .orderedSame,
+                        action: { pickSavedBackground(hex) },
+                        onDelete: {
+                            BackgroundLibrary.remove(hex)
+                            backgroundLibraryVersion += 1
+                        })
+                })
+            }
+            rows.append(DropdownItem(id: "bg.custom",
+                                     kind: .backgroundCustom(wcStoredCustomColor),
+                                     selected: wcBackgroundMode == .custom && !rows.contains(where: \.selected),
+                                     action: { pickBackground(.custom) },
+                                     onEdit: wcStoredCustomColor == nil ? nil : { openBackgroundPicker() }))
+            return rows
         }
     }
 
@@ -674,6 +710,13 @@ struct SettingsView: View {
         wcBackgroundModeRaw = BackgroundMode.custom.rawValue
         openMenu = nil
         backgroundPickerActivation += 1
+    }
+
+    /// A saved-library swatch: select it as the custom background.
+    private func pickSavedBackground(_ hex: String) {
+        wcBackgroundModeRaw = BackgroundMode.custom.rawValue
+        wcCustomBackgroundHex = hex
+        openMenu = nil
     }
 
     private func pickScheme(_ c: Coloring) {
@@ -760,6 +803,7 @@ struct DropdownItem: Identifiable {
         case fontSample(FontFamily) // family name rendered in its own face
         case backgroundSwatch(NSColor)   // Background's Default row: the mode's bg
         case backgroundCustom(NSColor?)  // Background's Custom row: the picked color, or nil = blank "+"
+        case backgroundSaved(hex: String, color: NSColor)  // a library swatch, removable
     }
     let id: String
     let kind: Kind
@@ -768,6 +812,8 @@ struct DropdownItem: Identifiable {
     var action: (() -> Void)? = nil
     // Custom palette rows only, drives the trailing pencil (edit) icon.
     var onEdit: (() -> Void)? = nil
+    // Saved-background rows only, drives the trailing remove (x) icon.
+    var onDelete: (() -> Void)? = nil
 }
 
 /// A seamless in-window dropdown: a flush list of rows the exact width of its
@@ -1074,7 +1120,48 @@ private struct DropdownRow: View {
             }
         case .backgroundCustom(let color):
             backgroundCustomRow(color)
+        case .backgroundSaved(let hex, let color):
+            backgroundSavedRow(hex: hex, color: color)
         }
+    }
+
+    /// A saved-library background row: the hex as its label, the swatch
+    /// right-aligned, and a trailing x that removes it from the library
+    /// (mirrors paletteRow's select-button + trailing-icon split).
+    private func backgroundSavedRow(hex: String, color: NSColor) -> some View {
+        HStack(spacing: 0) {
+            Button { item.action?() } label: {
+                HStack(spacing: 0) {
+                    Text(hex)
+                        .font(.system(size: 10, design: .monospaced))
+                        .lineLimit(1)
+                    Spacer(minLength: 8)
+                    Swatch(color: Color(nsColor: color))
+                }
+                .frame(maxWidth: .infinity)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Saved background \(hex)")
+            .accessibilityAddTraits(item.selected ? .isSelected : [])
+
+            ZStack(alignment: .trailing) {
+                Color.clear.frame(width: iconSlot, height: 1)
+                if let onDelete = item.onDelete {
+                    Button { onDelete() } label: {
+                        Image(systemName: "xmark").font(.system(size: 9))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Remove saved background \(hex)")
+                }
+            }
+            .foregroundStyle(Pane.muted)
+        }
+        .padding(.horizontal, 10)
+        .frame(height: 24)
+        .frame(maxWidth: .infinity)
+        .background(rowBackground)
+        .contentShape(Rectangle())
     }
 
     // Reserved trailing area for the edit icon, matched to the trigger box's

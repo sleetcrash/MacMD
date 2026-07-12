@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 /// New-document ideal window size, widened when the preview pane is showing so
 /// the split opens with room for both panes. Pure so it can be unit tested.
@@ -10,11 +11,23 @@ enum DocumentLayout {
     }
 }
 
+extension FocusedValues {
+    var exportMarkdown: String? {
+        get { self[DocumentView.ExportMarkdownKey.self] }
+        set { self[DocumentView.ExportMarkdownKey.self] = newValue }
+    }
+}
+
 struct DocumentView: View {
     @Binding var document: MarkdownDocument
     /// True for a brand-new Untitled document; sizes its window to the
     /// preferred New Windows size (reopened files keep their frames).
     var isNewDocument: Bool = false
+
+    /// Carries the focused document's markdown to the app-level menu commands.
+    struct ExportMarkdownKey: FocusedValueKey {
+        typealias Value = String
+    }
     /// The folder of the file being edited (nil for a new Untitled document),
     /// threaded from the DocumentGroup configuration so the preview can serve
     /// path-validated local images. `MarkdownDocument` itself carries no URL.
@@ -36,11 +49,14 @@ struct DocumentView: View {
     }
 
     @State private var showWordCount = WordCountPref.isOn
-    @State private var showPreview = PreviewPref.isVisible
+    @State private var showToolbar = ToolbarPref.isOn
+    @State private var paneMode = PaneModePref.mode
     /// The debounced document text handed to the preview, so it does not
     /// re-render on every keystroke.
     @State private var debouncedText = ""
-    @State private var topLine: Int?
+    /// Direct editor<->preview scroll channel; a reference type in @State so it
+    /// survives re-renders while scroll ticks never touch SwiftUI state.
+    @State private var syncBridge = ScrollSyncBridge()
 
     /// The fixed editor background when Custom is active, else nil (Default
     /// keeps the appearance-driven `.textBackgroundColor`).
@@ -49,18 +65,52 @@ struct DocumentView: View {
     }
 
     var body: some View {
-        HSplitView {
-            editorPane
-                .frame(minWidth: 360, idealWidth: CGFloat(NewWindowSize.width))
-            if showPreview {
-                PreviewWebView(text: debouncedText, theme: theme,
-                               topVisibleLine: topLine, documentDirectory: documentDirectory)
-                    .frame(minWidth: 320, idealWidth: CGFloat(NewWindowSize.width) * 0.7)
+        VStack(spacing: 0) {
+            if showToolbar {
+                EditorToolbarStrip(formatEnabled: paneMode != .preview)
+            }
+            HSplitView {
+                if paneMode != .preview {
+                    editorPane
+                        .frame(minWidth: 360, idealWidth: CGFloat(NewWindowSize.width))
+                }
+                if paneMode != .editor {
+                    PreviewWebView(text: debouncedText, theme: theme,
+                                   syncBridge: paneMode == .split ? syncBridge : nil,
+                                   documentDirectory: documentDirectory)
+                        .frame(minWidth: 320, idealWidth: CGFloat(NewWindowSize.width) * 0.7)
+                }
             }
         }
-        .frame(minWidth: showPreview ? 700 : 520,
-               idealWidth: DocumentLayout.idealSize(previewVisible: showPreview).width,
+        .frame(minWidth: paneMode == .split ? 700 : 520,
+               idealWidth: DocumentLayout.idealSize(previewVisible: paneMode == .split).width,
                minHeight: 400, idealHeight: CGFloat(NewWindowSize.height))
+        .toolbar {
+            // Always-visible window chrome: one-click copy of the markdown
+            // source, and the three-way pane layout control.
+            ToolbarItemGroup(placement: .primaryAction) {
+                Button {
+                    let pb = NSPasteboard.general
+                    pb.clearContents()
+                    pb.setString(document.text, forType: .string)
+                } label: {
+                    Label("Copy Text", systemImage: "doc.on.doc")
+                }
+                .help("Copy the document text")
+                Picker("Layout", selection: Binding(
+                    get: { paneMode },
+                    set: { PaneModePref.set($0) }
+                )) {
+                    ForEach(PaneMode.allCases, id: \.self) { mode in
+                        Image(systemName: mode.systemImage)
+                            .help(mode.displayName)
+                            .tag(mode)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .help("Editor, split, or preview layout")
+            }
+        }
         .task(id: document.text) {
             // Debounce the preview render (~200 ms) so typing stays smooth; the
             // markdown render itself runs in the web process, off the main thread.
@@ -70,13 +120,22 @@ struct DocumentView: View {
         .onReceive(NotificationCenter.default.publisher(for: WordCountPref.didChange)) { _ in
             showWordCount = WordCountPref.isOn
         }
-        .onReceive(NotificationCenter.default.publisher(for: PreviewPref.didChange)) { _ in
-            showPreview = PreviewPref.isVisible
+        .onReceive(NotificationCenter.default.publisher(for: PaneModePref.didChange)) { _ in
+            paneMode = PaneModePref.mode
         }
+        .onReceive(NotificationCenter.default.publisher(for: ToolbarPref.didChange)) { _ in
+            showToolbar = ToolbarPref.isOn
+        }
+        // Menu commands (Export to HTML/PDF) read the document through this,
+        // not through the editor view, so they keep working in preview-only
+        // layout where no editor exists.
+        .focusedSceneValue(\.exportMarkdown, document.text)
     }
 
     private var editorPane: some View {
-        VStack(spacing: 0) {
+        // The word-count tab overlays the editor's bottom-left corner instead of
+        // occupying a full-width bar row.
+        ZStack(alignment: .bottomLeading) {
             MarkdownTextView(text: $document.text,
                              fontSize: CGFloat(theme.fontSize),
                              fontFamily: FontFamily.resolve(id: theme.fontFamilyId),
@@ -92,12 +151,18 @@ struct DocumentView: View {
                              cursorStyle: theme.cursorStyle,
                              cursorBlink: theme.cursorBlink,
                              sizeWindowToPreference: isNewDocument,
-                             // Only track the top line while the preview is showing,
-                             // so a hidden preview costs no per-scroll work.
-                             onTopVisibleLine: showPreview ? { topLine = $0 } : nil)
+                             // Only track the top line in split layout (the one
+                             // case both panes are visible), so other layouts
+                             // cost no per-scroll work.
+                             onTopVisibleLine: paneMode == .split
+                                 ? { [syncBridge] in syncBridge.editorScrolled(toTopLine: $0) }
+                                 : nil,
+                             syncBridge: paneMode == .split ? syncBridge : nil)
                 .background(Color(nsColor: customBackground ?? .textBackgroundColor))
             if showWordCount {
                 WordCountBar(text: document.text)
+                    .padding(.leading, -1)
+                    .padding(.bottom, -1)
             }
         }
     }

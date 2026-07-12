@@ -2,6 +2,30 @@
 
 All notable changes to MacMD will be documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Pane layouts: a three-segment control in every document window's titlebar switches between editor only, split, and preview only, alongside a one-click button that copies the whole document. View → Layout mirrors the three choices.
+- Two-way scroll sync: in split layout, scrolling the preview now scrolls the editor too, and following the editor is noticeably smoother.
+- A format toolbar under the titlebar: Bold, Italic, Strikethrough, Inline Code, Link, and Task Checkbox buttons, the editor font and size, and a shortcut to Settings. Hide it from Settings → Editing or View → Show Toolbar.
+- Line numbers in the editor gutter in both styled and plain modes (previously plain mode only), with a View → Show Line Numbers toggle.
+- Front matter in the preview: the leading YAML/TOML block now renders as a muted metadata card instead of misparsing as a giant heading, and under a color scheme its keys (name, description, ...) take the theme's H1 color in both the editor and the preview.
+- Export to PDF: File → Export to PDF writes a single-page PDF of the rendered document with the theme background edge to edge, through the same offline sandboxed pipeline as the HTML export.
+- Templates: File → New from Template starts a prefilled SKILL.md, agent, CLAUDE.md, or AGENTS.md document.
+- Custom themes can now be light-only or dark-only: a Light + Dark | Light | Dark selector in the Custom Theme builder; a single-sided theme uses its colors under both appearances.
+- Saved custom backgrounds: saving Settings with a custom editor background adds the color to a Saved list in the Background dropdown, removable with one click.
+- A `skills/macmd` skill file that teaches AI agents the app's full scope, CLI configuration keys, and menu map.
+
+### Changed
+- The word count is now a compact tab in the editor's bottom-left corner instead of a full-width bar.
+- New installs default to dark mode; the View menu's font-size reset is now labeled "Reset Font Size" (was "Actual Size").
+- The window layout preference migrated from the show-preview toggle to the three-way pane mode (an existing "preview on" carries over as split).
+
+### Fixed
+- A crash when switching themes while document windows were open (window appearance was mutated mid layout pass).
+- The cursor style could revert visually (for example to Block) in other open windows after changing it in Settings; every window now refreshes its caret.
+- Clicking a color swatch in the Custom Theme builder now always retargets the color panel; previously a click could silently deactivate the well and picks went nowhere.
+
 ## [2.0.0] - 2026-07-06
 
 MacMD grows from a pure editor into an editor with a rendered view, while keeping its plain-text guarantees. Everything renders offline with a bundled engine; the app still makes no network connections.

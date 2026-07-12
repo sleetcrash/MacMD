@@ -41,6 +41,11 @@ enum PreviewCSS {
             let size = base + CGFloat(7 - level)   // base+(7-level), mirroring Theme.makeHeadingFonts
             css += "html.\(cls) h\(level) { color: \(hex(color, under: appearance)); font-size: \(fmt(size))px; font-weight: bold; }\n"
         }
+        // Front matter: muted block; keys follow the theme's H1 color (the editor
+        // does the same), staying muted under the Default scheme.
+        let fmKey = palette?.headingColor(level: 1) ?? .secondaryLabelColor
+        css += "html.\(cls) .front-matter { color: \(hex(.secondaryLabelColor, under: appearance)); border-color: \(hex(.separatorColor, under: appearance)); background: \(codeBackgroundRGBA(under: appearance)); }\n"
+        css += "html.\(cls) .front-matter .fm-key { color: \(hex(fmKey, under: appearance)); }\n"
         return css
     }
 

@@ -27,3 +27,22 @@ enum FormattingPref {
         showFormatting && !overSoftSizeLimit
     }
 }
+
+/// The global "show line numbers" preference for the editor gutter. On by
+/// default; independent of the Styled/Plain formatting mode (the gutter was
+/// Plain-only before 2.1). Same UserDefaults + broadcast pattern as above.
+enum LineNumbersPref {
+    static let key = "showLineNumbers"
+    static let didChange = Notification.Name("MacMDLineNumbersPrefDidChange")
+
+    static var isOn: Bool {
+        UserDefaults.standard.object(forKey: key) == nil
+            ? true
+            : UserDefaults.standard.bool(forKey: key)
+    }
+
+    static func set(_ on: Bool) {
+        UserDefaults.standard.set(on, forKey: key)
+        NotificationCenter.default.post(name: didChange, object: nil)
+    }
+}
