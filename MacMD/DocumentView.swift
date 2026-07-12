@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 /// New-document ideal window size, widened when the preview pane is showing so
 /// the split opens with room for both panes. Pure so it can be unit tested.
@@ -36,7 +37,7 @@ struct DocumentView: View {
     }
 
     @State private var showWordCount = WordCountPref.isOn
-    @State private var showPreview = PreviewPref.isVisible
+    @State private var paneMode = PaneModePref.mode
     /// The debounced document text handed to the preview, so it does not
     /// re-render on every keystroke.
     @State private var debouncedText = ""
@@ -50,17 +51,45 @@ struct DocumentView: View {
 
     var body: some View {
         HSplitView {
-            editorPane
-                .frame(minWidth: 360, idealWidth: CGFloat(NewWindowSize.width))
-            if showPreview {
+            if paneMode != .preview {
+                editorPane
+                    .frame(minWidth: 360, idealWidth: CGFloat(NewWindowSize.width))
+            }
+            if paneMode != .editor {
                 PreviewWebView(text: debouncedText, theme: theme,
                                topVisibleLine: topLine, documentDirectory: documentDirectory)
                     .frame(minWidth: 320, idealWidth: CGFloat(NewWindowSize.width) * 0.7)
             }
         }
-        .frame(minWidth: showPreview ? 700 : 520,
-               idealWidth: DocumentLayout.idealSize(previewVisible: showPreview).width,
+        .frame(minWidth: paneMode == .split ? 700 : 520,
+               idealWidth: DocumentLayout.idealSize(previewVisible: paneMode == .split).width,
                minHeight: 400, idealHeight: CGFloat(NewWindowSize.height))
+        .toolbar {
+            // Always-visible window chrome: one-click copy of the markdown
+            // source, and the three-way pane layout control.
+            ToolbarItemGroup(placement: .primaryAction) {
+                Button {
+                    let pb = NSPasteboard.general
+                    pb.clearContents()
+                    pb.setString(document.text, forType: .string)
+                } label: {
+                    Label("Copy Text", systemImage: "doc.on.doc")
+                }
+                .help("Copy the document text")
+                Picker("Layout", selection: Binding(
+                    get: { paneMode },
+                    set: { PaneModePref.set($0) }
+                )) {
+                    ForEach(PaneMode.allCases, id: \.self) { mode in
+                        Image(systemName: mode.systemImage)
+                            .help(mode.displayName)
+                            .tag(mode)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .help("Editor, split, or preview layout")
+            }
+        }
         .task(id: document.text) {
             // Debounce the preview render (~200 ms) so typing stays smooth; the
             // markdown render itself runs in the web process, off the main thread.
@@ -70,8 +99,8 @@ struct DocumentView: View {
         .onReceive(NotificationCenter.default.publisher(for: WordCountPref.didChange)) { _ in
             showWordCount = WordCountPref.isOn
         }
-        .onReceive(NotificationCenter.default.publisher(for: PreviewPref.didChange)) { _ in
-            showPreview = PreviewPref.isVisible
+        .onReceive(NotificationCenter.default.publisher(for: PaneModePref.didChange)) { _ in
+            paneMode = PaneModePref.mode
         }
     }
 
@@ -94,9 +123,10 @@ struct DocumentView: View {
                              cursorStyle: theme.cursorStyle,
                              cursorBlink: theme.cursorBlink,
                              sizeWindowToPreference: isNewDocument,
-                             // Only track the top line while the preview is showing,
-                             // so a hidden preview costs no per-scroll work.
-                             onTopVisibleLine: showPreview ? { topLine = $0 } : nil)
+                             // Only track the top line in split layout (the one
+                             // case both panes are visible), so other layouts
+                             // cost no per-scroll work.
+                             onTopVisibleLine: paneMode == .split ? { topLine = $0 } : nil)
                 .background(Color(nsColor: customBackground ?? .textBackgroundColor))
             if showWordCount {
                 WordCountBar(text: document.text)

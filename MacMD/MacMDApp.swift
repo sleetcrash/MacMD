@@ -8,9 +8,15 @@ struct MacMDApp: App {
     @AppStorage(WordCountPref.key) private var showWordCount = false
     @AppStorage(FormattingPref.key) private var showFormatting = true
     @AppStorage(LineNumbersPref.key) private var showLineNumbers = true
-    @AppStorage(PreviewPref.key) private var showPreview = false
+    @AppStorage(PaneModePref.key) private var paneModeRaw = PaneMode.editor.rawValue
     @AppStorage(SpellingPref.spellingKey) private var checkSpelling = true
     @AppStorage(SpellingPref.grammarKey) private var checkGrammar = false
+
+    init() {
+        PaneModePref.migrate()
+    }
+
+    private var paneMode: PaneMode { PaneMode(rawValue: paneModeRaw) ?? .editor }
 
     var body: some Scene {
         DocumentGroup(newDocument: MarkdownDocument()) { file in
@@ -95,10 +101,18 @@ struct MacMDApp: App {
                     set: { LineNumbersPref.set($0) }
                 ))
                 Toggle("Show Preview", isOn: Binding(
-                    get: { showPreview },
-                    set: { PreviewPref.isVisible = $0 }
+                    get: { paneMode != .editor },
+                    set: { PaneModePref.set($0 ? .split : .editor) }
                 ))
                 .keyboardShortcut("p", modifiers: [.command, .shift])
+                Picker("Layout", selection: Binding(
+                    get: { paneMode },
+                    set: { PaneModePref.set($0) }
+                )) {
+                    ForEach(PaneMode.allCases, id: \.self) { mode in
+                        Text(mode.displayName).tag(mode)
+                    }
+                }
                 Divider()
             }
         }
