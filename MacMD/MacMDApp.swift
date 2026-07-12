@@ -39,6 +39,11 @@ struct MacMDApp: App {
                     }
                 }
                 .keyboardShortcut("e", modifiers: [.command, .shift])
+                Button("Export to PDF…") {
+                    if let editor = focusedEditor() {
+                        PDFExporter.export(markdown: editor.string, theme: themeController, in: editor.window)
+                    }
+                }
             }
             CommandGroup(after: .pasteboard) {
                 Menu("Find") {
