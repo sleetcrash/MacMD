@@ -76,7 +76,9 @@ struct DocumentView: View {
     }
 
     private var editorPane: some View {
-        VStack(spacing: 0) {
+        // The word-count tab overlays the editor's bottom-left corner instead of
+        // occupying a full-width bar row.
+        ZStack(alignment: .bottomLeading) {
             MarkdownTextView(text: $document.text,
                              fontSize: CGFloat(theme.fontSize),
                              fontFamily: FontFamily.resolve(id: theme.fontFamilyId),
@@ -98,6 +100,8 @@ struct DocumentView: View {
                 .background(Color(nsColor: customBackground ?? .textBackgroundColor))
             if showWordCount {
                 WordCountBar(text: document.text)
+                    .padding(.leading, -1)
+                    .padding(.bottom, -1)
             }
         }
     }
