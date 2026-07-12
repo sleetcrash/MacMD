@@ -108,6 +108,8 @@ struct MarkdownTextView: NSViewRepresentable {
         context.coordinator.observeScrollForSync(scrollView: scrollView)
         // Pick up a saved blink-off at launch: updateNSView's change check only
         // catches LATER pref changes, not the initial load.
+        textView.appliedCursorStyle = cursorStyle
+        textView.appliedCursorBlink = cursorBlink
         textView.refreshCaret()
 
         let initialAppearance = appearance
@@ -138,7 +140,19 @@ struct MarkdownTextView: NSViewRepresentable {
         if Theme.setActiveTheme(coloring: coloring, palette: palette) {
             context.coordinator.applyThemeChange(to: textView)
         }
-        textView.window?.appearance = appearance.nsAppearance
+        // Setting NSWindow.appearance synchronously here can land mid
+        // constraint pass (SwiftUI runs updateNSView from display-cycle
+        // observers); AppKit then raises in _postWindowNeedsUpdateConstraints
+        // and _crashOnException kills the app (crash seen 2026-07-12 while
+        // switching themes). Only touch the window when the appearance really
+        // changes, and hop out of the layout pass first.
+        let desired = appearance.nsAppearance
+        if let window = textView.window, window.appearance?.name != desired?.name {
+            DispatchQueue.main.async { [weak window] in
+                guard let window, window.appearance?.name != desired?.name else { return }
+                window.appearance = desired
+            }
+        }
         let background = customBackground ?? .textBackgroundColor
         if textView.backgroundColor != background {
             textView.backgroundColor = background
@@ -146,8 +160,16 @@ struct MarkdownTextView: NSViewRepresentable {
             context.coordinator.customBackground = customBackground
             context.coordinator.refreshGutter()
         }
-        if Theme.setCursor(style: cursorStyle, blink: cursorBlink) {
-            (textView as? ClickableTextView)?.refreshCaret()
+        Theme.setCursor(style: cursorStyle, blink: cursorBlink)
+        // Refresh per VIEW, not per the global change: Theme.setCursor reports
+        // a change only once, so gating each window's refresh on it left every
+        // other open window drawing the old caret style until it next redrew
+        // (the "cursor reverts to block" report, 2026-07-12).
+        if let clickable = textView as? ClickableTextView,
+           clickable.appliedCursorStyle != cursorStyle || clickable.appliedCursorBlink != cursorBlink {
+            clickable.appliedCursorStyle = cursorStyle
+            clickable.appliedCursorBlink = cursorBlink
+            clickable.refreshCaret()
         }
         if textView.string != text {
             context.coordinator.replace(textView: textView, with: text)
@@ -436,6 +458,11 @@ struct MarkdownTextView: NSViewRepresentable {
 
 final class ClickableTextView: NSTextView {
     weak var highlighter: MarkdownHighlighter?
+
+    /// The cursor settings this view last refreshed its caret for, so a pref
+    /// change refreshes every window (Theme's change check fires only once).
+    var appliedCursorStyle: CursorStyle = .bar
+    var appliedCursorBlink = true
 
     /// The 1-based document line at the top of the visible rect, for
     /// editor-to-preview scroll sync. Mirrors the gutter's first-visible-line
