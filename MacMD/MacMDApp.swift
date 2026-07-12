@@ -8,6 +8,7 @@ struct MacMDApp: App {
     @AppStorage(WordCountPref.key) private var showWordCount = false
     @AppStorage(FormattingPref.key) private var showFormatting = true
     @AppStorage(LineNumbersPref.key) private var showLineNumbers = true
+    @AppStorage(ToolbarPref.key) private var showToolbar = true
     @AppStorage(PaneModePref.key) private var paneModeRaw = PaneMode.editor.rawValue
     @AppStorage(SpellingPref.spellingKey) private var checkSpelling = true
     @AppStorage(SpellingPref.grammarKey) private var checkGrammar = false
@@ -99,6 +100,10 @@ struct MacMDApp: App {
                 Toggle("Show Line Numbers", isOn: Binding(
                     get: { showLineNumbers },
                     set: { LineNumbersPref.set($0) }
+                ))
+                Toggle("Show Toolbar", isOn: Binding(
+                    get: { showToolbar },
+                    set: { ToolbarPref.set($0) }
                 ))
                 Toggle("Show Preview", isOn: Binding(
                     get: { paneMode != .editor },

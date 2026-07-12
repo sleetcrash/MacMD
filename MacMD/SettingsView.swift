@@ -125,6 +125,7 @@ struct SettingsView: View {
     @State private var tab: SettingsTab = .appearance
     @AppStorage(SpellingPref.spellingKey) private var checkSpelling = true
     @AppStorage(SpellingPref.grammarKey) private var checkGrammar = false
+    @AppStorage(ToolbarPref.key) private var showToolbar = true
     @State private var windowWidthText = ""
     @State private var windowHeightText = ""
     @FocusState private var focusedSizeField: SizeField?
@@ -401,6 +402,15 @@ struct SettingsView: View {
     /// The Editing tab: immediate-effect editing defaults (no Apply/Save).
     private var editingTab: some View {
         VStack(alignment: .leading, spacing: 22) {
+            VStack(alignment: .leading, spacing: 10) {
+                caption("Toolbar")
+                Toggle("Show toolbar", isOn: Binding(
+                    get: { showToolbar },
+                    set: { ToolbarPref.set($0) }
+                ))
+                .toggleStyle(.checkbox)
+                .font(.system(size: 12))
+            }
             VStack(alignment: .leading, spacing: 10) {
                 caption("Spelling")
                 Toggle("Check spelling as you type", isOn: Binding(

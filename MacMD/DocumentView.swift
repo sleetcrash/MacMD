@@ -37,6 +37,7 @@ struct DocumentView: View {
     }
 
     @State private var showWordCount = WordCountPref.isOn
+    @State private var showToolbar = ToolbarPref.isOn
     @State private var paneMode = PaneModePref.mode
     /// The debounced document text handed to the preview, so it does not
     /// re-render on every keystroke.
@@ -52,16 +53,21 @@ struct DocumentView: View {
     }
 
     var body: some View {
-        HSplitView {
-            if paneMode != .preview {
-                editorPane
-                    .frame(minWidth: 360, idealWidth: CGFloat(NewWindowSize.width))
+        VStack(spacing: 0) {
+            if showToolbar {
+                EditorToolbarStrip()
             }
-            if paneMode != .editor {
-                PreviewWebView(text: debouncedText, theme: theme,
-                               syncBridge: paneMode == .split ? syncBridge : nil,
-                               documentDirectory: documentDirectory)
-                    .frame(minWidth: 320, idealWidth: CGFloat(NewWindowSize.width) * 0.7)
+            HSplitView {
+                if paneMode != .preview {
+                    editorPane
+                        .frame(minWidth: 360, idealWidth: CGFloat(NewWindowSize.width))
+                }
+                if paneMode != .editor {
+                    PreviewWebView(text: debouncedText, theme: theme,
+                                   syncBridge: paneMode == .split ? syncBridge : nil,
+                                   documentDirectory: documentDirectory)
+                        .frame(minWidth: 320, idealWidth: CGFloat(NewWindowSize.width) * 0.7)
+                }
             }
         }
         .frame(minWidth: paneMode == .split ? 700 : 520,
@@ -104,6 +110,9 @@ struct DocumentView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: PaneModePref.didChange)) { _ in
             paneMode = PaneModePref.mode
+        }
+        .onReceive(NotificationCenter.default.publisher(for: ToolbarPref.didChange)) { _ in
+            showToolbar = ToolbarPref.isOn
         }
     }
 
