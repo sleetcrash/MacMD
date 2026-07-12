@@ -18,14 +18,56 @@
 var md = window.markdownit({ html: false, linkify: true, typographer: false });
 
 // Stamp each top-level block with its 1-based source line (from token.map) so the
-// editor's top visible line can drive editor-to-preview scroll sync.
+// editor's top visible line can drive editor-to-preview scroll sync. The offset
+// re-anchors the numbers when a leading front-matter block was split off before
+// markdown-it ran (its lines are gone from the source markdown-it sees).
+var sourceLineOffset = 0;
 md.core.ruler.push("macmd_source_line", function (state) {
   state.tokens.forEach(function (token) {
     if (token.map && token.level === 0) {
-      token.attrSet("data-source-line", String(token.map[0] + 1));
+      token.attrSet("data-source-line", String(token.map[0] + 1 + sourceLineOffset));
     }
   });
 });
+
+// Leading YAML (---) or TOML (+++) front matter, mirroring the editor's rule
+// (MarkdownParser.frontMatterSpan): the document's FIRST line is exactly the
+// delimiter and a matching closing delimiter line follows. Without this split,
+// markdown-it reads "name: x" + "---" as a setext H2, so the metadata rendered
+// as a big bold theme-colored heading.
+function splitFrontMatter(markdown) {
+  var lines = markdown.split("\n");
+  var first = (lines[0] || "").replace(/\r$/, "");
+  if (first !== "---" && first !== "+++") { return null; }
+  for (var i = 1; i < lines.length; i++) {
+    if (lines[i].replace(/\r$/, "") === first) {
+      return { lines: lines.slice(1, i), lineCount: i + 1, rest: lines.slice(i + 1).join("\n") };
+    }
+  }
+  return null;
+}
+
+function escapeHTML(s) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+// The front-matter block rendered as muted metadata; keys take the theme's H1
+// color via the injected theme CSS (.front-matter .fm-key).
+function frontMatterHTML(lines) {
+  var html = '<div class="front-matter" data-source-line="1">';
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i].replace(/\r$/, "");
+    var m = /^([ \t]*)([A-Za-z0-9_-]+):(.*)$/.exec(line);
+    if (m) {
+      html += '<div class="fm-line">' + escapeHTML(m[1])
+        + '<span class="fm-key">' + escapeHTML(m[2]) + '</span>:'
+        + escapeHTML(m[3]) + "</div>";
+    } else {
+      html += '<div class="fm-line">' + (line === "" ? "&nbsp;" : escapeHTML(line)) + "</div>";
+    }
+  }
+  return html + "</div>";
+}
 
 // Route relative image srcs through the validated img scheme; Swift does the
 // containment check. Absolute paths and any explicit scheme are left as-is
@@ -103,7 +145,11 @@ async function renderMermaid(container) {
 
 window.render = function (markdown) {
   var container = document.getElementById("content");
-  container.innerHTML = md.render(markdown);
+  var fm = splitFrontMatter(markdown);
+  sourceLineOffset = fm ? fm.lineCount : 0;
+  var body = md.render(fm ? fm.rest : markdown);
+  sourceLineOffset = 0;
+  container.innerHTML = (fm ? frontMatterHTML(fm.lines) : "") + body;
   rewriteImages(container);
   // Advance the completion flag whether mermaid resolves or rejects, so the flag
   // never stalls (defense in depth; renderMermaid catches per-block failures).
@@ -117,7 +163,11 @@ window.render = function (markdown) {
 // async and inlines mermaid SVG.
 window.renderForExport = async function (markdown) {
   var container = document.getElementById("content");
-  container.innerHTML = md.render(markdown);
+  var fm = splitFrontMatter(markdown);
+  sourceLineOffset = fm ? fm.lineCount : 0;
+  var body = md.render(fm ? fm.rest : markdown);
+  sourceLineOffset = 0;
+  container.innerHTML = (fm ? frontMatterHTML(fm.lines) : "") + body;
   // Drop external image references so the exported file makes NO network request
   // (no tracking beacon) when opened elsewhere. Only data: URIs and document-
   // relative paths survive; anything with a scheme (http:, https:, ...) or a

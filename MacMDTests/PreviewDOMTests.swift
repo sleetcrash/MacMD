@@ -99,4 +99,42 @@ final class PreviewDOMTests: XCTestCase {
         let color = await h.eval("getComputedStyle(document.body).color") as? String
         XCTAssertEqual(color, "rgb(10, 20, 30)")
     }
+
+    func testFrontMatterRendersAsMetadataBlockNotHeading() async {
+        let h = PreviewHarness()
+        await h.load()
+        await h.render("---\nname: macmd\ndescription: a markdown editor\n---\n# Real Heading\nBody\n")
+        let fmCount = (await h.eval("document.querySelectorAll('.front-matter').length") as? NSNumber)?.intValue
+        XCTAssertEqual(fmCount, 1, "front matter renders as its own block")
+        let keys = await h.eval(
+            "Array.from(document.querySelectorAll('.front-matter .fm-key')).map(function (e) { return e.textContent; }).join(',')"
+        ) as? String
+        XCTAssertEqual(keys, "name,description")
+        // Without the split, markdown-it read "description: ..." + "---" as a
+        // setext H2 (the bold/pink metadata bug).
+        let h2Count = (await h.eval("document.querySelectorAll('h2').length") as? NSNumber)?.intValue
+        XCTAssertEqual(h2Count, 0, "metadata must not parse as a setext heading")
+        // Scroll-sync line numbers still count the stripped block: the heading
+        // sits on source line 5.
+        let line = await h.eval("document.querySelector('h1').getAttribute('data-source-line')") as? String
+        XCTAssertEqual(line, "5")
+    }
+
+    func testFrontMatterContentIsHTMLEscaped() async {
+        let h = PreviewHarness()
+        await h.load()
+        await h.render("---\nname: <img src=x onerror=alert(1)>\n---\nBody\n")
+        let imgs = (await h.eval("document.querySelectorAll('.front-matter img').length") as? NSNumber)?.intValue
+        XCTAssertEqual(imgs, 0, "front-matter values are inert text, never markup")
+    }
+
+    func testLeadingDashesWithoutClosingDelimiterStayMarkdown() async {
+        let h = PreviewHarness()
+        await h.load()
+        await h.render("---\nJust a line\n")
+        let fmCount = (await h.eval("document.querySelectorAll('.front-matter').length") as? NSNumber)?.intValue
+        XCTAssertEqual(fmCount, 0, "an unclosed delimiter is not front matter")
+        let hrCount = (await h.eval("document.querySelectorAll('hr').length") as? NSNumber)?.intValue
+        XCTAssertEqual(hrCount, 1, "the bare --- still renders as a thematic break")
+    }
 }
