@@ -13,6 +13,17 @@ final class ScrollSyncBridgeTests: XCTestCase {
         XCTAssertEqual(preview, [5, 6], "the driving side flows through freely")
     }
 
+    func testUnchangedLineCostsNoDrive() {
+        let b = ScrollSyncBridge()
+        var preview: [Int] = []
+        b.scrollPreviewToLine = { preview.append($0) }
+        b.editorScrolled(toTopLine: 5)
+        b.editorScrolled(toTopLine: 5)   // scroll ticks within the same line
+        b.editorScrolled(toTopLine: 5)
+        b.editorScrolled(toTopLine: 6)
+        XCTAssertEqual(preview, [5, 6], "same-line ticks are deduped")
+    }
+
     func testFollowerEchoIsSuppressed() {
         let b = ScrollSyncBridge()
         var editor: [Int] = []

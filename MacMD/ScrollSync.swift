@@ -21,16 +21,26 @@ final class ScrollSyncBridge {
 
     private var lastDrive: (source: Source, at: CFAbsoluteTime)?
     private let settle: CFAbsoluteTime = 0.25
+    // Last line each side drove, so the per-tick scroll observers (which fire
+    // far more often than the top line changes) cost no WebKit IPC or layout
+    // query while the line is unchanged. lastDrive still refreshes on every
+    // tick so the driver keeps suppressing echoes while scrolling in place.
+    private var lastEditorDriven: Int?
+    private var lastPreviewDriven: Int?
 
     func editorScrolled(toTopLine line: Int) {
         guard allow(.editor) else { return }
         lastDrive = (.editor, CFAbsoluteTimeGetCurrent())
+        guard line != lastEditorDriven else { return }
+        lastEditorDriven = line
         scrollPreviewToLine?(line)
     }
 
     func previewScrolled(toTopLine line: Int) {
         guard allow(.preview) else { return }
         lastDrive = (.preview, CFAbsoluteTimeGetCurrent())
+        guard line != lastPreviewDriven else { return }
+        lastPreviewDriven = line
         scrollEditorToLine?(line)
     }
 

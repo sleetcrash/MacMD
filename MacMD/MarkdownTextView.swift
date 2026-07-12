@@ -150,14 +150,11 @@ struct MarkdownTextView: NSViewRepresentable {
         // observers); AppKit then raises in _postWindowNeedsUpdateConstraints
         // and _crashOnException kills the app (crash seen 2026-07-12 while
         // switching themes). Only touch the window when the appearance really
-        // changes, and hop out of the layout pass first.
-        let desired = appearance.nsAppearance
-        if let window = textView.window, window.appearance?.name != desired?.name {
-            DispatchQueue.main.async { [weak window] in
-                guard let window, window.appearance?.name != desired?.name else { return }
-                window.appearance = desired
-            }
-        }
+        // changes, and hop out of the layout pass first. The coordinator holds
+        // the LATEST desired value so a stale queued block can never apply an
+        // intermediate appearance from an earlier pass in the same turn.
+        context.coordinator.desiredWindowAppearance = appearance.nsAppearance
+        context.coordinator.applyWindowAppearanceIfNeeded(textView.window)
         let background = customBackground ?? .textBackgroundColor
         if textView.backgroundColor != background {
             textView.backgroundColor = background
@@ -387,6 +384,28 @@ struct MarkdownTextView: NSViewRepresentable {
         }
 
         private var syncBridge: ScrollSyncBridge?
+
+        /// The appearance the window should end up with; nil = follow the OS.
+        var desiredWindowAppearance: NSAppearance?
+        private var appearanceApplyQueued = false
+
+        /// Apply `desiredWindowAppearance` OUTSIDE the current layout pass (see
+        /// updateNSView). At most one block is queued; it reads the desired
+        /// value at run time, so back-to-back updates in one turn resolve to
+        /// the final value instead of a stale capture.
+        func applyWindowAppearanceIfNeeded(_ window: NSWindow?) {
+            guard let window,
+                  window.appearance?.name != desiredWindowAppearance?.name,
+                  !appearanceApplyQueued else { return }
+            appearanceApplyQueued = true
+            DispatchQueue.main.async { [weak self, weak window] in
+                guard let self else { return }
+                self.appearanceApplyQueued = false
+                guard let window,
+                      window.appearance?.name != self.desiredWindowAppearance?.name else { return }
+                window.appearance = self.desiredWindowAppearance
+            }
+        }
 
         /// Wire the shared bridge so the preview can drive this editor's scroll
         /// position directly (no SwiftUI in the loop; see ScrollSyncBridge).

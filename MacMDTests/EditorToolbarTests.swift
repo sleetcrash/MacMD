@@ -22,8 +22,9 @@ final class EditorToolbarTests: XCTestCase {
     }
 
     func testToolbarItemIDsAreUniqueAndStable() {
-        XCTAssertEqual(EditorToolbar.allItemIDs, ["bold", "italic", "strikethrough", "code", "link", "task"])
-        XCTAssertEqual(Set(EditorToolbar.allItemIDs).count, EditorToolbar.allItemIDs.count)
+        let ids = EditorToolbar.parityItems.map(\.id)
+        XCTAssertEqual(ids, ["bold", "italic", "strikethrough", "code", "link", "task"])
+        XCTAssertEqual(Set(ids).count, ids.count)
     }
 
     func testToolbarPrefDefaultsOnPersistsAndBroadcasts() {

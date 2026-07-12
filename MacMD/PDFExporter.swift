@@ -54,12 +54,12 @@ enum PDFExporter {
         webView.frame.size.height = max(measured, 100)
         try? await Task.sleep(nanoseconds: 100_000_000)   // let the resize lay out
 
-        // The local webView stays alive for this whole scope, including the await.
-        return await withCheckedContinuation { continuation in
-            webView.createPDF(configuration: WKPDFConfiguration()) { result in
-                continuation.resume(returning: try? result.get())
-            }
-        }
+        // The async pdf(configuration:) keeps the web view alive across the
+        // await (a completion-handler createPDF would not pin it, and an
+        // early-released view never calls back). Unlike evaluateJavaScript's
+        // async overload there is no nil-result trap here: it returns Data or
+        // throws.
+        return try? await webView.pdf(configuration: WKPDFConfiguration())
     }
 
     /// Render the document and present a save panel to write the `.pdf`.

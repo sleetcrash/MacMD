@@ -127,6 +127,10 @@ async function renderMermaid(container) {
     var wrapper = document.createElement("div");
     wrapper.className = "mermaid-diagram";
     wrapper.setAttribute("data-mermaid-hash", hash);
+    // Keep the source-line anchor the <pre> carried, so scroll sync stays
+    // precise around rendered diagrams.
+    var srcLine = pre && pre.getAttribute && pre.getAttribute("data-source-line");
+    if (srcLine) { wrapper.setAttribute("data-source-line", srcLine); }
     if (mermaidCache[cacheKey] !== undefined) {
       wrapper.innerHTML = mermaidCache[cacheKey];
     } else {

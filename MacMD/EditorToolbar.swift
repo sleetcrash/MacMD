@@ -40,7 +40,6 @@ enum EditorToolbar {
         EditorToolbarItem(id: "task", label: "Task Checkbox", systemImage: "checklist", action: .taskCheckbox),
     ]
 
-    static var allItemIDs: [String] { parityItems.map(\.id) }
 }
 
 /// The "show the format toolbar" preference. On by default; hidden from
@@ -65,6 +64,9 @@ enum ToolbarPref {
 /// The format bar under the titlebar: Format-menu parity buttons, font family
 /// and size quick controls, and a Settings shortcut.
 struct EditorToolbarStrip: View {
+    /// False in preview-only layout: no editor exists, so the format buttons
+    /// gray out (font and Settings controls still apply to the preview).
+    var formatEnabled = true
     @EnvironmentObject private var theme: ThemeController
     @Environment(\.openWindow) private var openWindow
 
@@ -82,6 +84,7 @@ struct EditorToolbarStrip: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.borderless)
+                .disabled(!formatEnabled)
                 .help(item.label)
             }
             Divider().frame(height: 16).padding(.horizontal, 4)

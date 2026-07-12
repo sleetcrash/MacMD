@@ -11,11 +11,23 @@ enum DocumentLayout {
     }
 }
 
+extension FocusedValues {
+    var exportMarkdown: String? {
+        get { self[DocumentView.ExportMarkdownKey.self] }
+        set { self[DocumentView.ExportMarkdownKey.self] = newValue }
+    }
+}
+
 struct DocumentView: View {
     @Binding var document: MarkdownDocument
     /// True for a brand-new Untitled document; sizes its window to the
     /// preferred New Windows size (reopened files keep their frames).
     var isNewDocument: Bool = false
+
+    /// Carries the focused document's markdown to the app-level menu commands.
+    struct ExportMarkdownKey: FocusedValueKey {
+        typealias Value = String
+    }
     /// The folder of the file being edited (nil for a new Untitled document),
     /// threaded from the DocumentGroup configuration so the preview can serve
     /// path-validated local images. `MarkdownDocument` itself carries no URL.
@@ -55,7 +67,7 @@ struct DocumentView: View {
     var body: some View {
         VStack(spacing: 0) {
             if showToolbar {
-                EditorToolbarStrip()
+                EditorToolbarStrip(formatEnabled: paneMode != .preview)
             }
             HSplitView {
                 if paneMode != .preview {
@@ -114,6 +126,10 @@ struct DocumentView: View {
         .onReceive(NotificationCenter.default.publisher(for: ToolbarPref.didChange)) { _ in
             showToolbar = ToolbarPref.isOn
         }
+        // Menu commands (Export to HTML/PDF) read the document through this,
+        // not through the editor view, so they keep working in preview-only
+        // layout where no editor exists.
+        .focusedSceneValue(\.exportMarkdown, document.text)
     }
 
     private var editorPane: some View {

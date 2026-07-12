@@ -80,7 +80,7 @@ Requires Xcode 16 or newer. Open `MacMD.xcodeproj` and hit Cmd-R, or:
 
     xcodebuild -project MacMD.xcodeproj -scheme MacMD -configuration Release -destination 'platform=macOS' build
 
-Run the tests the same way with `xcodebuild test`. The suite (352 tests) pins every highlighting rule, the file-handling guarantees, the render pipeline, and a hostile-input security gate. Project layout and house rules are in [CONTRIBUTING.md](CONTRIBUTING.md).
+Run the tests the same way with `xcodebuild test`. The suite (385 tests) pins every highlighting rule, the file-handling guarantees, the render pipeline, and a hostile-input security gate. Project layout and house rules are in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## For AI agents
 
