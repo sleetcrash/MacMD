@@ -67,7 +67,8 @@ final class EditorToolbarTests: XCTestCase {
         XCTAssertEqual(link.string, "hello [world](url)")
 
         let task = editor("- [ ] one", select: NSRange(location: 0, length: 0))
-        task.highlighter = MarkdownHighlighter()
+        let highlighter = MarkdownHighlighter()   // strong ref: the view's is weak
+        task.highlighter = highlighter
         EditorAction.taskCheckbox.invoke(on: task)
         XCTAssertEqual(task.string, "- [x] one")
     }
