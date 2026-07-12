@@ -54,3 +54,31 @@ enum EditorBackground {
         dark ? NSColor(srgbRed: 0x1E / 255, green: 0x1E / 255, blue: 0x1E / 255, alpha: 1) : .white
     }
 }
+
+/// The saved custom-background swatches (uppercase `#RRGGBB` strings), listed
+/// in the Background dropdown like the custom themes in the Theme dropdown.
+/// Saving the Settings window with a custom background adds its color here.
+enum BackgroundLibrary {
+    static let key = "customBackgrounds"
+
+    static func all(_ defaults: UserDefaults = .standard) -> [String] {
+        defaults.stringArray(forKey: key) ?? []
+    }
+
+    /// Append a valid, not-yet-saved color; malformed input and duplicates are
+    /// silently ignored.
+    static func add(_ hex: String, to defaults: UserDefaults = .standard) {
+        let normalized = hex.uppercased()
+        guard NSColor(hex: normalized) != nil else { return }
+        var list = all(defaults)
+        guard !list.contains(normalized) else { return }
+        list.append(normalized)
+        defaults.set(list, forKey: key)
+    }
+
+    static func remove(_ hex: String, from defaults: UserDefaults = .standard) {
+        var list = all(defaults)
+        list.removeAll { $0.caseInsensitiveCompare(hex) == .orderedSame }
+        defaults.set(list, forKey: key)
+    }
+}
