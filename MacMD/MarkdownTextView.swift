@@ -24,6 +24,9 @@ struct MarkdownTextView: NSViewRepresentable {
     /// editor-to-preview scroll sync. Default nil so existing constructions and
     /// tests compile unchanged.
     var onTopVisibleLine: ((Int) -> Void)? = nil
+    /// Two-way scroll-sync channel; the coordinator installs the
+    /// preview-drives-editor closure on it. Default nil (tests, no preview).
+    var syncBridge: ScrollSyncBridge? = nil
 
     func makeCoordinator() -> Coordinator {
         Coordinator(text: $text)
@@ -105,9 +108,12 @@ struct MarkdownTextView: NSViewRepresentable {
         context.coordinator.observeSpelling(textView: textView)
         context.coordinator.syncGutter()
         context.coordinator.onTopVisibleLine = onTopVisibleLine
+        context.coordinator.attachBridge(syncBridge)
         context.coordinator.observeScrollForSync(scrollView: scrollView)
         // Pick up a saved blink-off at launch: updateNSView's change check only
         // catches LATER pref changes, not the initial load.
+        textView.appliedCursorStyle = cursorStyle
+        textView.appliedCursorBlink = cursorBlink
         textView.refreshCaret()
 
         let initialAppearance = appearance
@@ -130,6 +136,7 @@ struct MarkdownTextView: NSViewRepresentable {
         // preview pane is hidden (DocumentView passes nil then), short-circuiting
         // the observer's layout query.
         context.coordinator.onTopVisibleLine = onTopVisibleLine
+        context.coordinator.attachBridge(syncBridge)
         let sizeChanged = Theme.setEditorFontSize(fontSize)
         let familyChanged = Theme.setEditorFontFamily(fontFamily)
         if sizeChanged || familyChanged {
@@ -138,7 +145,16 @@ struct MarkdownTextView: NSViewRepresentable {
         if Theme.setActiveTheme(coloring: coloring, palette: palette) {
             context.coordinator.applyThemeChange(to: textView)
         }
-        textView.window?.appearance = appearance.nsAppearance
+        // Setting NSWindow.appearance synchronously here can land mid
+        // constraint pass (SwiftUI runs updateNSView from display-cycle
+        // observers); AppKit then raises in _postWindowNeedsUpdateConstraints
+        // and _crashOnException kills the app (crash seen 2026-07-12 while
+        // switching themes). Only touch the window when the appearance really
+        // changes, and hop out of the layout pass first. The coordinator holds
+        // the LATEST desired value so a stale queued block can never apply an
+        // intermediate appearance from an earlier pass in the same turn.
+        context.coordinator.desiredWindowAppearance = appearance.nsAppearance
+        context.coordinator.applyWindowAppearanceIfNeeded(textView.window)
         let background = customBackground ?? .textBackgroundColor
         if textView.backgroundColor != background {
             textView.backgroundColor = background
@@ -146,8 +162,16 @@ struct MarkdownTextView: NSViewRepresentable {
             context.coordinator.customBackground = customBackground
             context.coordinator.refreshGutter()
         }
-        if Theme.setCursor(style: cursorStyle, blink: cursorBlink) {
-            (textView as? ClickableTextView)?.refreshCaret()
+        Theme.setCursor(style: cursorStyle, blink: cursorBlink)
+        // Refresh per VIEW, not per the global change: Theme.setCursor reports
+        // a change only once, so gating each window's refresh on it left every
+        // other open window drawing the old caret style until it next redrew
+        // (the "cursor reverts to block" report, 2026-07-12).
+        if let clickable = textView as? ClickableTextView,
+           clickable.appliedCursorStyle != cursorStyle || clickable.appliedCursorBlink != cursorBlink {
+            clickable.appliedCursorStyle = cursorStyle
+            clickable.appliedCursorBlink = cursorBlink
+            clickable.refreshCaret()
         }
         if textView.string != text {
             context.coordinator.replace(textView: textView, with: text)
@@ -165,6 +189,7 @@ struct MarkdownTextView: NSViewRepresentable {
         // nonisolated(unsafe): written only on the main actor, read again only in
         // the nonisolated deinit; removeObserver is thread-safe.
         nonisolated(unsafe) private var formattingObserver: NSObjectProtocol?
+        nonisolated(unsafe) private var lineNumbersObserver: NSObjectProtocol?
         nonisolated(unsafe) private var spellingObserver: NSObjectProtocol?
         weak var scrollView: NSScrollView?
         private var gutter: LineNumberGutterView?
@@ -268,6 +293,11 @@ struct MarkdownTextView: NSViewRepresentable {
                 guard let self, let textView else { return }
                 MainActor.assumeIsolated { self.applyFormattingChange(to: textView) }
             }
+            lineNumbersObserver = NotificationCenter.default.addObserver(
+                forName: LineNumbersPref.didChange, object: nil, queue: .main) { [weak self] _ in
+                guard let self else { return }
+                MainActor.assumeIsolated { self.syncGutter() }
+            }
         }
 
         /// Keep every open editor in sync with the global spelling defaults
@@ -289,15 +319,14 @@ struct MarkdownTextView: NSViewRepresentable {
             }
         }
 
-        // MARK: - Line-number gutter (Plain mode only)
+        // MARK: - Line-number gutter
 
-        /// Install/remove the gutter and widen/restore the left inset to match the
-        /// current FormattingPref. The gutter shows only when formatting is OFF
-        /// (Plain). Restores the base 24pt inset in Styled mode so defaults are
-        /// byte-identical to today.
+        /// Install/remove the gutter and widen/restore the left inset to match
+        /// LineNumbersPref. Shown in BOTH Styled and Plain modes (Plain-only
+        /// before 2.1); off restores the base 24pt inset.
         func syncGutter() {
             guard let tv = textView as? ClickableTextView, let scrollView else { return }
-            if FormattingPref.isOn {
+            if !LineNumbersPref.isOn {
                 gutter?.removeFromSuperview()
                 gutter = nil
                 if let clipObserver {
@@ -348,10 +377,69 @@ struct MarkdownTextView: NSViewRepresentable {
         }
 
         /// Recompute width + inset + redraw after the text or font changed (digit
-        /// count or line height may change). No-op in Styled mode.
+        /// count or line height may change). No-op while line numbers are off.
         func refreshGutter() {
-            guard !FormattingPref.isOn, gutter != nil else { return }
+            guard LineNumbersPref.isOn, gutter != nil else { return }
             layoutGutter()
+        }
+
+        private var syncBridge: ScrollSyncBridge?
+
+        /// The appearance the window should end up with; nil = follow the OS.
+        var desiredWindowAppearance: NSAppearance?
+        private var appearanceApplyQueued = false
+
+        /// Apply `desiredWindowAppearance` OUTSIDE the current layout pass (see
+        /// updateNSView). At most one block is queued; it reads the desired
+        /// value at run time, so back-to-back updates in one turn resolve to
+        /// the final value instead of a stale capture.
+        func applyWindowAppearanceIfNeeded(_ window: NSWindow?) {
+            guard let window,
+                  window.appearance?.name != desiredWindowAppearance?.name,
+                  !appearanceApplyQueued else { return }
+            appearanceApplyQueued = true
+            DispatchQueue.main.async { [weak self, weak window] in
+                guard let self else { return }
+                self.appearanceApplyQueued = false
+                guard let window,
+                      window.appearance?.name != self.desiredWindowAppearance?.name else { return }
+                window.appearance = self.desiredWindowAppearance
+            }
+        }
+
+        /// Wire the shared bridge so the preview can drive this editor's scroll
+        /// position directly (no SwiftUI in the loop; see ScrollSyncBridge).
+        func attachBridge(_ bridge: ScrollSyncBridge?) {
+            guard bridge !== syncBridge else { return }
+            syncBridge = bridge
+            bridge?.scrollEditorToLine = { [weak self] line in
+                self?.scrollEditor(toLine: line)
+            }
+        }
+
+        /// Scroll so the given 1-based document line sits at the top of the
+        /// editor viewport (preview-to-editor sync).
+        func scrollEditor(toLine line: Int) {
+            guard let tv = textView, let scrollView,
+                  let lm = tv.layoutManager, tv.textStorage != nil else { return }
+            let ns = tv.string as NSString
+            let charIndex = LineNumbering.characterIndex(forLine: line, in: ns)
+            var rect: NSRect
+            if charIndex >= ns.length {
+                rect = lm.extraLineFragmentRect
+                if rect.height <= 0, ns.length > 0 {
+                    let glyph = lm.glyphIndexForCharacter(at: ns.length - 1)
+                    rect = lm.lineFragmentRect(forGlyphAt: glyph, effectiveRange: nil)
+                }
+            } else {
+                let glyph = lm.glyphIndexForCharacter(at: charIndex)
+                rect = lm.lineFragmentRect(forGlyphAt: glyph, effectiveRange: nil)
+            }
+            let clip = scrollView.contentView
+            let maxY = max(0, (scrollView.documentView?.frame.height ?? 0) - clip.bounds.height)
+            let target = min(max(0, rect.minY + tv.textContainerOrigin.y), maxY)
+            clip.scroll(to: NSPoint(x: clip.bounds.origin.x, y: target))
+            scrollView.reflectScrolledClipView(clip)
         }
 
         /// Install an always-on clip-bounds observer (independent of the gutter's,
@@ -375,6 +463,7 @@ struct MarkdownTextView: NSViewRepresentable {
 
         deinit {
             if let formattingObserver { NotificationCenter.default.removeObserver(formattingObserver) }
+            if let lineNumbersObserver { NotificationCenter.default.removeObserver(lineNumbersObserver) }
             if let spellingObserver { NotificationCenter.default.removeObserver(spellingObserver) }
             if let clipObserver { NotificationCenter.default.removeObserver(clipObserver) }
             if let scrollSyncObserver { NotificationCenter.default.removeObserver(scrollSyncObserver) }
@@ -436,6 +525,11 @@ struct MarkdownTextView: NSViewRepresentable {
 
 final class ClickableTextView: NSTextView {
     weak var highlighter: MarkdownHighlighter?
+
+    /// The cursor settings this view last refreshed its caret for, so a pref
+    /// change refreshes every window (Theme's change check fires only once).
+    var appliedCursorStyle: CursorStyle = .bar
+    var appliedCursorBlink = true
 
     /// The 1-based document line at the top of the visible rect, for
     /// editor-to-preview scroll sync. Mirrors the gutter's first-visible-line

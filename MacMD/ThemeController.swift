@@ -143,7 +143,9 @@ final class ThemeController: ObservableObject {
         return Double(FontSize.clamp(CGFloat(stored ?? Double(FontSize.standard))))
     }
     private static func loadAppearance(_ d: UserDefaults) -> AppAppearance {
-        AppAppearance(rawValue: d.string(forKey: ThemeSettings.appearanceKey) ?? "") ?? .system
+        // Dark is the out-of-box Mode (Evan's call, 2026-07-12); System and
+        // Light remain one Settings click away.
+        AppAppearance(rawValue: d.string(forKey: ThemeSettings.appearanceKey) ?? "") ?? .dark
     }
     private static func loadFontFamilyId(_ d: UserDefaults) -> String {
         let stored = d.string(forKey: ThemeSettings.fontFamilyKey) ?? FontFamily.default.id

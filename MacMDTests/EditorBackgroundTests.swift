@@ -104,4 +104,21 @@ final class EditorBackgroundTests: XCTestCase {
         XCTAssertEqual(EditorBackground.defaultBackground(dark: false).hexString, "#FFFFFF")
         XCTAssertEqual(EditorBackground.defaultBackground(dark: true).hexString, "#1E1E1E")
     }
+
+    // MARK: - BackgroundLibrary
+
+    func testBackgroundLibraryAddNormalizesDedupsAndRejectsMalformed() {
+        let suite = "EditorBackgroundTests-\(UUID().uuidString)"
+        let d = UserDefaults(suiteName: suite)!
+        defer { d.removePersistentDomain(forName: suite) }
+
+        BackgroundLibrary.add("#15151a", to: d)
+        BackgroundLibrary.add("#15151A", to: d)          // same color, other case
+        BackgroundLibrary.add("not-a-color", to: d)      // rejected
+        BackgroundLibrary.add("#FF8800", to: d)
+        XCTAssertEqual(BackgroundLibrary.all(d), ["#15151A", "#FF8800"])
+
+        BackgroundLibrary.remove("#15151a", from: d)
+        XCTAssertEqual(BackgroundLibrary.all(d), ["#FF8800"])
+    }
 }

@@ -89,9 +89,11 @@ enum HTMLExporter {
         }
     }
 
-    /// The default export filename: the document's name with a `.html` extension,
-    /// falling back to the window title (extension stripped) then `Untitled`.
-    static func suggestedFilename(representedURL: URL?, windowTitle: String?) -> String {
+    /// The default export filename: the document's name with the export
+    /// extension, falling back to the window title (extension stripped) then
+    /// `Untitled`. Shared with PDFExporter.
+    static func suggestedFilename(representedURL: URL?, windowTitle: String?,
+                                  ext: String = "html") -> String {
         let raw: String
         if let url = representedURL {
             raw = url.deletingPathExtension().lastPathComponent
@@ -100,7 +102,7 @@ enum HTMLExporter {
         } else {
             raw = ""
         }
-        return (raw.isEmpty ? "Untitled" : raw) + ".html"
+        return (raw.isEmpty ? "Untitled" : raw) + "." + ext
     }
 
     /// Rewrite each document-relative `<img src="...">` to a self-contained data:
@@ -140,9 +142,10 @@ enum HTMLExporter {
     }
 }
 
-/// Bridges the off-screen web view's one-time load into async/await.
+/// Bridges the off-screen web view's one-time load into async/await. Shared by
+/// the HTML and PDF exporters.
 @MainActor
-private final class ExportLoader: NSObject, WKNavigationDelegate {
+final class ExportLoader: NSObject, WKNavigationDelegate {
     private var continuation: CheckedContinuation<Void, Never>?
 
     func waitForLoad() async {

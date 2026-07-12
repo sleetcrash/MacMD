@@ -521,6 +521,16 @@ final class MarkdownHighlighterTests: XCTestCase {
         XCTAssertEqual(color(at: bodyIndex, in: storage), Theme.textColor)
     }
 
+    func testFrontMatterKeysTakeH1ColorUnderActiveScheme() {
+        let text = "---\nname: macmd\ndescription: editor\n---\nBody\n"
+        let storage = headingColorTest(text, coloring: .standard, paletteId: "std.rgb")
+        let nameIndex = (text as NSString).range(of: "name").location
+        XCTAssertEqual(color(at: nameIndex, in: storage)?.resolvedHexLight, "#C13F50")   // H1 slot
+        let valueIndex = (text as NSString).range(of: "macmd").location
+        XCTAssertEqual(color(at: valueIndex, in: storage), Theme.mutedColor)
+        XCTAssertEqual(color(at: 0, in: storage), Theme.mutedColor)   // delimiter stays muted
+    }
+
     func testTomlFrontMatterBodyIsMuted() {
         let text = "+++\ntitle = \"Hello\"\n+++\nBody\n"
         let storage = highlight(text)

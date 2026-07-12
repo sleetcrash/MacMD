@@ -76,41 +76,42 @@ enum WordCountPref {
     }
 }
 
-/// A thin, unobtrusive status bar shown under the editor when the preference is
-/// on. Recomputes the count on a 300ms debounce off the main actor.
+/// A compact tab pinned to the editor pane's bottom-left corner when the
+/// preference is on (a full-width bar before 2.1). Non-interactive, so clicks
+/// pass through to nothing it could steal from the editor's scrollbar edge.
+/// Recomputes the count on a 300ms debounce off the main actor.
 struct WordCountBar: View {
     let text: String
     @State private var stats = WordCount.Stats(words: 0, characters: 0)
     @State private var hasComputed = false
 
     var body: some View {
-        HStack {
-            Spacer()
-            Text(label)
-                .font(.system(size: 11))
-                .foregroundStyle(Color(nsColor: .secondaryLabelColor))
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 4)
-        .background(Color(nsColor: .windowBackgroundColor))
-        .overlay(alignment: .top) { Divider() }
-        .task(id: text) {
-            // Compute the first value eagerly so the bar never flashes "0 words"
-            // when it appears over an existing document, then debounce later edits.
-            // .task(id:) cancels and restarts this whenever `text` changes. The
-            // closure is non-throwing, so try? swallows the CancellationError that
-            // Task.sleep throws on cancellation; the isCancelled guards bail before
-            // writing so a stale in-flight result cannot overwrite a newer edit.
-            if hasComputed {
-                try? await Task.sleep(nanoseconds: 300_000_000)
+        Text(label)
+            .font(.system(size: 10))
+            .foregroundStyle(Color(nsColor: .secondaryLabelColor))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(Color(nsColor: .windowBackgroundColor).opacity(0.92))
+            .overlay(Rectangle().strokeBorder(Color(nsColor: .separatorColor), lineWidth: 1))
+            .allowsHitTesting(false)
+            .task(id: text) {
+                // Compute the first value eagerly so the tab never flashes "0
+                // words" when it appears over an existing document, then debounce
+                // later edits. .task(id:) cancels and restarts this whenever
+                // `text` changes. The closure is non-throwing, so try? swallows
+                // the CancellationError that Task.sleep throws on cancellation;
+                // the isCancelled guards bail before writing so a stale in-flight
+                // result cannot overwrite a newer edit.
+                if hasComputed {
+                    try? await Task.sleep(nanoseconds: 300_000_000)
+                    guard !Task.isCancelled else { return }
+                }
+                let snapshot = text
+                let computed = await Task.detached { WordCount.stats(for: snapshot) }.value
                 guard !Task.isCancelled else { return }
+                stats = computed
+                hasComputed = true
             }
-            let snapshot = text
-            let computed = await Task.detached { WordCount.stats(for: snapshot) }.value
-            guard !Task.isCancelled else { return }
-            stats = computed
-            hasComputed = true
-        }
     }
 
     private var label: String {

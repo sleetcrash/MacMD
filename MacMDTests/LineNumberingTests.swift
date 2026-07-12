@@ -27,4 +27,24 @@ final class LineNumberingTests: XCTestCase {
 
     func testLineCountEmptyIsOne() { XCTAssertEqual(LineNumbering.lineCount(in: ""), 1) }
     func testLineCountTrailingNewline() { XCTAssertEqual(LineNumbering.lineCount(in: "a\n"), 2) }
+
+    // characterIndex(forLine:) is the inverse map, used by preview-to-editor
+    // scroll sync.
+    private func start(_ line: Int, _ s: String) -> Int {
+        LineNumbering.characterIndex(forLine: line, in: s as NSString)
+    }
+
+    func testCharacterIndexFirstLineIsZero() { XCTAssertEqual(start(1, "abc\ndef"), 0) }
+    func testCharacterIndexSecondLine() { XCTAssertEqual(start(2, "a\nbb\nccc"), 2) }
+    func testCharacterIndexThirdLine() { XCTAssertEqual(start(3, "a\nbb\nccc"), 5) }
+    func testCharacterIndexClampsToLastLine() { XCTAssertEqual(start(99, "a\nbb\nccc"), 5) }
+    func testCharacterIndexTrailingEmptyLine() { XCTAssertEqual(start(2, "a\n"), 2) }
+    func testCharacterIndexEmptyString() { XCTAssertEqual(start(3, ""), 0) }
+
+    func testCharacterIndexRoundTripsWithLineNumber() {
+        let s = "one\ntwo\n\nfour\nfive\n"
+        for line in 1...LineNumbering.lineCount(in: s) {
+            XCTAssertEqual(num(start(line, s), s), line, "round trip failed at line \(line)")
+        }
+    }
 }

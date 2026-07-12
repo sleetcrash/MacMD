@@ -28,6 +28,23 @@ final class CustomDraft: ObservableObject {
     enum Side: Equatable { case light, dark }
     struct SelectedWell: Equatable { var side: Side; var slot: Int }
 
+    /// Which appearance sides the theme defines colors for. A single-sided
+    /// theme uses the same colors under both appearances (saved as identical
+    /// light/dark pairs, so the Palette model is unchanged).
+    enum SideMode: String, CaseIterable {
+        case both, light, dark
+
+        var displayName: String {
+            switch self {
+            case .both: return "Light + Dark"
+            case .light: return "Light"
+            case .dark: return "Dark"
+            }
+        }
+    }
+
+    @Published var sides: SideMode = .both
+
     var slotCount: Int { scheme == .standard ? 3 : 1 }
 
     /// Start a brand-new custom theme for `scheme`.
@@ -40,6 +57,7 @@ final class CustomDraft: ObservableObject {
         // default look until a swatch is given a color.
         lights = Array(repeating: .black, count: count)
         darks = Array(repeating: .white, count: count)
+        sides = .both
         savedId = nil
         selectedWell = nil
         active = true
@@ -57,6 +75,7 @@ final class CustomDraft: ObservableObject {
         // `persistPalette` run off the end of these arrays.
         lights = Self.fit(palette.slots.map { Color(nsColor: $0.nsLight) }, to: slotCount, pad: .black)
         darks = Self.fit(palette.slots.map { Color(nsColor: $0.nsDark) }, to: slotCount, pad: .white)
+        sides = .both
         savedId = nil
         selectedWell = nil
         active = true
@@ -71,15 +90,24 @@ final class CustomDraft: ObservableObject {
 
     func end() { active = false; selectedWell = nil }
 
+    /// The draft's slots under the chosen side mode: a single-sided theme
+    /// repeats its side's color across both halves of each pair.
+    var resolvedSlots: [ColorPair] {
+        (0..<slotCount).map { i in
+            switch sides {
+            case .both: return ColorPair(light: CustomDraft.hex(lights[i]), dark: CustomDraft.hex(darks[i]))
+            case .light: return ColorPair(light: CustomDraft.hex(lights[i]), dark: CustomDraft.hex(lights[i]))
+            case .dark: return ColorPair(light: CustomDraft.hex(darks[i]), dark: CustomDraft.hex(darks[i]))
+            }
+        }
+    }
+
     /// The in-progress palette, for the Settings window's preview.
     var palette: Palette {
-        let slots = (0..<slotCount).map { i in
-            ColorPair(light: CustomDraft.hex(lights[i]), dark: CustomDraft.hex(darks[i]))
-        }
         let trimmed = name.trimmingCharacters(in: .whitespaces)
         return Palette(id: editingId ?? "draft.custom",
                        name: trimmed.isEmpty ? "Custom" : trimmed,
-                       scheme: scheme, slots: slots)
+                       scheme: scheme, slots: resolvedSlots)
     }
 
     static func hex(_ color: Color) -> String {
@@ -166,45 +194,67 @@ struct CustomThemeEditor: View {
                 .font(.system(size: 12, weight: .semibold))
                 .frame(maxWidth: .infinity, alignment: .center)
 
+            // Whether the theme defines a light/dark pair or one side only (a
+            // single side saves the same colors for both appearances).
+            sidesControl
+
             // One swatch row laid out like the Settings window theme box: light trio │
             // dark trio, with a sun (left) and moon (right) marking which is which.
             // Heading labels sit centered above each swatch; the Name field spans
             // the swatch columns just below them. The grid and header are centered.
+            // A single-sided theme shows just its trio.
             Grid(alignment: .center, horizontalSpacing: 6, verticalSpacing: 8) {
                 GridRow {
                     Text("")
                     ForEach(0..<safeCount, id: \.self) { i in
                         Text(slotLabels[i]).font(.system(size: 10)).foregroundStyle(Pane.muted)
                     }
-                    Text("")
-                    ForEach(0..<safeCount, id: \.self) { i in
-                        Text(slotLabels[i]).font(.system(size: 10)).foregroundStyle(Pane.muted)
+                    if draft.sides == .both {
+                        Text("")
+                        ForEach(0..<safeCount, id: \.self) { i in
+                            Text(slotLabels[i]).font(.system(size: 10)).foregroundStyle(Pane.muted)
+                        }
                     }
                     Text("")
                 }
                 GridRow {
-                    Image(systemName: "sun.max").font(.system(size: 12)).foregroundStyle(Pane.muted)
-                        .accessibilityLabel("Light")
-                    ForEach(0..<safeCount, id: \.self) { i in
-                        SquareColorWell(color: $draft.lights[i], size: wellSize,
-                                        isSelected: draft.selectedWell == CustomDraft.SelectedWell(side: .light, slot: i)) {
-                            draft.selectedWell = CustomDraft.SelectedWell(side: .light, slot: i)
+                    if draft.sides != .dark {
+                        Image(systemName: "sun.max").font(.system(size: 12)).foregroundStyle(Pane.muted)
+                            .accessibilityLabel("Light")
+                        ForEach(0..<safeCount, id: \.self) { i in
+                            SquareColorWell(color: $draft.lights[i], size: wellSize,
+                                            isSelected: draft.selectedWell == CustomDraft.SelectedWell(side: .light, slot: i)) {
+                                draft.selectedWell = CustomDraft.SelectedWell(side: .light, slot: i)
+                            }
+                            .accessibilityLabel("\(slotLabels[i]) light color")
                         }
-                        .accessibilityLabel("\(slotLabels[i]) light color")
                     }
-                    Text("|").opacity(0.35)
-                    ForEach(0..<safeCount, id: \.self) { i in
-                        SquareColorWell(color: $draft.darks[i], size: wellSize,
-                                        isSelected: draft.selectedWell == CustomDraft.SelectedWell(side: .dark, slot: i)) {
-                            draft.selectedWell = CustomDraft.SelectedWell(side: .dark, slot: i)
+                    if draft.sides == .both {
+                        Text("|").opacity(0.35)
+                    }
+                    if draft.sides != .light {
+                        if draft.sides == .dark {
+                            Image(systemName: "moon.fill").font(.system(size: 12)).foregroundStyle(Pane.muted)
+                                .accessibilityLabel("Dark")
                         }
-                        .accessibilityLabel("\(slotLabels[i]) dark color")
+                        ForEach(0..<safeCount, id: \.self) { i in
+                            SquareColorWell(color: $draft.darks[i], size: wellSize,
+                                            isSelected: draft.selectedWell == CustomDraft.SelectedWell(side: .dark, slot: i)) {
+                                draft.selectedWell = CustomDraft.SelectedWell(side: .dark, slot: i)
+                            }
+                            .accessibilityLabel("\(slotLabels[i]) dark color")
+                        }
+                        if draft.sides == .both {
+                            Image(systemName: "moon.fill").font(.system(size: 12)).foregroundStyle(Pane.muted)
+                                .accessibilityLabel("Dark")
+                        }
                     }
-                    Image(systemName: "moon.fill").font(.system(size: 12)).foregroundStyle(Pane.muted)
-                        .accessibilityLabel("Dark")
+                    if draft.sides == .light || draft.sides == .dark {
+                        Text("")
+                    }
                 }
                 GridRow {
-                    Color.clear.gridCellUnsizedAxes([.horizontal, .vertical])   // sun column
+                    Color.clear.gridCellUnsizedAxes([.horizontal, .vertical])   // leading icon column
                     TextField("Name", text: $draft.name)
                         .textFieldStyle(.plain)
                         .font(.system(size: 11))
@@ -215,8 +265,10 @@ struct CustomThemeEditor: View {
                         .overlay(Rectangle().strokeBorder(Pane.border, lineWidth: 1))
                         .onChange(of: draft.name) { _, v in if v.count > 10 { draft.name = String(v.prefix(10)) } }
                         .padding(.top, 6)
-                        .gridCellColumns(safeCount * 2 + 1)   // L1 ... D3: spans the 6 swatches + divider
-                    Color.clear.gridCellUnsizedAxes([.horizontal, .vertical])   // moon column
+                        // Spans the swatch columns: 6 + divider under Both, the
+                        // single trio otherwise.
+                        .gridCellColumns(draft.sides == .both ? safeCount * 2 + 1 : safeCount)
+                    Color.clear.gridCellUnsizedAxes([.horizontal, .vertical])   // trailing icon column
                 }
             }
             .frame(maxWidth: .infinity)
@@ -240,6 +292,42 @@ struct CustomThemeEditor: View {
         }
         .padding(EdgeInsets(top: 26, leading: 20, bottom: 20, trailing: 20))
         .foregroundStyle(Pane.text)
+    }
+
+    /// Light + Dark | Light | Dark segments, in the settings-window segment
+    /// style (recessed selection, no accent). Switching sides clears any active
+    /// swatch selection so the ring never points at a hidden well.
+    private var sidesControl: some View {
+        HStack(spacing: 0) {
+            ForEach(CustomDraft.SideMode.allCases, id: \.self) { m in
+                let selected = draft.sides == m
+                Button {
+                    draft.sides = m
+                    draft.selectedWell = nil
+                } label: {
+                    Text(m.displayName)
+                        .font(.system(size: 10))
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background {
+                            if selected {
+                                Rectangle().fill(
+                                    Color.black.opacity(0.28)
+                                        .shadow(.inner(color: .black.opacity(0.55), radius: 3, y: 1.5))
+                                )
+                            } else {
+                                Rectangle().fill(Color.white.opacity(0.10))
+                            }
+                        }
+                        .foregroundStyle(selected ? Pane.text : Pane.muted)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(selected ? .isSelected : [])
+            }
+        }
+        .frame(height: 24)
+        .background(Pane.field)
+        .overlay(Rectangle().strokeBorder(Pane.border, lineWidth: 1))
     }
 
     /// The delete confirmation page, styled like the editor (same window chrome,
@@ -299,12 +387,9 @@ struct CustomThemeEditor: View {
     /// Write the draft into the saved customs (insert or update) and return its id.
     @discardableResult
     private func persistPalette() -> String {
-        let slots = (0..<draft.slotCount).map { i in
-            ColorPair(light: CustomDraft.hex(draft.lights[i]), dark: CustomDraft.hex(draft.darks[i]))
-        }
         let id = draft.editingId ?? "custom.\(UUID().uuidString)"
         let palette = Palette(id: id, name: draft.name.trimmingCharacters(in: .whitespaces),
-                              scheme: draft.scheme, slots: slots)
+                              scheme: draft.scheme, slots: draft.resolvedSlots)
         var all = ThemeSettings.decodeCustoms(customsData)
         if let idx = all.firstIndex(where: { $0.id == id }) { all[idx] = palette } else { all.append(palette) }
         customsData = ThemeSettings.encodeCustoms(all)
@@ -405,6 +490,15 @@ private final class PanelColorWell: NSColorWell {
         // picking a color (otherwise the floating window would trap it behind).
         NSColorPanel.shared.level = .floating
         onActivate()                    // tell SwiftUI which swatch is now selected
+    }
+
+    /// NSColorWell's default mouseDown TOGGLES: clicking an already-active well
+    /// deactivates it, after which panel picks go nowhere; with invisible wells
+    /// that read as "click the box then pick a color sometimes does nothing".
+    /// A click here always makes this well the target and fronts the panel.
+    override func mouseDown(with event: NSEvent) {
+        activate(true)
+        NSColorPanel.shared.makeKeyAndOrderFront(nil)
     }
 }
 

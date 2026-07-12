@@ -1,5 +1,6 @@
 import XCTest
 import AppKit
+import SwiftUI
 @testable import MacMD
 
 @MainActor
@@ -204,6 +205,31 @@ final class ColorThemingTests: XCTestCase {
         XCTAssertEqual(draft.lights.count, 1)
         XCTAssertEqual(draft.darks.count, 1)
         XCTAssertEqual(draft.palette.slots.count, 1)
+    }
+
+    // MARK: - CustomDraft side modes
+
+    func testSingleSidedDraftRepeatsItsColorsAcrossBothAppearances() {
+        let draft = CustomDraft()
+        draft.begin(scheme: .unified)
+        draft.lights = [Color(nsColor: NSColor(hex: "#112233")!)]
+        draft.darks = [Color(nsColor: NSColor(hex: "#AABBCC")!)]
+
+        draft.sides = .light
+        XCTAssertEqual(draft.resolvedSlots, [ColorPair(light: "#112233", dark: "#112233")])
+
+        draft.sides = .dark
+        XCTAssertEqual(draft.resolvedSlots, [ColorPair(light: "#AABBCC", dark: "#AABBCC")])
+
+        draft.sides = .both
+        XCTAssertEqual(draft.resolvedSlots, [ColorPair(light: "#112233", dark: "#AABBCC")])
+    }
+
+    func testBeginResetsSideModeToBoth() {
+        let draft = CustomDraft()
+        draft.sides = .dark
+        draft.begin(scheme: .standard)
+        XCTAssertEqual(draft.sides, .both)
     }
 
     // MARK: - Hex parsing

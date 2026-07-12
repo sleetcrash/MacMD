@@ -1,9 +1,10 @@
 import AppKit
 
-/// Plain-mode line-number gutter: a non-scrolling NSView pinned to the left edge
-/// of the editor's scroll view, drawing 1-based logical line numbers aligned to
-/// the text view's visible line fragments. Shown only when formatting is OFF; the
-/// text view reserves room by widening its left textContainerInset. NOT an
+/// The editor's line-number gutter: a non-scrolling NSView pinned to the left
+/// edge of the editor's scroll view, drawing 1-based logical line numbers aligned
+/// to the text view's visible line fragments. Shown in both Styled and Plain modes
+/// per LineNumbersPref; the text view reserves room by widening its left
+/// textContainerInset. NOT an
 /// NSRulerView - the ruler tiling does not inset MacMD's SwiftUI-hosted,
 /// autoresizing NSTextView, so glyphs failed to paint. This view only draws,
 /// synced to the clip bounds; it never participates in clip tiling.

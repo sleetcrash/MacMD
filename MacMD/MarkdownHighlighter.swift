@@ -222,16 +222,26 @@ private enum MarkdownRules {
             }
         }
 
+        let source = ts.string
+
         // Front matter reads as muted metadata: foreground only, no code background.
+        // Under an active color scheme, keys (name:, description:, ...) pick up the
+        // theme's H1 color so agent-file metadata reads at a glance; the Default
+        // scheme keeps the whole block muted (the pre-2.1 look).
         if let fm = frontMatter {
             let intersect = NSIntersectionRange(fm, range)
             if intersect.length > 0 {
                 ts.addAttribute(.foregroundColor, value: Theme.mutedColor, range: intersect)
+                if Theme.activeColoring != .off {
+                    frontMatterKeyPattern.enumerateMatches(in: source, options: [], range: intersect) { match, _, _ in
+                        guard let key = match?.range(at: 1), key.location != NSNotFound else { return }
+                        ts.addAttribute(.foregroundColor, value: Theme.headingColor(level: 1), range: key)
+                    }
+                }
             }
         }
 
         let excluded = frontMatter.map { fencedSpans + [$0] } ?? fencedSpans
-        let source = ts.string
         for rule in inlineRules {
             rule.regex.enumerateMatches(in: source, options: [], range: range) { match, _, _ in
                 guard let m = match else { return }
@@ -240,6 +250,12 @@ private enum MarkdownRules {
             }
         }
     }
+
+    /// A front-matter key line: optional indent, the key, a colon. Group 1 = key.
+    static let frontMatterKeyPattern: NSRegularExpression = r(
+        "^[ \\t]*([A-Za-z0-9_-]+):",
+        options: [.anchorsMatchLines]
+    )
 
     static let taskListPattern: NSRegularExpression = r(
         "^[ \\t]*[-*+][ \\t]+(\\[[ xX]\\])[ \\t]+",

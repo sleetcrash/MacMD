@@ -8,11 +8,20 @@ final class PreviewWebViewTests: XCTestCase {
     func testHandlerDocumentDirectorySetFromInput() {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let preview = PreviewWebView(text: "", theme: ThemeController(),
-                                     topVisibleLine: nil, documentDirectory: tempDir)
+                                     syncBridge: nil, documentDirectory: tempDir)
         let coordinator = preview.makeCoordinator()
         preview.applyState(to: coordinator)
         XCTAssertEqual(coordinator.handler.documentDirectory?.standardizedFileURL,
                        tempDir.standardizedFileURL)
+    }
+
+    func testBridgeInstallsPreviewDriveClosureOnAttach() {
+        let bridge = ScrollSyncBridge()
+        let preview = PreviewWebView(text: "", theme: ThemeController(),
+                                     syncBridge: bridge, documentDirectory: nil)
+        let coordinator = preview.makeCoordinator()
+        preview.applyState(to: coordinator)
+        XCTAssertNotNil(bridge.scrollPreviewToLine, "attach installs the editor-drives-preview closure")
     }
 
     func testThemeCSSReachesDOM() async {

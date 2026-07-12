@@ -78,6 +78,15 @@
 		56F9ED4BC0444AB1C3F86D72 /* MermaidEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 365B79165C8B0514EA5E8693 /* MermaidEngineTests.swift */; };
 		85710D3D04A50B073EE1E8FA /* MermaidRenderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E00920617D5025775E93E76 /* MermaidRenderTests.swift */; };
 		39CFDECAD3251AD4C4A063BD /* MermaidSecurityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 490547A2EA5007B2C7D4163E /* MermaidSecurityTests.swift */; };
+		68693F06AF520AA94B831C66 /* LineNumbersPrefTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3D36EDF562C6A509F17B3ED /* LineNumbersPrefTests.swift */; };
+		F7A32037710E0C3BCC51914E /* ScrollSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2F93522049DA65BC139B358 /* ScrollSync.swift */; };
+		3464013F6B89EBB0CE675418 /* ScrollSyncBridgeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B7DCD2A6BEA711421B25DF2 /* ScrollSyncBridgeTests.swift */; };
+		A85AAFCCD2FF0F0A2BB42900 /* EditorToolbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = E218C30C48BAA8A5D47366FB /* EditorToolbar.swift */; };
+		5B3DF9AFF090D3220D82AF97 /* EditorToolbarTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60E59C60AD0980CB0EFCC1AD /* EditorToolbarTests.swift */; };
+		BA988A9A8EAC7FC4344B9BBE /* Templates.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6EA9B75A2517582E4B8DB83 /* Templates.swift */; };
+		EAE968B28A7C91B90F80CB95 /* TemplatesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D5632E1BA961B1D9654CF0F /* TemplatesTests.swift */; };
+		5DA273C097E6112A909BD7AF /* PDFExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 307AD371D2405F97A1E37A30 /* PDFExporter.swift */; };
+		F40786E74DB601E3D4B34493 /* PDFExporterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B46DA6EABD98D31B7347E8BD /* PDFExporterTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -166,6 +175,15 @@
 		365B79165C8B0514EA5E8693 /* MermaidEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MermaidEngineTests.swift; sourceTree = "<group>"; };
 		1E00920617D5025775E93E76 /* MermaidRenderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MermaidRenderTests.swift; sourceTree = "<group>"; };
 		490547A2EA5007B2C7D4163E /* MermaidSecurityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MermaidSecurityTests.swift; sourceTree = "<group>"; };
+		C3D36EDF562C6A509F17B3ED /* LineNumbersPrefTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LineNumbersPrefTests.swift; sourceTree = "<group>"; };
+		B2F93522049DA65BC139B358 /* ScrollSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrollSync.swift; sourceTree = "<group>"; };
+		9B7DCD2A6BEA711421B25DF2 /* ScrollSyncBridgeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrollSyncBridgeTests.swift; sourceTree = "<group>"; };
+		E218C30C48BAA8A5D47366FB /* EditorToolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorToolbar.swift; sourceTree = "<group>"; };
+		60E59C60AD0980CB0EFCC1AD /* EditorToolbarTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorToolbarTests.swift; sourceTree = "<group>"; };
+		D6EA9B75A2517582E4B8DB83 /* Templates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Templates.swift; sourceTree = "<group>"; };
+		0D5632E1BA961B1D9654CF0F /* TemplatesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplatesTests.swift; sourceTree = "<group>"; };
+		307AD371D2405F97A1E37A30 /* PDFExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFExporter.swift; sourceTree = "<group>"; };
+		B46DA6EABD98D31B7347E8BD /* PDFExporterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFExporterTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -232,6 +250,10 @@
 				AAE02E8A6110F51D9DD6850A /* PreviewWebView.swift */,
 				FE6AB344E1112F1DB8DC75F4 /* PreviewCSS.swift */,
 				6E0C7911740CA5F59979C9F5 /* HTMLExporter.swift */,
+				B2F93522049DA65BC139B358 /* ScrollSync.swift */,
+				E218C30C48BAA8A5D47366FB /* EditorToolbar.swift */,
+				D6EA9B75A2517582E4B8DB83 /* Templates.swift */,
+				307AD371D2405F97A1E37A30 /* PDFExporter.swift */,
 			);
 			path = MacMD;
 			sourceTree = "<group>";
@@ -286,6 +308,11 @@
 				365B79165C8B0514EA5E8693 /* MermaidEngineTests.swift */,
 				1E00920617D5025775E93E76 /* MermaidRenderTests.swift */,
 				490547A2EA5007B2C7D4163E /* MermaidSecurityTests.swift */,
+				C3D36EDF562C6A509F17B3ED /* LineNumbersPrefTests.swift */,
+				9B7DCD2A6BEA711421B25DF2 /* ScrollSyncBridgeTests.swift */,
+				60E59C60AD0980CB0EFCC1AD /* EditorToolbarTests.swift */,
+				0D5632E1BA961B1D9654CF0F /* TemplatesTests.swift */,
+				B46DA6EABD98D31B7347E8BD /* PDFExporterTests.swift */,
 			);
 			path = MacMDTests;
 			sourceTree = "<group>";
@@ -431,6 +458,10 @@
 				1A5438D369A0CEAEDE2F6A81 /* PreviewWebView.swift in Sources */,
 				0257688EEF00E9654A7724F3 /* PreviewCSS.swift in Sources */,
 				B67932FD9D286704C4251EE6 /* HTMLExporter.swift in Sources */,
+				F7A32037710E0C3BCC51914E /* ScrollSync.swift in Sources */,
+				A85AAFCCD2FF0F0A2BB42900 /* EditorToolbar.swift in Sources */,
+				BA988A9A8EAC7FC4344B9BBE /* Templates.swift in Sources */,
+				5DA273C097E6112A909BD7AF /* PDFExporter.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -474,6 +505,11 @@
 				56F9ED4BC0444AB1C3F86D72 /* MermaidEngineTests.swift in Sources */,
 				85710D3D04A50B073EE1E8FA /* MermaidRenderTests.swift in Sources */,
 				39CFDECAD3251AD4C4A063BD /* MermaidSecurityTests.swift in Sources */,
+				68693F06AF520AA94B831C66 /* LineNumbersPrefTests.swift in Sources */,
+				3464013F6B89EBB0CE675418 /* ScrollSyncBridgeTests.swift in Sources */,
+				5B3DF9AFF090D3220D82AF97 /* EditorToolbarTests.swift in Sources */,
+				EAE968B28A7C91B90F80CB95 /* TemplatesTests.swift in Sources */,
+				F40786E74DB601E3D4B34493 /* PDFExporterTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

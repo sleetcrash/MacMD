@@ -41,3 +41,16 @@ a { text-decoration: underline; }
 
 /* Rendered mermaid diagrams (wired in M4) scale to the column width. */
 svg { max-width: 100%; height: auto; }
+
+/* Leading YAML/TOML front matter rendered as muted metadata (colors come from
+   the injected theme CSS: block text muted, keys in the theme's H1 color). */
+.front-matter {
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 0.85em;
+  line-height: 1.5;
+  padding: 10px 14px;
+  border: 1px solid;
+  border-radius: 6px;
+  margin: 0 0 1.2em;
+}
+.front-matter .fm-line { white-space: pre-wrap; }
