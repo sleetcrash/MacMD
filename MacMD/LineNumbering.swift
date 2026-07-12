@@ -28,4 +28,30 @@ enum LineNumbering {
         for byte in string.utf8 where byte == 0x000A { count += 1 }
         return count
     }
+
+    /// The character index of the START of a 1-based line: the inverse of
+    /// `lineNumber(forCharacterIndex:in:)`, for preview-to-editor scroll sync.
+    /// A line past the end clamps to the last line's start. O(line) via
+    /// getLineStart hops; no whole-document copy per call.
+    static func characterIndex(forLine line: Int, in string: NSString) -> Int {
+        guard line > 1, string.length > 0 else { return 0 }
+        var current = 1
+        var start = 0
+        while current < line {
+            var lineEnd = 0
+            string.getLineStart(nil, end: &lineEnd, contentsEnd: nil,
+                                for: NSRange(location: start, length: 0))
+            guard lineEnd > start else { break }
+            if lineEnd >= string.length {
+                // A document ending in a newline has one trailing empty line
+                // starting at the very end; anything beyond clamps to it.
+                let last = string.character(at: string.length - 1)
+                if last == 0x000A || last == 0x000D { return string.length }
+                break
+            }
+            start = lineEnd
+            current += 1
+        }
+        return start
+    }
 }

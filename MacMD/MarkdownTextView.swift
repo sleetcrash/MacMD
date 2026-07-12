@@ -24,6 +24,9 @@ struct MarkdownTextView: NSViewRepresentable {
     /// editor-to-preview scroll sync. Default nil so existing constructions and
     /// tests compile unchanged.
     var onTopVisibleLine: ((Int) -> Void)? = nil
+    /// Two-way scroll-sync channel; the coordinator installs the
+    /// preview-drives-editor closure on it. Default nil (tests, no preview).
+    var syncBridge: ScrollSyncBridge? = nil
 
     func makeCoordinator() -> Coordinator {
         Coordinator(text: $text)
@@ -105,6 +108,7 @@ struct MarkdownTextView: NSViewRepresentable {
         context.coordinator.observeSpelling(textView: textView)
         context.coordinator.syncGutter()
         context.coordinator.onTopVisibleLine = onTopVisibleLine
+        context.coordinator.attachBridge(syncBridge)
         context.coordinator.observeScrollForSync(scrollView: scrollView)
         // Pick up a saved blink-off at launch: updateNSView's change check only
         // catches LATER pref changes, not the initial load.
@@ -132,6 +136,7 @@ struct MarkdownTextView: NSViewRepresentable {
         // preview pane is hidden (DocumentView passes nil then), short-circuiting
         // the observer's layout query.
         context.coordinator.onTopVisibleLine = onTopVisibleLine
+        context.coordinator.attachBridge(syncBridge)
         let sizeChanged = Theme.setEditorFontSize(fontSize)
         let familyChanged = Theme.setEditorFontFamily(fontFamily)
         if sizeChanged || familyChanged {
@@ -379,6 +384,43 @@ struct MarkdownTextView: NSViewRepresentable {
         func refreshGutter() {
             guard LineNumbersPref.isOn, gutter != nil else { return }
             layoutGutter()
+        }
+
+        private var syncBridge: ScrollSyncBridge?
+
+        /// Wire the shared bridge so the preview can drive this editor's scroll
+        /// position directly (no SwiftUI in the loop; see ScrollSyncBridge).
+        func attachBridge(_ bridge: ScrollSyncBridge?) {
+            guard bridge !== syncBridge else { return }
+            syncBridge = bridge
+            bridge?.scrollEditorToLine = { [weak self] line in
+                self?.scrollEditor(toLine: line)
+            }
+        }
+
+        /// Scroll so the given 1-based document line sits at the top of the
+        /// editor viewport (preview-to-editor sync).
+        func scrollEditor(toLine line: Int) {
+            guard let tv = textView, let scrollView,
+                  let lm = tv.layoutManager, tv.textStorage != nil else { return }
+            let ns = tv.string as NSString
+            let charIndex = LineNumbering.characterIndex(forLine: line, in: ns)
+            var rect: NSRect
+            if charIndex >= ns.length {
+                rect = lm.extraLineFragmentRect
+                if rect.height <= 0, ns.length > 0 {
+                    let glyph = lm.glyphIndexForCharacter(at: ns.length - 1)
+                    rect = lm.lineFragmentRect(forGlyphAt: glyph, effectiveRange: nil)
+                }
+            } else {
+                let glyph = lm.glyphIndexForCharacter(at: charIndex)
+                rect = lm.lineFragmentRect(forGlyphAt: glyph, effectiveRange: nil)
+            }
+            let clip = scrollView.contentView
+            let maxY = max(0, (scrollView.documentView?.frame.height ?? 0) - clip.bounds.height)
+            let target = min(max(0, rect.minY + tv.textContainerOrigin.y), maxY)
+            clip.scroll(to: NSPoint(x: clip.bounds.origin.x, y: target))
+            scrollView.reflectScrolledClipView(clip)
         }
 
         /// Install an always-on clip-bounds observer (independent of the gutter's,

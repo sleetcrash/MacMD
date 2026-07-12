@@ -151,9 +151,14 @@ window.render = function (markdown) {
   sourceLineOffset = 0;
   container.innerHTML = (fm ? frontMatterHTML(fm.lines) : "") + body;
   rewriteImages(container);
+  rebuildLineIndex();
   // Advance the completion flag whether mermaid resolves or rejects, so the flag
   // never stalls (defense in depth; renderMermaid catches per-block failures).
-  function done() { window.__renderComplete = (window.__renderComplete || 0) + 1; }
+  // Mermaid swaps <pre> nodes for SVG wrappers, so re-index once it settles.
+  function done() {
+    rebuildLineIndex();
+    window.__renderComplete = (window.__renderComplete || 0) + 1;
+  }
   renderMermaid(container).then(done, done);
 };
 
@@ -199,16 +204,56 @@ window.setAppearance = function (name) {
   document.documentElement.className = name;
 };
 
-// Scroll the nearest block at or after the given 1-based source line into view.
+// ---- Scroll sync ----------------------------------------------------------
+// The source-line elements are cached per render (sorted by line, which is
+// document order), so following the editor costs a binary search instead of a
+// full querySelectorAll walk per scrolled line; noticeably smoother on Intel.
+var lineEls = [];
+// While a programmatic scroll (driven by the editor) is settling, the shell's
+// own scroll events must not echo back to Swift.
+var suppressScrollUntil = 0;
+
+function rebuildLineIndex() {
+  lineEls = Array.prototype.slice.call(document.querySelectorAll("[data-source-line]"))
+    .map(function (el) {
+      return { line: parseInt(el.getAttribute("data-source-line"), 10), el: el };
+    })
+    .filter(function (x) { return !isNaN(x.line); });
+}
+
+// Scroll so the nearest block at or after the given 1-based source line sits at
+// the top of the viewport (editor-to-preview sync).
 window.scrollToLine = function (line) {
-  var els = document.querySelectorAll("[data-source-line]");
-  var target = null;
-  for (var i = 0; i < els.length; i++) {
-    if (parseInt(els[i].getAttribute("data-source-line"), 10) >= line) { target = els[i]; break; }
+  if (!lineEls.length) { return; }
+  var lo = 0, hi = lineEls.length - 1, target = lineEls.length - 1;
+  while (lo <= hi) {
+    var mid = (lo + hi) >> 1;
+    if (lineEls[mid].line >= line) { target = mid; hi = mid - 1; } else { lo = mid + 1; }
   }
-  if (!target && els.length) { target = els[els.length - 1]; }
-  if (target) { target.scrollIntoView({ block: "start" }); }
+  suppressScrollUntil = Date.now() + 250;
+  window.scrollTo(0, lineEls[target].el.offsetTop);
 };
+
+// Preview-to-editor sync: report the top visible block's source line, throttled
+// to one animation frame and silenced while the editor is the driver.
+var scrollRAF = 0;
+window.addEventListener("scroll", function () {
+  if (Date.now() < suppressScrollUntil || scrollRAF) { return; }
+  scrollRAF = requestAnimationFrame(function () {
+    scrollRAF = 0;
+    if (Date.now() < suppressScrollUntil) { return; }
+    var bridge = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.macmdScroll;
+    if (!bridge || !lineEls.length) { return; }
+    var y = window.scrollY + 1;
+    var lo = 0, hi = lineEls.length - 1, top = lineEls.length - 1;
+    while (lo <= hi) {
+      var mid = (lo + hi) >> 1;
+      var el = lineEls[mid].el;
+      if (el.offsetTop + el.offsetHeight > y) { top = mid; hi = mid - 1; } else { lo = mid + 1; }
+    }
+    bridge.postMessage(lineEls[top].line);
+  });
+}, { passive: true });
 </script>
 </body>
 </html>

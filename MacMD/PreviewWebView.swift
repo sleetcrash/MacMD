@@ -33,10 +33,14 @@ enum PreviewNavigation {
 struct PreviewWebView: NSViewRepresentable {
     let text: String
     @ObservedObject var theme: ThemeController
-    var topVisibleLine: Int?
+    /// Two-way scroll-sync channel shared with the editor; nil in contexts with
+    /// nothing to sync (tests, preview-only layout).
+    var syncBridge: ScrollSyncBridge?
     var documentDirectory: URL?
 
     static let ruleListID = "macmd-preview-block-network"
+    /// The JS-to-Swift message channel carrying the preview's top visible line.
+    static let scrollMessageName = "macmdScroll"
 
     // MARK: - Pure seams (unit tested)
 
@@ -72,7 +76,7 @@ struct PreviewWebView: NSViewRepresentable {
         coordinator.handler.documentDirectory = documentDirectory
         coordinator.text = text
         coordinator.theme = theme
-        coordinator.topVisibleLine = topVisibleLine
+        coordinator.attachBridge(syncBridge)
     }
 
     // MARK: - NSViewRepresentable
@@ -84,6 +88,11 @@ struct PreviewWebView: NSViewRepresentable {
         let config = WKWebViewConfiguration()
         config.setURLSchemeHandler(coordinator.handler, forURLScheme: MarkdownSchemeHandler.scheme)
         config.websiteDataStore = .nonPersistent()
+
+        // Weakly proxied: the user content controller retains its handlers, so a
+        // direct add(coordinator) would cycle coordinator <-> webView.
+        config.userContentController.add(WeakScriptMessageHandler(coordinator),
+                                         name: Self.scrollMessageName)
 
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = coordinator
@@ -121,7 +130,7 @@ struct PreviewWebView: NSViewRepresentable {
 
     // MARK: - Coordinator
 
-    final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
+    final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
         let handler = MarkdownSchemeHandler()
         weak var webView: WKWebView?
         var hasLoadedShell = false
@@ -129,14 +138,33 @@ struct PreviewWebView: NSViewRepresentable {
         // Desired state, written by updateNSView / makeNSView.
         var text = ""
         var theme: ThemeController?
-        var topVisibleLine: Int?
+        private(set) var syncBridge: ScrollSyncBridge?
 
         // Last-pushed state, so each render only sends what changed.
         private var lastText: String?
-        private var lastTopLine: Int?
         private var lastCSS: String?
         private var lastAppearanceClass: String?
         private var lastThemeFingerprint: Int?
+
+        /// Wire the shared bridge: the editor drives this preview through the
+        /// installed closure, bypassing SwiftUI entirely (see ScrollSyncBridge).
+        func attachBridge(_ bridge: ScrollSyncBridge?) {
+            guard bridge !== syncBridge else { return }
+            syncBridge = bridge
+            bridge?.scrollPreviewToLine = { [weak self] line in
+                guard let self, self.hasLoadedShell else { return }
+                self.webView?.evaluateJavaScript(PreviewWebView.scrollInvocation(line: line))
+            }
+        }
+
+        /// The preview's own scroll position (its top visible source line),
+        /// posted from the shell's scroll listener.
+        func userContentController(_ userContentController: WKUserContentController,
+                                   didReceive message: WKScriptMessage) {
+            guard message.name == PreviewWebView.scrollMessageName,
+                  let line = message.body as? NSNumber else { return }
+            syncBridge?.previewScrolled(toTopLine: line.intValue)
+        }
 
         /// Reconcile the desired state into the live DOM (theme CSS, appearance
         /// class, rendered content, scroll position), pushing only what changed.
@@ -169,11 +197,6 @@ struct PreviewWebView: NSViewRepresentable {
                 if PreviewWebView.allowsLiveRender(byteCount: text.utf8.count) {
                     webView.evaluateJavaScript(MarkdownRenderEngine.renderInvocation(markdown: text))
                 }
-            }
-
-            if let line = topVisibleLine, line != lastTopLine {
-                lastTopLine = line
-                webView.evaluateJavaScript(PreviewWebView.scrollInvocation(line: line))
             }
         }
 
@@ -222,5 +245,20 @@ struct PreviewWebView: NSViewRepresentable {
                      for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
             nil  // block window.open
         }
+    }
+}
+
+/// Breaks the retain cycle WKUserContentController.add would otherwise create
+/// (the controller retains its handlers; the coordinator owns the web view).
+final class WeakScriptMessageHandler: NSObject, WKScriptMessageHandler {
+    private weak var delegate: WKScriptMessageHandler?
+
+    init(_ delegate: WKScriptMessageHandler) {
+        self.delegate = delegate
+    }
+
+    func userContentController(_ userContentController: WKUserContentController,
+                               didReceive message: WKScriptMessage) {
+        delegate?.userContentController(userContentController, didReceive: message)
     }
 }

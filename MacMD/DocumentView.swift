@@ -41,7 +41,9 @@ struct DocumentView: View {
     /// The debounced document text handed to the preview, so it does not
     /// re-render on every keystroke.
     @State private var debouncedText = ""
-    @State private var topLine: Int?
+    /// Direct editor<->preview scroll channel; a reference type in @State so it
+    /// survives re-renders while scroll ticks never touch SwiftUI state.
+    @State private var syncBridge = ScrollSyncBridge()
 
     /// The fixed editor background when Custom is active, else nil (Default
     /// keeps the appearance-driven `.textBackgroundColor`).
@@ -57,7 +59,8 @@ struct DocumentView: View {
             }
             if paneMode != .editor {
                 PreviewWebView(text: debouncedText, theme: theme,
-                               topVisibleLine: topLine, documentDirectory: documentDirectory)
+                               syncBridge: paneMode == .split ? syncBridge : nil,
+                               documentDirectory: documentDirectory)
                     .frame(minWidth: 320, idealWidth: CGFloat(NewWindowSize.width) * 0.7)
             }
         }
@@ -126,7 +129,10 @@ struct DocumentView: View {
                              // Only track the top line in split layout (the one
                              // case both panes are visible), so other layouts
                              // cost no per-scroll work.
-                             onTopVisibleLine: paneMode == .split ? { topLine = $0 } : nil)
+                             onTopVisibleLine: paneMode == .split
+                                 ? { [syncBridge] in syncBridge.editorScrolled(toTopLine: $0) }
+                                 : nil,
+                             syncBridge: paneMode == .split ? syncBridge : nil)
                 .background(Color(nsColor: customBackground ?? .textBackgroundColor))
             if showWordCount {
                 WordCountBar(text: document.text)
