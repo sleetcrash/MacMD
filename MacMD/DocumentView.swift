@@ -1,13 +1,17 @@
 import SwiftUI
 import AppKit
 
-/// New-document ideal window size, widened when the preview pane is showing so
-/// the split opens with room for both panes. Pure so it can be unit tested.
+/// A document window's ideal size, widened when the preview pane is showing so
+/// the split opens with room for both panes. Only an ideal: macOS's remembered
+/// window size wins once one exists (the New Windows setting that used to
+/// override it resized whole tab groups and was removed in 2.2). Pure so it
+/// can be unit tested.
 enum DocumentLayout {
+    static let baseSize = CGSize(width: 760, height: 680)
+
     static func idealSize(previewVisible: Bool) -> CGSize {
-        let base = CGFloat(NewWindowSize.width)
-        let width = previewVisible ? min(base * 1.7, CGFloat(NewWindowSize.maxWidth)) : base
-        return CGSize(width: width, height: CGFloat(NewWindowSize.height))
+        CGSize(width: previewVisible ? baseSize.width * 1.7 : baseSize.width,
+               height: baseSize.height)
     }
 }
 
@@ -20,9 +24,6 @@ extension FocusedValues {
 
 struct DocumentView: View {
     @Binding var document: MarkdownDocument
-    /// True for a brand-new Untitled document; sizes its window to the
-    /// preferred New Windows size (reopened files keep their frames).
-    var isNewDocument: Bool = false
 
     /// Carries the focused document's markdown to the app-level menu commands.
     struct ExportMarkdownKey: FocusedValueKey {
@@ -79,13 +80,13 @@ struct DocumentView: View {
             HSplitView {
                 if paneMode != .preview {
                     editorPane
-                        .frame(minWidth: 360, idealWidth: CGFloat(NewWindowSize.width))
+                        .frame(minWidth: 360, idealWidth: DocumentLayout.baseSize.width)
                 }
                 if paneMode != .editor {
                     PreviewWebView(text: debouncedText, theme: theme,
                                    syncBridge: paneMode == .split ? syncBridge : nil,
                                    documentDirectory: documentDirectory)
-                        .frame(minWidth: 320, idealWidth: CGFloat(NewWindowSize.width) * 0.7)
+                        .frame(minWidth: 320, idealWidth: DocumentLayout.baseSize.width * 0.7)
                 }
             }
             // The auto-hiding toolbar overlays the panes (the macOS menu-bar
@@ -111,7 +112,7 @@ struct DocumentView: View {
         }
         .frame(minWidth: paneMode == .split ? 700 : 520,
                idealWidth: DocumentLayout.idealSize(previewVisible: paneMode == .split).width,
-               minHeight: 400, idealHeight: CGFloat(NewWindowSize.height))
+               minHeight: 400, idealHeight: DocumentLayout.baseSize.height)
         .task(id: document.text) {
             // Debounce the preview render (~200 ms) so typing stays smooth; the
             // markdown render itself runs in the web process, off the main thread.
@@ -192,7 +193,6 @@ struct DocumentView: View {
                              customBackground: customBackground,
                              cursorStyle: theme.cursorStyle,
                              cursorBlink: theme.cursorBlink,
-                             sizeWindowToPreference: isNewDocument,
                              // Only track the top line in split layout (the one
                              // case both panes are visible), so other layouts
                              // cost no per-scroll work.

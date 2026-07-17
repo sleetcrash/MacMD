@@ -15,11 +15,6 @@ struct MarkdownTextView: NSViewRepresentable {
     var customBackground: NSColor?
     var cursorStyle: CursorStyle
     var cursorBlink: Bool
-    /// True for a new Untitled document's editor: size its window to the
-    /// preferred New Windows size once at creation. The SwiftUI ideal frame
-    /// alone cannot do this, because macOS reuses its remembered document
-    /// window size whenever one exists.
-    var sizeWindowToPreference: Bool = false
     /// Reports the top visible document line as the editor scrolls, for
     /// editor-to-preview scroll sync. Default nil so existing constructions and
     /// tests compile unchanged.
@@ -117,14 +112,9 @@ struct MarkdownTextView: NSViewRepresentable {
         textView.refreshCaret()
 
         let initialAppearance = appearance
-        let applyPreferredSize = sizeWindowToPreference
         DispatchQueue.main.async { [weak textView] in
             guard let window = textView?.window else { return }
             window.appearance = initialAppearance.nsAppearance
-            if applyPreferredSize {
-                window.setContentSize(NSSize(width: NewWindowSize.width,
-                                             height: NewWindowSize.height))
-            }
         }
 
         return scrollView

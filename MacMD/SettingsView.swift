@@ -129,11 +129,6 @@ struct SettingsView: View {
     @AppStorage(SpellingPref.grammarKey) private var checkGrammar = false
     @AppStorage(ToolbarPref.key) private var showToolbar = true
     @AppStorage(ToolbarAutoHidePref.key) private var toolbarAutoHides = true
-    @State private var windowWidthText = ""
-    @State private var windowHeightText = ""
-    @FocusState private var focusedSizeField: SizeField?
-
-    enum SizeField: Hashable { case width, height }
 
     // Which dropdown (if any) is open, and the on-screen frame of each trigger
     // box so the in-window dropdown can sit flush beneath it.
@@ -239,7 +234,7 @@ struct SettingsView: View {
         // screen edge; pull it back fully on screen on open (a dragged on-screen
         // position is left untouched).
         .background(KeepOnScreen())
-        .onAppear { syncFromSaved(); reconcileThemeId(); syncWindowSizeFields() }
+        .onAppear { syncFromSaved(); reconcileThemeId() }
         .onChange(of: openMenu) { old, new in
             // Closing the Size dropdown without committing reverts the typed
             // value to the working-copy size (Google-Docs behavior).
@@ -441,23 +436,6 @@ struct SettingsView: View {
                 .toggleStyle(.checkbox)
                 .font(.system(size: 12))
             }
-            VStack(alignment: .leading, spacing: 10) {
-                caption("New windows")
-                HStack(spacing: 8) {
-                    Text("Width").font(.system(size: 12))
-                    windowSizeField($windowWidthText, field: .width)
-                    Text("Height").font(.system(size: 12)).padding(.leading, 8)
-                    windowSizeField($windowHeightText, field: .height)
-                    Text("points").font(.system(size: 11)).foregroundStyle(Pane.muted).padding(.leading, 4)
-                }
-                // Commit when a size field loses focus, not just on Return, so
-                // a typed value is never silently discarded.
-                .onChange(of: focusedSizeField) { old, _ in
-                    if old != nil { commitWindowSizeFields() }
-                }
-                Button("Use Current Window") { captureCurrentWindowSize() }
-                    .buttonStyle(SquareButtonStyle())
-            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(EdgeInsets(top: 26, leading: 20, bottom: 20, trailing: 20))
@@ -471,56 +449,6 @@ struct SettingsView: View {
             .tracking(0.6)
             .foregroundStyle(Pane.muted)
             .opacity(0.55)
-    }
-
-    /// A bordered numeric field matching the Size box; commits (and clamps)
-    /// on Return or focus loss.
-    private func windowSizeField(_ text: Binding<String>, field: SizeField) -> some View {
-        TextField("", text: text)
-            .textFieldStyle(.plain)
-            .multilineTextAlignment(.center)
-            .font(.system(size: 11))
-            .frame(width: 56, height: 26)
-            .background(Pane.field)
-            .overlay(Rectangle().strokeBorder(Pane.border, lineWidth: 1))
-            .focused($focusedSizeField, equals: field)
-            .onSubmit { commitWindowSizeFields() }
-    }
-
-    /// Parse, clamp, persist, and reformat both size fields.
-    private func commitWindowSizeFields() {
-        NewWindowSize.set(width: parseSize(windowWidthText, fallback: NewWindowSize.width),
-                          height: parseSize(windowHeightText, fallback: NewWindowSize.height))
-        syncWindowSizeFields()
-    }
-
-    /// Numeric parse that keeps a decimal entry sane: "760.5" reads as 760.5,
-    /// not as digit-stripped 7605 racing into the clamp ceiling.
-    private func parseSize(_ text: String, fallback: Double) -> Double {
-        Double(text.trimmingCharacters(in: .whitespaces))
-            ?? Double(text.filter(\.isNumber))
-            ?? fallback
-    }
-
-    private func syncWindowSizeFields() {
-        windowWidthText = "\(Int(NewWindowSize.width))"
-        windowHeightText = "\(Int(NewWindowSize.height))"
-    }
-
-    /// Capture the frontmost document window's content size as the new-window
-    /// default. Panels (the color picker) and the auxiliary windows are
-    /// skipped; with no document window open this beeps and changes nothing.
-    private func captureCurrentWindowSize() {
-        let aux: Set<String> = ["Settings", "Custom Theme", "Help"]
-        guard let doc = NSApp.orderedWindows.first(where: {
-            $0.isVisible && !($0 is NSPanel) && !aux.contains($0.title)
-        }) else {
-            NSSound.beep()
-            return
-        }
-        let size = doc.contentLayoutRect.size
-        NewWindowSize.set(width: size.width, height: size.height)
-        syncWindowSizeFields()
     }
 
     // MARK: - Trigger boxes
