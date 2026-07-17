@@ -37,7 +37,7 @@ final class ThemeController: ObservableObject {
     /// customs. Never nil; an unknown id resolves to `Palette.defaultTheme`
     /// while `themeId` keeps its raw value.
     var resolvedTheme: Palette {
-        ThemeSettings.resolveTheme(id: themeId, customs: ThemeSettings.savedCustoms())
+        ThemeSettings.resolveTheme(id: themeId, customs: ThemeSettings.savedCustoms(defaults))
     }
 
     // MARK: - Saved (persisted) state
