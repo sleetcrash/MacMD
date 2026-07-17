@@ -193,6 +193,7 @@ struct DocumentView: View {
                              customBackground: customBackground,
                              cursorStyle: theme.cursorStyle,
                              cursorBlink: theme.cursorBlink,
+                             cursorColorHex: theme.cursorColorHex,
                              // Only track the top line in split layout (the one
                              // case both panes are visible), so other layouts
                              // cost no per-scroll work.

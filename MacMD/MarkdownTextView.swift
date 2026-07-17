@@ -15,6 +15,8 @@ struct MarkdownTextView: NSViewRepresentable {
     var customBackground: NSColor?
     var cursorStyle: CursorStyle
     var cursorBlink: Bool
+    /// The caret's fixed color as `#RRGGBB`, or nil for the system accent.
+    var cursorColorHex: String? = nil
     /// Reports the top visible document line as the editor scrolls, for
     /// editor-to-preview scroll sync. Default nil so existing constructions and
     /// tests compile unchanged.
@@ -69,7 +71,8 @@ struct MarkdownTextView: NSViewRepresentable {
         textView.textColor = Theme.textColor
         textView.backgroundColor = customBackground ?? .textBackgroundColor
         textView.drawsBackground = true
-        textView.insertionPointColor = Theme.accentColor
+        textView.insertionPointColor = cursorColorHex.flatMap { NSColor(hex: $0) } ?? Theme.accentColor
+        textView.appliedCursorColorHex = cursorColorHex
         textView.setContentHuggingPriority(.defaultLow, for: .horizontal)
         textView.isAutomaticTextCompletionEnabled = false
 
@@ -158,9 +161,12 @@ struct MarkdownTextView: NSViewRepresentable {
         // other open window drawing the old caret style until it next redrew
         // (the "cursor reverts to block" report, 2026-07-12).
         if let clickable = textView as? ClickableTextView,
-           clickable.appliedCursorStyle != cursorStyle || clickable.appliedCursorBlink != cursorBlink {
+           clickable.appliedCursorStyle != cursorStyle || clickable.appliedCursorBlink != cursorBlink
+               || clickable.appliedCursorColorHex != cursorColorHex {
             clickable.appliedCursorStyle = cursorStyle
             clickable.appliedCursorBlink = cursorBlink
+            clickable.appliedCursorColorHex = cursorColorHex
+            clickable.insertionPointColor = cursorColorHex.flatMap { NSColor(hex: $0) } ?? Theme.accentColor
             clickable.refreshCaret()
         }
         if textView.string != text {
@@ -520,6 +526,7 @@ final class ClickableTextView: NSTextView {
     /// change refreshes every window (Theme's change check fires only once).
     var appliedCursorStyle: CursorStyle = .bar
     var appliedCursorBlink = true
+    var appliedCursorColorHex: String?
 
     /// The 1-based document line at the top of the visible rect, for
     /// editor-to-preview scroll sync. Mirrors the gutter's first-visible-line

@@ -16,6 +16,8 @@ final class ThemeController: ObservableObject {
     @Published private(set) var fontFamilyId: String
     @Published private(set) var cursorStyle: CursorStyle
     @Published private(set) var cursorBlink: Bool
+    /// The caret's fixed color as `#RRGGBB`, or nil for the system accent.
+    @Published private(set) var cursorColorHex: String?
     @Published private(set) var backgroundMode: BackgroundMode
     @Published private(set) var customBackgroundHex: String?
 
@@ -30,6 +32,7 @@ final class ThemeController: ObservableObject {
         self.fontFamilyId = ThemeController.loadFontFamilyId(defaults)
         self.cursorStyle = ThemeController.loadCursorStyle(defaults)
         self.cursorBlink = ThemeController.loadCursorBlink(defaults)
+        self.cursorColorHex = ThemeController.loadCursorColor(defaults)
         self.backgroundMode = ThemeController.loadBackgroundMode(defaults)
         self.customBackgroundHex = ThemeController.loadCustomBackground(defaults)
     }
@@ -43,6 +46,7 @@ final class ThemeController: ObservableObject {
     var savedFontFamilyId: String { ThemeController.loadFontFamilyId(defaults) }
     var savedCursorStyle: CursorStyle { ThemeController.loadCursorStyle(defaults) }
     var savedCursorBlink: Bool { ThemeController.loadCursorBlink(defaults) }
+    var savedCursorColor: String? { ThemeController.loadCursorColor(defaults) }
     var savedBackgroundMode: BackgroundMode { ThemeController.loadBackgroundMode(defaults) }
     var savedCustomBackground: String? { ThemeController.loadCustomBackground(defaults) }
 
@@ -91,6 +95,21 @@ final class ThemeController: ObservableObject {
         self.cursorBlink = blink
     }
 
+    /// Preview a caret color in the live editor without persisting it.
+    func applyCursorColor(_ hex: String?) {
+        self.cursorColorHex = hex
+    }
+
+    /// Persist and apply the caret color (nil restores the system accent).
+    func saveCursorColor(_ hex: String?) {
+        if let hex {
+            defaults.set(hex, forKey: ThemeSettings.cursorColorKey)
+        } else {
+            defaults.removeObject(forKey: ThemeSettings.cursorColorKey)
+        }
+        self.cursorColorHex = hex
+    }
+
     /// Preview an editor background in the live document without persisting it.
     func applyBackground(mode: BackgroundMode, hex: String?) {
         self.backgroundMode = mode
@@ -116,6 +135,7 @@ final class ThemeController: ObservableObject {
         self.fontFamilyId = savedFontFamilyId
         self.cursorStyle = savedCursorStyle
         self.cursorBlink = savedCursorBlink
+        self.cursorColorHex = savedCursorColor
         applyBackground(mode: savedBackgroundMode, hex: savedCustomBackground)
     }
 
@@ -156,6 +176,9 @@ final class ThemeController: ObservableObject {
     }
     private static func loadCursorBlink(_ d: UserDefaults) -> Bool {
         d.object(forKey: ThemeSettings.cursorBlinkKey) == nil ? true : d.bool(forKey: ThemeSettings.cursorBlinkKey)
+    }
+    private static func loadCursorColor(_ d: UserDefaults) -> String? {
+        d.string(forKey: ThemeSettings.cursorColorKey)
     }
     private static func loadBackgroundMode(_ d: UserDefaults) -> BackgroundMode {
         BackgroundMode(rawValue: d.string(forKey: ThemeSettings.backgroundModeKey) ?? "") ?? .default

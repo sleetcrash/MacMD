@@ -113,6 +113,10 @@ struct SettingsView: View {
     @State private var wcFontFamilyId = FontFamily.default.id
     @State private var wcCursorStyleRaw = CursorStyle.bar.rawValue
     @State private var wcCursorBlink = true
+    /// nil = the system accent (the default caret color).
+    @State private var wcCursorColorHex: String?
+    /// Bump to open the shared color panel on the cursor-color well.
+    @State private var cursorColorPickerActivation = 0
     @State private var wcBackgroundModeRaw = BackgroundMode.default.rawValue
     @State private var wcCustomBackgroundHex: String?
     /// Bump to open the shared color panel on the background well (picking
@@ -172,6 +176,7 @@ struct SettingsView: View {
         || wcFontFamilyId != theme.fontFamilyId
         || wcCursorStyleRaw != theme.cursorStyle.rawValue
         || wcCursorBlink != theme.cursorBlink
+        || wcCursorColorHex != theme.cursorColorHex
         || wcBackgroundModeRaw != theme.backgroundMode.rawValue
         || wcCustomBackgroundHex != theme.customBackgroundHex
     }
@@ -183,6 +188,7 @@ struct SettingsView: View {
         || wcFontFamilyId != theme.savedFontFamilyId
         || wcCursorStyleRaw != theme.savedCursorStyle.rawValue
         || wcCursorBlink != theme.savedCursorBlink
+        || wcCursorColorHex != theme.savedCursorColor
         || wcBackgroundModeRaw != theme.savedBackgroundMode.rawValue
         || wcCustomBackgroundHex != theme.savedCustomBackground
     }
@@ -227,9 +233,15 @@ struct SettingsView: View {
         // the Background working copy. Mounted on the window root (not the
         // transient dropdown) so the panel keeps feeding color changes after the
         // dropdown closes. Opened programmatically via backgroundPickerActivation.
-        .background(BackgroundColorWell(hex: $wcCustomBackgroundHex,
-                                        activation: backgroundPickerActivation,
-                                        initialColor: EditorBackground.defaultBackground(dark: wcAppearance.resolvesDark))
+        .background(SettingsColorWell(hex: $wcCustomBackgroundHex,
+                                      activation: backgroundPickerActivation,
+                                      initialColor: EditorBackground.defaultBackground(dark: wcAppearance.resolvesDark))
+            .frame(width: 0, height: 0))
+        // A sibling well for the cursor color; the activation counters keep
+        // the shared panel feeding exactly one well at a time.
+        .background(SettingsColorWell(hex: $wcCursorColorHex,
+                                      activation: cursorColorPickerActivation,
+                                      initialColor: .controlAccentColor)
             .frame(width: 0, height: 0))
         // macOS frame autosave can restore this auxiliary window partway off the
         // screen edge; pull it back fully on screen on open (a dragged on-screen
@@ -321,11 +333,15 @@ struct SettingsView: View {
                     CursorControl(styleRaw: $wcCursorStyleRaw)
                         .frame(width: wideWidth, height: rowHeight)
                 }
-                Toggle("Blink", isOn: $wcCursorBlink)
-                    .toggleStyle(.checkbox)
-                    .font(.system(size: 11))
-                    .frame(width: segWidth, height: rowHeight)
+                LabeledField(label: "Color") {
+                    cursorColorBox.frame(width: segWidth, height: rowHeight)
+                }
             }
+            Toggle("Blink", isOn: $wcCursorBlink)
+                .toggleStyle(.checkbox)
+                .font(.system(size: 11))
+                .frame(height: 20)
+                .padding(.top, -8)
             ThemePreview(coloring: customDraft.active ? customDraft.scheme : wcColoring,
                          palette: customDraft.active ? customDraft.palette : wcPalette,
                          appearance: wcAppearance, fontSize: CGFloat(wcFontSize),
@@ -342,6 +358,7 @@ struct SettingsView: View {
                                 fontSize: wcFontSize, appearance: wcAppearance)
                     theme.applyFontFamily(wcFontFamilyId)
                     theme.applyCursor(style: CursorStyle(rawValue: wcCursorStyleRaw) ?? .bar, blink: wcCursorBlink)
+                    theme.applyCursorColor(wcCursorColorHex)
                     theme.applyBackground(mode: wcBackgroundMode, hex: wcCustomBackgroundHex)
                 }
                     .buttonStyle(SquareButtonStyle())
@@ -351,6 +368,7 @@ struct SettingsView: View {
                                fontSize: wcFontSize, appearance: wcAppearance)
                     theme.saveFontFamily(wcFontFamilyId)
                     theme.saveCursor(style: CursorStyle(rawValue: wcCursorStyleRaw) ?? .bar, blink: wcCursorBlink)
+                    theme.saveCursorColor(wcCursorColorHex)
                     theme.saveBackground(mode: wcBackgroundMode, hex: wcCustomBackgroundHex)
                     // A saved custom background joins the library, so it stays
                     // one dropdown pick away after trying other colors.
@@ -505,6 +523,31 @@ struct SettingsView: View {
         .reportsFrame(.background)
     }
 
+    /// The Cursor Color trigger: Default (the system accent) or the picked
+    /// fixed color, swatch right-aligned against the chevron like Background.
+    private var cursorColorBox: some View {
+        Button { toggle(.cursorColor) } label: {
+            HStack(spacing: 0) {
+                Text(wcCursorColorHex == nil ? "Default" : "Customize")
+                    .font(.system(size: 11))
+                    .lineLimit(1)
+                Spacer(minLength: 8)
+                Swatch(color: Color(nsColor: wcCursorColorHex.flatMap { NSColor(hex: $0) } ?? .controlAccentColor))
+                Image(systemName: "chevron.down").font(.system(size: 8)).opacity(0.5)
+                    .padding(.leading, 8)
+                    .rotationEffect(.degrees(openMenu == .cursorColor ? 180 : 0))
+                    .animation(.easeInOut(duration: 0.15), value: openMenu == .cursorColor)
+            }
+            .padding(.horizontal, 10)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Pane.field)
+            .overlay(Rectangle().strokeBorder(Pane.border, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Cursor color")
+        .reportsFrame(.cursorColor)
+    }
+
     private var fontBox: some View {
         Button { toggle(.font) } label: {
             HStack(spacing: 0) {
@@ -633,6 +676,19 @@ struct SettingsView: View {
                                      action: { pickBackground(.custom) },
                                      onEdit: wcStoredCustomColor == nil ? nil : { openBackgroundPicker() }))
             return rows
+        case .cursorColor:
+            let picked = wcCursorColorHex.flatMap { NSColor(hex: $0) }
+            return [
+                DropdownItem(id: "cursor.default",
+                             kind: .backgroundSwatch(.controlAccentColor),
+                             selected: wcCursorColorHex == nil,
+                             action: { pickCursorColorDefault() }),
+                DropdownItem(id: "cursor.custom",
+                             kind: .backgroundCustom(picked),
+                             selected: wcCursorColorHex != nil,
+                             action: { pickCursorColorCustom() },
+                             onEdit: picked == nil ? nil : { openCursorColorPicker() }),
+            ]
         }
     }
 
@@ -656,6 +712,24 @@ struct SettingsView: View {
         wcBackgroundModeRaw = BackgroundMode.custom.rawValue
         openMenu = nil
         backgroundPickerActivation += 1
+    }
+
+    /// The cursor's Default row: back to the system accent.
+    private func pickCursorColorDefault() {
+        wcCursorColorHex = nil
+        openMenu = nil
+    }
+
+    /// The cursor's Customize row: open the panel when no color is picked yet
+    /// (the first pick selects it); with one, the pencil reopens the panel.
+    private func pickCursorColorCustom() {
+        openMenu = nil
+        if wcCursorColorHex == nil { cursorColorPickerActivation += 1 }
+    }
+
+    private func openCursorColorPicker() {
+        openMenu = nil
+        cursorColorPickerActivation += 1
     }
 
     /// A saved-library swatch: select it as the custom background.
@@ -692,6 +766,7 @@ struct SettingsView: View {
         wcFontFamilyId = theme.savedFontFamilyId
         wcCursorStyleRaw = theme.savedCursorStyle.rawValue
         wcCursorBlink = theme.savedCursorBlink
+        wcCursorColorHex = theme.savedCursorColor
         wcBackgroundModeRaw = theme.savedBackgroundMode.rawValue
         wcCustomBackgroundHex = theme.savedCustomBackground
         sizeText = "\(Int(theme.savedFontSize))"
@@ -711,7 +786,7 @@ struct SettingsView: View {
 // MARK: - Dropdown plumbing
 
 /// Identifies which trigger box a dropdown belongs to.
-enum MenuField: Hashable { case theme, scheme, size, font, background }
+enum MenuField: Hashable { case theme, scheme, size, font, background, cursorColor }
 
 /// The Settings window's tabs: Appearance holds the transactional theme and
 /// editor-look controls; Editing holds the immediate-effect editing defaults.
@@ -1487,13 +1562,14 @@ struct SizeControl: View {
     }
 }
 
-/// An invisible, zero-sized color well bridging the shared `NSColorPanel` to
-/// the Background working copy, reusing the CustomThemeEditor bridge pattern
-/// (the panel reports picks through a real NSColorWell). Unlike that one it is
-/// never clicked directly: it activates programmatically when `activation`
-/// bumps (picking Custom with no color, or the pencil), and it opts out of
-/// hit-testing entirely so it can never swallow clicks meant for the controls.
-private struct BackgroundColorWell: NSViewRepresentable {
+/// An invisible, zero-sized color well bridging the shared `NSColorPanel` to a
+/// hex working copy (the Background and Cursor Color pickers each mount one),
+/// reusing the CustomThemeEditor bridge pattern (the panel reports picks
+/// through a real NSColorWell). Unlike that one it is never clicked directly:
+/// it activates programmatically when `activation` bumps (picking Custom with
+/// no color, or the pencil), and it opts out of hit-testing entirely so it can
+/// never swallow clicks meant for the controls.
+private struct SettingsColorWell: NSViewRepresentable {
     @Binding var hex: String?
     /// Bump to open the panel. Compared against the coordinator's last seen
     /// value so re-renders never re-open it.

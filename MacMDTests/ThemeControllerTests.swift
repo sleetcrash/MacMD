@@ -277,6 +277,39 @@ final class ThemeControllerTests: XCTestCase {
         XCTAssertFalse(c.cursorBlink)
     }
 
+    // MARK: - Cursor color (transactional, additive)
+
+    func testInitDefaultsToNilCursorColor() {
+        XCTAssertNil(ThemeController(defaults: freshDefaults()).cursorColorHex)
+    }
+
+    func testApplyCursorColorDoesNotPersist() {
+        let d = freshDefaults()
+        let c = ThemeController(defaults: d)
+        c.applyCursorColor("#FF8800")
+        XCTAssertEqual(c.cursorColorHex, "#FF8800")
+        XCTAssertNil(d.string(forKey: ThemeSettings.cursorColorKey))
+    }
+
+    func testSaveCursorColorPersistsAndNilRemoves() {
+        let d = freshDefaults()
+        let c = ThemeController(defaults: d)
+        c.saveCursorColor("#FF8800")
+        XCTAssertEqual(d.string(forKey: ThemeSettings.cursorColorKey), "#FF8800")
+        c.saveCursorColor(nil)
+        XCTAssertNil(d.string(forKey: ThemeSettings.cursorColorKey))
+        XCTAssertNil(c.cursorColorHex)
+    }
+
+    func testRevertRestoresSavedCursorColor() {
+        let d = freshDefaults()
+        d.set("#00CC66", forKey: ThemeSettings.cursorColorKey)
+        let c = ThemeController(defaults: d)
+        c.applyCursorColor("#FF0000")
+        c.revertToSaved()
+        XCTAssertEqual(c.cursorColorHex, "#00CC66")
+    }
+
     // MARK: - Background (transactional, additive)
 
     func testInitDefaultsToDefaultBackground() {
