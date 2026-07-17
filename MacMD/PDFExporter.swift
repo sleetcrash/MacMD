@@ -31,8 +31,9 @@ enum PDFExporter {
         webView.load(URLRequest(url: URL(string: "\(MarkdownSchemeHandler.scheme)://app/index.html")!))
         await loader.waitForLoad()
 
+        let resolved = theme.resolvedTheme
         let appearanceClass = EditorBackground.effectiveAppearance(
-            mode: theme.backgroundMode, hex: theme.customBackgroundHex, appearance: theme.appearance
+            background: resolved.background, isStatic: resolved.isStatic, appearance: theme.appearance
         ).resolvesDark ? "darkAqua" : "aqua"
         // Same-page evaluateJavaScript calls execute in order, so the setters
         // and render can fire and forget; the poll below gates completion.

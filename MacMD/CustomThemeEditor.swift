@@ -125,7 +125,7 @@ final class CustomDraft: ObservableObject {
 /// Settings window.
 struct CustomThemeEditor: View {
     @EnvironmentObject private var draft: CustomDraft
-    @AppStorage(ThemeSettings.customsKey) private var customsData = Data()
+    @AppStorage(ThemeSettings.customThemesKey) private var customsData = Data()
     @Environment(\.dismiss) private var dismiss
 
     private let wellSize: CGFloat = 24
@@ -388,9 +388,15 @@ struct CustomThemeEditor: View {
     @discardableResult
     private func persistPalette() -> String {
         let id = draft.editingId ?? "custom.\(UUID().uuidString)"
-        let palette = Palette(id: id, name: draft.name.trimmingCharacters(in: .whitespaces),
-                              scheme: draft.scheme, slots: draft.resolvedSlots)
         var all = ThemeSettings.decodeCustoms(customsData)
+        // Editing preserves the theme's existing background + kind (this interim
+        // builder can't edit them yet, Task 6), so saving a migrated theme never
+        // strips them; a brand-new theme is a dynamic default background.
+        let existing = all.first { $0.id == id }
+        let palette = Palette(id: id, name: draft.name.trimmingCharacters(in: .whitespaces),
+                              scheme: draft.scheme, slots: draft.resolvedSlots,
+                              background: existing?.background ?? EditorBackground.defaultPair,
+                              isStatic: existing?.isStatic ?? false)
         if let idx = all.firstIndex(where: { $0.id == id }) { all[idx] = palette } else { all.append(palette) }
         customsData = ThemeSettings.encodeCustoms(all)
         draft.editingId = id

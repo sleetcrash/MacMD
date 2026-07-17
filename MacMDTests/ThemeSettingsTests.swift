@@ -3,27 +3,6 @@ import XCTest
 
 final class ThemeSettingsTests: XCTestCase {
 
-    func testResolveReturnsNilForDefaultScheme() {
-        XCTAssertNil(ThemeSettings.resolvePalette(coloring: .off, themeId: "std.rgb", customs: []))
-    }
-
-    func testResolveReturnsPresetById() {
-        let p = ThemeSettings.resolvePalette(coloring: .standard, themeId: "std.eva01", customs: [])
-        XCTAssertEqual(p?.id, "std.eva01")
-    }
-
-    func testResolveReturnsCustomById() {
-        let custom = Palette(id: "custom.x", name: "Mine", scheme: .unified,
-                             slots: [ColorPair(light: "#111111", dark: "#222222")])
-        let p = ThemeSettings.resolvePalette(coloring: .unified, themeId: "custom.x", customs: [custom])
-        XCTAssertEqual(p?.id, "custom.x")
-    }
-
-    func testResolveFallsBackToSchemeFirstPresetForUnknownId() {
-        let p = ThemeSettings.resolvePalette(coloring: .unified, themeId: "bogus", customs: [])
-        XCTAssertEqual(p?.id, ColorTheming.defaultUnifiedId)
-    }
-
     func testCustomsEncodeDecodeRoundTrip() throws {
         let customs = [
             Palette(id: "c1", name: "One", scheme: .standard, slots: [
@@ -42,21 +21,6 @@ final class ThemeSettingsTests: XCTestCase {
     func testDecodeEmptyOrGarbageReturnsEmpty() {
         XCTAssertEqual(ThemeSettings.decodeCustoms(Data()), [])
         XCTAssertEqual(ThemeSettings.decodeCustoms(Data([0x00, 0x01])), [])
-    }
-
-    func testResolveIgnoresCrossSchemePreset() {
-        // coloring is .unified but the id points to a Standard preset → fall back to the Unified default.
-        let p = ThemeSettings.resolvePalette(coloring: .unified, themeId: "std.rgb", customs: [])
-        XCTAssertEqual(p?.id, ColorTheming.defaultUnifiedId)
-    }
-
-    func testResolveIgnoresCrossSchemeCustom() {
-        // A Unified custom id requested under Standard coloring must NOT load
-        // (wrong slot count); fall back to the Standard default preset instead.
-        let unifiedCustom = Palette(id: "custom.u", name: "U", scheme: .unified,
-                                    slots: [ColorPair(light: "#111111", dark: "#222222")])
-        let p = ThemeSettings.resolvePalette(coloring: .standard, themeId: "custom.u", customs: [unifiedCustom])
-        XCTAssertEqual(p?.id, ColorTheming.defaultStandardId)
     }
 
     // MARK: - resolveTheme (Task 2: total resolver, no Coloring/scheme gate)
@@ -110,24 +74,24 @@ final class ThemeSettingsTests: XCTestCase {
 
     func testMigrationOffDefaultSelectsDefault() {
         let d = scratchDefaults()
-        d.set(Coloring.off.rawValue, forKey: ThemeSettings.schemeKey)
+        d.set(Coloring.off.rawValue, forKey: "colorScheme")
         ThemeSettings.migrateIfNeeded(d)
         XCTAssertEqual(d.string(forKey: ThemeSettings.selectedThemeKey), "default")
     }
 
     func testMigrationOffPresetMapsToTint() {
         let d = scratchDefaults()
-        d.set(BackgroundMode.preset.rawValue, forKey: ThemeSettings.backgroundModeKey)
-        d.set("bg.cream", forKey: ThemeSettings.backgroundPresetKey)
+        d.set("preset", forKey: "backgroundMode")
+        d.set("bg.cream", forKey: "backgroundPreset")
         ThemeSettings.migrateIfNeeded(d)
         XCTAssertEqual(d.string(forKey: ThemeSettings.selectedThemeKey), "tint.cream")
     }
 
     func testMigrationOffCustomHexSynthesizesStaticCustom() {
         let d = scratchDefaults()
-        d.set(Coloring.off.rawValue, forKey: ThemeSettings.schemeKey)
-        d.set(BackgroundMode.custom.rawValue, forKey: ThemeSettings.backgroundModeKey)
-        d.set("#334455", forKey: ThemeSettings.customBackgroundKey)
+        d.set(Coloring.off.rawValue, forKey: "colorScheme")
+        d.set("custom", forKey: "backgroundMode")
+        d.set("#334455", forKey: "customBackground")
         ThemeSettings.migrateIfNeeded(d)
 
         let customs = ThemeSettings.decodeCustoms(d.data(forKey: ThemeSettings.customThemesKey) ?? Data())
@@ -143,8 +107,8 @@ final class ThemeSettingsTests: XCTestCase {
 
     func testMigrationPresetDefaultKeepsPresetId() {
         let d = scratchDefaults()
-        d.set(Coloring.standard.rawValue, forKey: ThemeSettings.schemeKey)
-        d.set("std.rgb", forKey: ThemeSettings.themeIdKey)
+        d.set(Coloring.standard.rawValue, forKey: "colorScheme")
+        d.set("std.rgb", forKey: "themeId")
         ThemeSettings.migrateIfNeeded(d)
 
         XCTAssertEqual(d.string(forKey: ThemeSettings.selectedThemeKey), "std.rgb")
@@ -154,10 +118,10 @@ final class ThemeSettingsTests: XCTestCase {
 
     func testMigrationPresetWithPresetBackgroundSynthesizesDynamicCustom() {
         let d = scratchDefaults()
-        d.set(Coloring.standard.rawValue, forKey: ThemeSettings.schemeKey)
-        d.set("std.rgb", forKey: ThemeSettings.themeIdKey)
-        d.set(BackgroundMode.preset.rawValue, forKey: ThemeSettings.backgroundModeKey)
-        d.set("bg.gray", forKey: ThemeSettings.backgroundPresetKey)
+        d.set(Coloring.standard.rawValue, forKey: "colorScheme")
+        d.set("std.rgb", forKey: "themeId")
+        d.set("preset", forKey: "backgroundMode")
+        d.set("bg.gray", forKey: "backgroundPreset")
         ThemeSettings.migrateIfNeeded(d)
 
         let customs = ThemeSettings.decodeCustoms(d.data(forKey: ThemeSettings.customThemesKey) ?? Data())
@@ -174,10 +138,10 @@ final class ThemeSettingsTests: XCTestCase {
 
     func testMigrationPresetWithCustomHexSynthesizesStaticCollapsed() {
         let d = scratchDefaults()
-        d.set(Coloring.standard.rawValue, forKey: ThemeSettings.schemeKey)
-        d.set("std.rgb", forKey: ThemeSettings.themeIdKey)
-        d.set(BackgroundMode.custom.rawValue, forKey: ThemeSettings.backgroundModeKey)
-        d.set("#111111", forKey: ThemeSettings.customBackgroundKey)
+        d.set(Coloring.standard.rawValue, forKey: "colorScheme")
+        d.set("std.rgb", forKey: "themeId")
+        d.set("custom", forKey: "backgroundMode")
+        d.set("#111111", forKey: "customBackground")
         ThemeSettings.migrateIfNeeded(d)
 
         let customs = ThemeSettings.decodeCustoms(d.data(forKey: ThemeSettings.customThemesKey) ?? Data())
@@ -194,9 +158,9 @@ final class ThemeSettingsTests: XCTestCase {
         let d = scratchDefaults()
         let custom = Palette(id: "custom.mine", name: "Mine", scheme: .unified,
                              slots: [ColorPair(light: "#111111", dark: "#222222")])
-        d.set(ThemeSettings.encodeCustoms([custom]), forKey: ThemeSettings.customsKey)
-        d.set(Coloring.unified.rawValue, forKey: ThemeSettings.schemeKey)
-        d.set("custom.mine", forKey: ThemeSettings.themeIdKey)
+        d.set(ThemeSettings.encodeCustoms([custom]), forKey: "customPalettes")
+        d.set(Coloring.unified.rawValue, forKey: "colorScheme")
+        d.set("custom.mine", forKey: "themeId")
         ThemeSettings.migrateIfNeeded(d)
 
         let customs = ThemeSettings.decodeCustoms(d.data(forKey: ThemeSettings.customThemesKey) ?? Data())
@@ -215,11 +179,11 @@ final class ThemeSettingsTests: XCTestCase {
         let d = scratchDefaults()
         let custom = Palette(id: "custom.mine", name: "Mine", scheme: .unified,
                              slots: [ColorPair(light: "#111111", dark: "#222222")])
-        d.set(ThemeSettings.encodeCustoms([custom]), forKey: ThemeSettings.customsKey)
-        d.set(Coloring.unified.rawValue, forKey: ThemeSettings.schemeKey)
-        d.set("custom.mine", forKey: ThemeSettings.themeIdKey)
-        d.set(BackgroundMode.preset.rawValue, forKey: ThemeSettings.backgroundModeKey)
-        d.set("bg.parchment", forKey: ThemeSettings.backgroundPresetKey)
+        d.set(ThemeSettings.encodeCustoms([custom]), forKey: "customPalettes")
+        d.set(Coloring.unified.rawValue, forKey: "colorScheme")
+        d.set("custom.mine", forKey: "themeId")
+        d.set("preset", forKey: "backgroundMode")
+        d.set("bg.parchment", forKey: "backgroundPreset")
         ThemeSettings.migrateIfNeeded(d)
 
         let customs = ThemeSettings.decodeCustoms(d.data(forKey: ThemeSettings.customThemesKey) ?? Data())
@@ -237,11 +201,11 @@ final class ThemeSettingsTests: XCTestCase {
         let d = scratchDefaults()
         let custom = Palette(id: "custom.mine", name: "Mine", scheme: .unified,
                              slots: [ColorPair(light: "#111111", dark: "#222222")])
-        d.set(ThemeSettings.encodeCustoms([custom]), forKey: ThemeSettings.customsKey)
-        d.set(Coloring.unified.rawValue, forKey: ThemeSettings.schemeKey)
-        d.set("custom.mine", forKey: ThemeSettings.themeIdKey)
-        d.set(BackgroundMode.custom.rawValue, forKey: ThemeSettings.backgroundModeKey)
-        d.set("#EEEEEE", forKey: ThemeSettings.customBackgroundKey)
+        d.set(ThemeSettings.encodeCustoms([custom]), forKey: "customPalettes")
+        d.set(Coloring.unified.rawValue, forKey: "colorScheme")
+        d.set("custom.mine", forKey: "themeId")
+        d.set("custom", forKey: "backgroundMode")
+        d.set("#EEEEEE", forKey: "customBackground")
         ThemeSettings.migrateIfNeeded(d)
 
         let customs = ThemeSettings.decodeCustoms(d.data(forKey: ThemeSettings.customThemesKey) ?? Data())
@@ -263,9 +227,9 @@ final class ThemeSettingsTests: XCTestCase {
             ColorPair(light: "#555555", dark: "#666666"),
             ColorPair(light: "#777777", dark: "#888888"),
         ])
-        d.set(ThemeSettings.encodeCustoms([c1, c2]), forKey: ThemeSettings.customsKey)
-        d.set(Coloring.standard.rawValue, forKey: ThemeSettings.schemeKey)
-        d.set("std.rgb", forKey: ThemeSettings.themeIdKey)
+        d.set(ThemeSettings.encodeCustoms([c1, c2]), forKey: "customPalettes")
+        d.set(Coloring.standard.rawValue, forKey: "colorScheme")
+        d.set("std.rgb", forKey: "themeId")
         ThemeSettings.migrateIfNeeded(d)
 
         let customs = ThemeSettings.decodeCustoms(d.data(forKey: ThemeSettings.customThemesKey) ?? Data())
@@ -284,10 +248,10 @@ final class ThemeSettingsTests: XCTestCase {
 
     func testMigrationSchemeMismatchKeysOffResolvedPalette() {
         let d = scratchDefaults()
-        d.set(Coloring.unified.rawValue, forKey: ThemeSettings.schemeKey)
-        d.set("std.rgb", forKey: ThemeSettings.themeIdKey)
-        d.set(BackgroundMode.preset.rawValue, forKey: ThemeSettings.backgroundModeKey)
-        d.set("bg.gray", forKey: ThemeSettings.backgroundPresetKey)
+        d.set(Coloring.unified.rawValue, forKey: "colorScheme")
+        d.set("std.rgb", forKey: "themeId")
+        d.set("preset", forKey: "backgroundMode")
+        d.set("bg.gray", forKey: "backgroundPreset")
         ThemeSettings.migrateIfNeeded(d)
 
         let customs = ThemeSettings.decodeCustoms(d.data(forKey: ThemeSettings.customThemesKey) ?? Data())
@@ -301,16 +265,16 @@ final class ThemeSettingsTests: XCTestCase {
 
     func testMigrationDegenerateHexDegradesToDefaultSibling() {
         let dNil = scratchDefaults()
-        dNil.set(Coloring.off.rawValue, forKey: ThemeSettings.schemeKey)
-        dNil.set(BackgroundMode.custom.rawValue, forKey: ThemeSettings.backgroundModeKey)
+        dNil.set(Coloring.off.rawValue, forKey: "colorScheme")
+        dNil.set("custom", forKey: "backgroundMode")
         ThemeSettings.migrateIfNeeded(dNil)
         XCTAssertEqual(dNil.string(forKey: ThemeSettings.selectedThemeKey), "default")
         XCTAssertTrue(ThemeSettings.decodeCustoms(dNil.data(forKey: ThemeSettings.customThemesKey) ?? Data()).isEmpty)
 
         let dGarbage = scratchDefaults()
-        dGarbage.set(Coloring.off.rawValue, forKey: ThemeSettings.schemeKey)
-        dGarbage.set(BackgroundMode.custom.rawValue, forKey: ThemeSettings.backgroundModeKey)
-        dGarbage.set("garbage", forKey: ThemeSettings.customBackgroundKey)
+        dGarbage.set(Coloring.off.rawValue, forKey: "colorScheme")
+        dGarbage.set("custom", forKey: "backgroundMode")
+        dGarbage.set("garbage", forKey: "customBackground")
         ThemeSettings.migrateIfNeeded(dGarbage)
         XCTAssertEqual(dGarbage.string(forKey: ThemeSettings.selectedThemeKey), "default")
         XCTAssertTrue(ThemeSettings.decodeCustoms(dGarbage.data(forKey: ThemeSettings.customThemesKey) ?? Data()).isEmpty)
@@ -321,28 +285,28 @@ final class ThemeSettingsTests: XCTestCase {
         let selectedCustom = Palette(id: "custom.mine", name: "Mine", scheme: .unified,
                                      slots: [ColorPair(light: "#111111", dark: "#222222")])
         let dSelectedNil = scratchDefaults()
-        dSelectedNil.set(ThemeSettings.encodeCustoms([selectedCustom]), forKey: ThemeSettings.customsKey)
-        dSelectedNil.set(Coloring.unified.rawValue, forKey: ThemeSettings.schemeKey)
-        dSelectedNil.set("custom.mine", forKey: ThemeSettings.themeIdKey)
-        dSelectedNil.set(BackgroundMode.custom.rawValue, forKey: ThemeSettings.backgroundModeKey)
+        dSelectedNil.set(ThemeSettings.encodeCustoms([selectedCustom]), forKey: "customPalettes")
+        dSelectedNil.set(Coloring.unified.rawValue, forKey: "colorScheme")
+        dSelectedNil.set("custom.mine", forKey: "themeId")
+        dSelectedNil.set("custom", forKey: "backgroundMode")
         ThemeSettings.migrateIfNeeded(dSelectedNil)
         assertSurvivesAsDynamicDefault(dSelectedNil, original: selectedCustom)
 
         let dSelectedGarbage = scratchDefaults()
-        dSelectedGarbage.set(ThemeSettings.encodeCustoms([selectedCustom]), forKey: ThemeSettings.customsKey)
-        dSelectedGarbage.set(Coloring.unified.rawValue, forKey: ThemeSettings.schemeKey)
-        dSelectedGarbage.set("custom.mine", forKey: ThemeSettings.themeIdKey)
-        dSelectedGarbage.set(BackgroundMode.custom.rawValue, forKey: ThemeSettings.backgroundModeKey)
-        dSelectedGarbage.set("garbage", forKey: ThemeSettings.customBackgroundKey)
+        dSelectedGarbage.set(ThemeSettings.encodeCustoms([selectedCustom]), forKey: "customPalettes")
+        dSelectedGarbage.set(Coloring.unified.rawValue, forKey: "colorScheme")
+        dSelectedGarbage.set("custom.mine", forKey: "themeId")
+        dSelectedGarbage.set("custom", forKey: "backgroundMode")
+        dSelectedGarbage.set("garbage", forKey: "customBackground")
         ThemeSettings.migrateIfNeeded(dSelectedGarbage)
         assertSurvivesAsDynamicDefault(dSelectedGarbage, original: selectedCustom)
     }
 
     func testMigrationUnknownPresetIdDegradesToDefaultSibling() {
         let d = scratchDefaults()
-        d.set(Coloring.off.rawValue, forKey: ThemeSettings.schemeKey)
-        d.set(BackgroundMode.preset.rawValue, forKey: ThemeSettings.backgroundModeKey)
-        d.set("bg.nonexistent", forKey: ThemeSettings.backgroundPresetKey)
+        d.set(Coloring.off.rawValue, forKey: "colorScheme")
+        d.set("preset", forKey: "backgroundMode")
+        d.set("bg.nonexistent", forKey: "backgroundPreset")
         ThemeSettings.migrateIfNeeded(d)
         XCTAssertEqual(d.string(forKey: ThemeSettings.selectedThemeKey), "default")
 
@@ -351,11 +315,11 @@ final class ThemeSettingsTests: XCTestCase {
         let selectedCustom = Palette(id: "custom.mine", name: "Mine", scheme: .unified,
                                      slots: [ColorPair(light: "#111111", dark: "#222222")])
         let dSelected = scratchDefaults()
-        dSelected.set(ThemeSettings.encodeCustoms([selectedCustom]), forKey: ThemeSettings.customsKey)
-        dSelected.set(Coloring.unified.rawValue, forKey: ThemeSettings.schemeKey)
-        dSelected.set("custom.mine", forKey: ThemeSettings.themeIdKey)
-        dSelected.set(BackgroundMode.preset.rawValue, forKey: ThemeSettings.backgroundModeKey)
-        dSelected.set("bg.nonsense", forKey: ThemeSettings.backgroundPresetKey)
+        dSelected.set(ThemeSettings.encodeCustoms([selectedCustom]), forKey: "customPalettes")
+        dSelected.set(Coloring.unified.rawValue, forKey: "colorScheme")
+        dSelected.set("custom.mine", forKey: "themeId")
+        dSelected.set("preset", forKey: "backgroundMode")
+        dSelected.set("bg.nonsense", forKey: "backgroundPreset")
         ThemeSettings.migrateIfNeeded(dSelected)
         assertSurvivesAsDynamicDefault(dSelected, original: selectedCustom)
     }
@@ -386,26 +350,26 @@ final class ThemeSettingsTests: XCTestCase {
 
     func testMigrationDeletesLegacyKeysAndWritesFlag() {
         let d = scratchDefaults()
-        d.set(Coloring.standard.rawValue, forKey: ThemeSettings.schemeKey)
-        d.set("std.rgb", forKey: ThemeSettings.themeIdKey)
-        d.set(BackgroundMode.preset.rawValue, forKey: ThemeSettings.backgroundModeKey)
-        d.set("#123456", forKey: ThemeSettings.customBackgroundKey)
-        d.set("bg.gray", forKey: ThemeSettings.backgroundPresetKey)
-        d.set(ThemeSettings.encodeCustoms([]), forKey: ThemeSettings.customsKey)
+        d.set(Coloring.standard.rawValue, forKey: "colorScheme")
+        d.set("std.rgb", forKey: "themeId")
+        d.set("preset", forKey: "backgroundMode")
+        d.set("#123456", forKey: "customBackground")
+        d.set("bg.gray", forKey: "backgroundPreset")
+        d.set(ThemeSettings.encodeCustoms([]), forKey: "customPalettes")
         ThemeSettings.migrateIfNeeded(d)
 
-        XCTAssertNil(d.object(forKey: ThemeSettings.schemeKey))
-        XCTAssertNil(d.object(forKey: ThemeSettings.themeIdKey))
-        XCTAssertNil(d.object(forKey: ThemeSettings.backgroundModeKey))
-        XCTAssertNil(d.object(forKey: ThemeSettings.customBackgroundKey))
-        XCTAssertNil(d.object(forKey: ThemeSettings.backgroundPresetKey))
-        XCTAssertNil(d.object(forKey: ThemeSettings.customsKey))
+        XCTAssertNil(d.object(forKey: "colorScheme"))
+        XCTAssertNil(d.object(forKey: "themeId"))
+        XCTAssertNil(d.object(forKey: "backgroundMode"))
+        XCTAssertNil(d.object(forKey: "customBackground"))
+        XCTAssertNil(d.object(forKey: "backgroundPreset"))
+        XCTAssertNil(d.object(forKey: "customPalettes"))
         XCTAssertEqual(d.integer(forKey: ThemeSettings.schemaVersionKey), 2)
     }
 
     func testMigrationIsIdempotent() {
         let d = scratchDefaults()
-        d.set(Coloring.off.rawValue, forKey: ThemeSettings.schemeKey)
+        d.set(Coloring.off.rawValue, forKey: "colorScheme")
         ThemeSettings.migrateIfNeeded(d)
         XCTAssertEqual(d.string(forKey: ThemeSettings.selectedThemeKey), "default")
 
@@ -417,7 +381,7 @@ final class ThemeSettingsTests: XCTestCase {
     func testMigrationPreservesCustomBackgroundsLibrary() {
         let d = scratchDefaults()
         d.set(["#111111", "#222222"], forKey: BackgroundLibrary.key)
-        d.set(Coloring.off.rawValue, forKey: ThemeSettings.schemeKey)
+        d.set(Coloring.off.rawValue, forKey: "colorScheme")
         ThemeSettings.migrateIfNeeded(d)
         XCTAssertEqual(BackgroundLibrary.all(d), ["#111111", "#222222"])
     }
@@ -426,11 +390,11 @@ final class ThemeSettingsTests: XCTestCase {
         let d = scratchDefaults()
         let existing = Palette(id: "custom.existing", name: "Periwinkle", scheme: .unified,
                                slots: [ColorPair(light: "#111111", dark: "#222222")])
-        d.set(ThemeSettings.encodeCustoms([existing]), forKey: ThemeSettings.customsKey)
-        d.set(Coloring.unified.rawValue, forKey: ThemeSettings.schemeKey)
-        d.set("uni.periwinkle", forKey: ThemeSettings.themeIdKey)
-        d.set(BackgroundMode.preset.rawValue, forKey: ThemeSettings.backgroundModeKey)
-        d.set("bg.cream", forKey: ThemeSettings.backgroundPresetKey)
+        d.set(ThemeSettings.encodeCustoms([existing]), forKey: "customPalettes")
+        d.set(Coloring.unified.rawValue, forKey: "colorScheme")
+        d.set("uni.periwinkle", forKey: "themeId")
+        d.set("preset", forKey: "backgroundMode")
+        d.set("bg.cream", forKey: "backgroundPreset")
         ThemeSettings.migrateIfNeeded(d)
 
         let customs = ThemeSettings.decodeCustoms(d.data(forKey: ThemeSettings.customThemesKey) ?? Data())

@@ -17,8 +17,9 @@ enum HTMLExporter {
                                       documentDirectory: URL? = nil) async -> String {
         let baseCSS = bundledCSS("preview-base")
         let themeCSS = PreviewCSS.css(theme: theme)
+        let resolved = theme.resolvedTheme
         let appearanceClass = EditorBackground.effectiveAppearance(
-            mode: theme.backgroundMode, hex: theme.customBackgroundHex, appearance: theme.appearance
+            background: resolved.background, isStatic: resolved.isStatic, appearance: theme.appearance
         ).resolvesDark ? "darkAqua" : "aqua"
 
         let config = WKWebViewConfiguration()

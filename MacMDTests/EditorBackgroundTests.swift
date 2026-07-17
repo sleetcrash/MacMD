@@ -57,86 +57,7 @@ final class EditorBackgroundTests: XCTestCase {
         XCTAssertNil(EditorBackground.isLight(hex: "#12345"))
     }
 
-    // MARK: - effectiveAppearance
-
-    func testDefaultModePassesTheModeThrough() {
-        XCTAssertEqual(EditorBackground.effectiveAppearance(mode: .default, hex: "#FF0000", appearance: .light), .light)
-        XCTAssertEqual(EditorBackground.effectiveAppearance(mode: .default, hex: nil, appearance: .system), .system)
-        XCTAssertEqual(EditorBackground.effectiveAppearance(mode: .default, hex: nil, appearance: .dark), .dark)
-    }
-
-    func testCustomLightColorForcesLightAppearance() {
-        XCTAssertEqual(EditorBackground.effectiveAppearance(mode: .custom, hex: "#FFFDE7", appearance: .dark), .light)
-    }
-
-    func testCustomDarkColorForcesDarkAppearance() {
-        XCTAssertEqual(EditorBackground.effectiveAppearance(mode: .custom, hex: "#101820", appearance: .light), .dark)
-    }
-
-    func testCustomWithoutUsableColorFallsBackToTheMode() {
-        XCTAssertEqual(EditorBackground.effectiveAppearance(mode: .custom, hex: nil, appearance: .dark), .dark)
-        XCTAssertEqual(EditorBackground.effectiveAppearance(mode: .custom, hex: "bogus", appearance: .light), .light)
-    }
-
-    // MARK: - customColor
-
-    func testCustomColorIsNilUnderDefaultMode() {
-        XCTAssertNil(EditorBackground.customColor(mode: .default, hex: "#FF0000"))
-    }
-
-    func testCustomColorIsNilWithoutUsableHex() {
-        XCTAssertNil(EditorBackground.customColor(mode: .custom, hex: nil))
-        XCTAssertNil(EditorBackground.customColor(mode: .custom, hex: "bogus"))
-    }
-
-    func testCustomColorRoundTripsTheHex() {
-        XCTAssertEqual(EditorBackground.customColor(mode: .custom, hex: "#FF8800")?.hexString, "#FF8800")
-    }
-
-    // MARK: - Persistence contract + Default swatch colors
-
-    func testBackgroundModeRawValues() {
-        XCTAssertEqual(BackgroundMode.default.rawValue, "default")
-        XCTAssertEqual(BackgroundMode.preset.rawValue, "preset")
-        XCTAssertEqual(BackgroundMode.custom.rawValue, "custom")
-    }
-
-    // MARK: - Presets
-
-    func testPresetColorResolvesEachModeSide() {
-        let cream = BackgroundPreset.all[0]
-        XCTAssertEqual(EditorBackground.presetColor(id: cream.id, dark: false)?.hexString,
-                       cream.pair.light)
-        XCTAssertEqual(EditorBackground.presetColor(id: cream.id, dark: true)?.hexString,
-                       cream.pair.dark)
-    }
-
-    func testPresetColorUnknownIdIsNil() {
-        XCTAssertNil(EditorBackground.presetColor(id: "bg.plaid", dark: false))
-        XCTAssertNil(EditorBackground.presetColor(id: nil, dark: true))
-    }
-
-    func testActiveColorSwitchesByMode() {
-        XCTAssertNil(EditorBackground.activeColor(mode: .default, hex: "#123456",
-                                                  presetId: "bg.gray", dark: false))
-        XCTAssertEqual(EditorBackground.activeColor(mode: .custom, hex: "#123456",
-                                                    presetId: "bg.gray", dark: true)?.hexString,
-                       "#123456")
-        XCTAssertEqual(EditorBackground.activeColor(mode: .preset, hex: "#123456",
-                                                    presetId: "bg.gray", dark: true)?.hexString,
-                       BackgroundPreset.preset(id: "bg.gray")?.pair.dark)
-        // A preset selection with a dead id behaves as Default, never crashes.
-        XCTAssertNil(EditorBackground.activeColor(mode: .preset, hex: nil,
-                                                  presetId: "bg.gone", dark: false))
-    }
-
-    func testPresetAppearanceFollowsTheMode() {
-        // Unlike Custom (luma-derived), a preset never overrides the Mode.
-        XCTAssertEqual(EditorBackground.effectiveAppearance(mode: .preset, hex: nil,
-                                                            appearance: .light), .light)
-        XCTAssertEqual(EditorBackground.effectiveAppearance(mode: .preset, hex: nil,
-                                                            appearance: .dark), .dark)
-    }
+    // MARK: - Default swatch colors
 
     func testDefaultBackgroundMatchesTheModeColors() {
         XCTAssertEqual(EditorBackground.defaultBackground(dark: false).hexString, "#FFFFFF")
@@ -168,6 +89,14 @@ final class EditorBackgroundTests: XCTestCase {
 
         let cream = ColorPair(light: "#F8F1E1", dark: "#F8F1E1")
         XCTAssertEqual(EditorBackground.effectiveAppearance(background: cream, isStatic: true, appearance: .dark), .light)
+    }
+
+    func testEffectiveAppearanceStaticBadHexFallsThroughToMode() {
+        // An unparseable light hex on a static pair falls through to the Mode,
+        // not an appearance-dependent labelColor guess.
+        let bad = ColorPair(light: "garbage", dark: "garbage")
+        XCTAssertEqual(EditorBackground.effectiveAppearance(background: bad, isStatic: true, appearance: .dark), .dark)
+        XCTAssertEqual(EditorBackground.effectiveAppearance(background: bad, isStatic: true, appearance: .light), .light)
     }
 
     func testEffectiveAppearanceDynamicFollowsMode() {
