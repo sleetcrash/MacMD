@@ -127,6 +127,7 @@ struct SettingsView: View {
     @State private var tab: SettingsTab = .appearance
     @AppStorage(SpellingPref.spellingKey) private var checkSpelling = true
     @AppStorage(SpellingPref.grammarKey) private var checkGrammar = false
+    @AppStorage(WordCountPref.key) private var showWordCount = false
     @AppStorage(ToolbarPref.key) private var showToolbar = true
     @AppStorage(ToolbarAutoHidePref.key) private var toolbarAutoHides = true
 
@@ -420,6 +421,15 @@ struct SettingsView: View {
                 .toggleStyle(.checkbox)
                 .font(.system(size: 12))
                 .disabled(!showToolbar)
+            }
+            VStack(alignment: .leading, spacing: 10) {
+                caption("Word count")
+                Toggle("Show word count", isOn: Binding(
+                    get: { showWordCount },
+                    set: { WordCountPref.set($0) }
+                ))
+                .toggleStyle(.checkbox)
+                .font(.system(size: 12))
             }
             VStack(alignment: .leading, spacing: 10) {
                 caption("Spelling")
