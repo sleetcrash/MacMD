@@ -35,8 +35,8 @@ struct SystemWindowAppearance: NSViewRepresentable {
 }
 
 /// Keeps an auxiliary window above the document windows: clicking a document
-/// window no longer drops this one behind it. Used on the Settings and Custom
-/// Theme windows. The shared NSColorPanel is floated to the same level (see
+/// window no longer drops this one behind it. Used on the Settings and Theme
+/// Builder windows. The shared NSColorPanel is floated to the same level (see
 /// PanelColorWell.activate) so picking a color still comes forward over the
 /// Theme Builder window instead of being trapped behind it.
 struct FloatAboveDocument: NSViewRepresentable {
@@ -241,7 +241,7 @@ struct SettingsView: View {
             // any unsaved Apply and snaps the document back to the saved theme.
             theme.revertToSaved()
             syncFromSaved()
-            // Cascade: the Theme Builder builder and the system color picker are
+            // Cascade: the Theme Builder and the system color picker are
             // satellites of this window, never leave them orphaned when it closes.
             // (The builder's own onDisappear only re-focuses "Settings" while it
             // is still visible, so this can't resurrect a closing window.)

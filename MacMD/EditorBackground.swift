@@ -73,8 +73,8 @@ enum EditorBackground {
     }
 }
 
-/// The saved custom-background swatches (uppercase `#RRGGBB` strings) the Custom
-/// Theme builder offers as background quick-picks. Saving a theme whose
+/// The saved custom-background swatches (uppercase `#RRGGBB` strings) the Theme
+/// Builder offers as background quick-picks. Saving a theme whose
 /// background well was set from the color panel adds that color here.
 enum BackgroundLibrary {
     static let key = "customBackgrounds"

@@ -204,8 +204,8 @@ struct PreviewWebView: NSViewRepresentable {
         /// A cheap fingerprint of every input to PreviewCSS: the theme scalars,
         /// the resolved light/dark state (so an OS appearance flip is caught even
         /// under System mode, and a static theme's luminance side), and the raw
-        /// customThemes bytes (no JSON decode, so editing the applied custom's
-        /// colors or background re-renders).
+        /// customThemes bytes (so editing the applied custom's colors or
+        /// background re-renders).
         private func themeFingerprint(_ t: ThemeController) -> Int {
             var h = Hasher()
             h.combine(t.themeId)

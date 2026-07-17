@@ -24,7 +24,7 @@ extension NSColor {
 }
 
 /// How many distinct heading colors are in play.
-enum Coloring: String, CaseIterable, Codable {
+enum Coloring: String, Codable {
     /// `.off` colors nothing (headings use the system label color); shown as "Default" in the UI.
     case off, unified, standard
 

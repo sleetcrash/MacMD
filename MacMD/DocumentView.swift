@@ -49,7 +49,8 @@ struct DocumentView: View {
     /// The selection's palette, or nil under a scheme-off theme so headings use
     /// the label color (exactly like the old Default scheme).
     private var palette: Palette? {
-        resolvedTheme.scheme == .off ? nil : resolvedTheme
+        let resolved = resolvedTheme
+        return resolved.scheme == .off ? nil : resolved
     }
 
     @State private var showWordCount = WordCountPref.isOn
@@ -83,9 +84,10 @@ struct DocumentView: View {
     /// The appearance the theme forces: a static theme's luminance, or the Mode
     /// for a dynamic theme (System resolving against the live OS appearance).
     private var effectiveAppearance: AppAppearance {
-        EditorBackground.effectiveAppearance(background: resolvedTheme.background,
-                                             isStatic: resolvedTheme.isStatic,
-                                             appearance: theme.appearance)
+        let resolved = resolvedTheme
+        return EditorBackground.effectiveAppearance(background: resolved.background,
+                                                    isStatic: resolved.isStatic,
+                                                    appearance: theme.appearance)
     }
 
     /// The fixed editor background the theme paints, else nil (the default pair
