@@ -150,7 +150,7 @@ final class ThemeControllerTests: XCTestCase {
 
     // MARK: - CustomDraft slot-count invariant
     //
-    // The Custom Theme editor indexes per-slot arrays by `0..<slotCount`, so the
+    // The Theme Builder indexes per-slot arrays by `0..<slotCount`, so the
     // light/dark arrays must always have exactly `slotCount` elements, otherwise
     // the editor crashes with an out-of-bounds read (regression: the default draft
     // had scheme=standard, slotCount 3, but single-element arrays).

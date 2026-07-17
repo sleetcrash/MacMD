@@ -1,13 +1,13 @@
 import SwiftUI
 import AppKit
 
-/// Identifies the Custom Theme window, opened from the Theme dropdown’s Customize row.
+/// Identifies the Theme Builder window, opened from the Theme dropdown’s Customize row.
 enum CustomThemeScene {
     static let id = "customTheme"
 }
 
 /// Shared, observable draft of the custom theme being edited. Lives in the app
-/// and is injected into both the Settings window and the Custom Theme window,
+/// and is injected into both the Settings window and the Theme Builder window,
 /// so editing colors here drives the Settings window's live preview.
 @MainActor
 final class CustomDraft: ObservableObject {
@@ -203,7 +203,7 @@ final class CustomDraft: ObservableObject {
     }
 }
 
-/// The Custom Theme editor, a separate window styled as an extension of the
+/// The Theme Builder, a separate window styled as an extension of the
 /// Settings window (same neutral chrome, sharp edges, square buttons). It has
 /// no preview of its own; editing colors live-updates the Settings window's
 /// preview through the shared `CustomDraft`. Save commits the palette to the
@@ -283,7 +283,7 @@ struct CustomThemeEditor: View {
 
     private var editor: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Custom Theme")
+            Text("Theme Builder")
                 .font(.system(size: 12, weight: .semibold))
                 .frame(maxWidth: .infinity, alignment: .center)
 
@@ -715,7 +715,7 @@ private final class PanelColorWell: NSColorWell {
     override func activate(_ exclusive: Bool) {
         super.activate(true)            // exclusive: only one well is the panel target
         NSColorPanel.shared.showsAlpha = false
-        // The Custom Theme window floats above the document; float the shared color
+        // The Theme Builder window floats above the document; float the shared color
         // panel to the same level so it still comes forward over the window when
         // picking a color (otherwise the floating window would trap it behind).
         NSColorPanel.shared.level = .floating
@@ -732,7 +732,7 @@ private final class PanelColorWell: NSColorWell {
     }
 }
 
-/// Positions the Custom Theme window (once) just left of the Settings window,
+/// Positions the Theme Builder window (once) just left of the Settings window,
 /// so that window's live preview stays visible while editing. (Both windows pin
 /// their appearance to the OS via `SystemWindowAppearance`, matching the system
 /// color picker.)
@@ -768,7 +768,7 @@ struct PositionBesideSettings: NSViewRepresentable {
     final class Coordinator { var positioned = false }
 }
 
-/// Raises and keys the Custom Theme window once, when it appears, so it takes
+/// Raises and keys the Theme Builder window once, when it appears, so it takes
 /// focus over the document window it was opened over. The window is also pinned
 /// above the document by `FloatAboveDocument`; the shared color panel is floated
 /// to match (see PanelColorWell.activate) so color picking still works.

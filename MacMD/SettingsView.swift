@@ -38,7 +38,7 @@ struct SystemWindowAppearance: NSViewRepresentable {
 /// window no longer drops this one behind it. Used on the Settings and Custom
 /// Theme windows. The shared NSColorPanel is floated to the same level (see
 /// PanelColorWell.activate) so picking a color still comes forward over the
-/// Custom Theme window instead of being trapped behind it.
+/// Theme Builder window instead of being trapped behind it.
 struct FloatAboveDocument: NSViewRepresentable {
     func makeNSView(context: Context) -> NSView { NSView() }
 
@@ -78,7 +78,7 @@ enum WindowPlacement {
 
 /// Pulls the host window fully on screen the first time it attaches, using
 /// `WindowPlacement.onScreen`. Applied to the Settings window (and reused by
-/// `PositionBesideSettings` for the Custom Theme window). Runs once per
+/// `PositionBesideSettings` for the Theme Builder window). Runs once per
 /// attachment, a frame the user later drags somewhere on-screen is left alone.
 struct KeepOnScreen: NSViewRepresentable {
     func makeNSView(context: Context) -> NSView { NSView() }
@@ -181,7 +181,7 @@ struct SettingsView: View {
         || wcCursorBlink != theme.savedCursorBlink
         || wcCursorColorHex != theme.savedCursorColor
     }
-    // A new custom theme is being edited in the Custom Theme window but hasn't been
+    // A new custom theme is being edited in the Theme Builder window but hasn't been
     // saved yet, so it has no committable id. The preview shows the live draft, but
     // Apply/Save here would commit the previously-selected theme, so they're
     // disabled until the draft is saved (which selects it via savedId).
@@ -241,20 +241,20 @@ struct SettingsView: View {
             // any unsaved Apply and snaps the document back to the saved theme.
             theme.revertToSaved()
             syncFromSaved()
-            // Cascade: the Custom Theme builder and the system color picker are
+            // Cascade: the Theme Builder builder and the system color picker are
             // satellites of this window, never leave them orphaned when it closes.
             // (The builder's own onDisappear only re-focuses "Settings" while it
             // is still visible, so this can't resurrect a closing window.)
-            NSApp.windows.first { $0.title == "Custom Theme" }?.close()
+            NSApp.windows.first { $0.title == "Theme Builder" }?.close()
             // Leave the shared color panel in a known-good state. PanelColorWell
             // forces showsAlpha off and a floating level while picking; resetting
             // both here makes closing Settings self-sufficient instead of relying
-            // on the Custom Theme window's teardown running first.
+            // on the Theme Builder window's teardown running first.
             NSColorPanel.shared.close()
             NSColorPanel.shared.level = .normal
             NSColorPanel.shared.showsAlpha = true
         }
-        // When the Custom Theme window saves a palette, select it here.
+        // When the Theme Builder window saves a palette, select it here.
         .onChange(of: customDraft.savedId) { _, id in
             if let id { wcSelectedTheme = id }
         }
@@ -267,7 +267,7 @@ struct SettingsView: View {
                 sizeText = "\(Int(new))"
             }
         }
-        // Deleting the selected custom in the Custom Theme window drops its id;
+        // Deleting the selected custom in the Theme Builder window drops its id;
         // repoint the working copy to Default so the Theme box and dropdown
         // selection stay truthful (and Save can't persist a dead id).
         .onChange(of: customsData) { _, _ in reconcileThemeId() }
@@ -331,7 +331,7 @@ struct SettingsView: View {
             HStack(spacing: 10) {
                 // No Close button: the title-bar close control and Escape already
                 // revert any unsaved Apply and dismiss (via onDisappear), matching
-                // the Custom Theme window. Apply and Save sit at the trailing edge.
+                // the Theme Builder window. Apply and Save sit at the trailing edge.
                 Spacer()
                 Button("Apply") {
                     theme.apply(themeId: wcSelectedTheme, fontSize: wcFontSize, appearance: wcAppearance)
@@ -1478,7 +1478,7 @@ private struct SettingsColorWell: NSViewRepresentable {
 
 /// The well behind `SettingsColorWell`: exclusive activation configures the
 /// shared panel (opaque colors only, floated above this floating window, same
-/// as the Custom Theme swatches), and `hitTest` returns nil because this well
+/// as the Theme Builder swatches), and `hitTest` returns nil because this well
 /// is only ever activated programmatically.
 private final class ProgrammaticColorWell: NSColorWell {
     override func activate(_ exclusive: Bool) {
