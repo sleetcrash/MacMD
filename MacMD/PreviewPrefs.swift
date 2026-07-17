@@ -12,7 +12,7 @@ enum PaneMode: String, CaseIterable {
         }
     }
 
-    /// The titlebar segmented control's glyph for this layout.
+    /// The corner layout toggle's glyph for this layout.
     var systemImage: String {
         switch self {
         case .editor: return "rectangle.lefthalf.inset.filled"

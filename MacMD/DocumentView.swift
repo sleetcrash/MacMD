@@ -68,6 +68,7 @@ struct DocumentView: View {
         VStack(spacing: 0) {
             if showToolbar {
                 EditorToolbarStrip(formatEnabled: paneMode != .preview)
+                    .transition(.move(edge: .top).combined(with: .opacity))
             }
             HSplitView {
                 if paneMode != .preview {
@@ -81,14 +82,22 @@ struct DocumentView: View {
                         .frame(minWidth: 320, idealWidth: CGFloat(NewWindowSize.width) * 0.7)
                 }
             }
+            .overlay(alignment: .topTrailing) { layoutToggle }
         }
         .frame(minWidth: paneMode == .split ? 700 : 520,
                idealWidth: DocumentLayout.idealSize(previewVisible: paneMode == .split).width,
                minHeight: 400, idealHeight: CGFloat(NewWindowSize.height))
         .toolbar {
-            // Always-visible window chrome: one-click copy of the markdown
-            // source, and the three-way pane layout control.
+            // Always-visible window chrome: collapse/restore the format toolbar,
+            // and one-click copy of the markdown source. The pane-layout control
+            // floats in the document's top-right corner.
             ToolbarItemGroup(placement: .primaryAction) {
+                Button {
+                    ToolbarPref.set(!showToolbar)
+                } label: {
+                    Label("Toggle Format Toolbar", systemImage: "textformat")
+                }
+                .help(showToolbar ? "Hide the format toolbar" : "Show the format toolbar")
                 Button {
                     let pb = NSPasteboard.general
                     pb.clearContents()
@@ -97,18 +106,6 @@ struct DocumentView: View {
                     Label("Copy Text", systemImage: "doc.on.doc")
                 }
                 .help("Copy the document text")
-                Picker("Layout", selection: Binding(
-                    get: { paneMode },
-                    set: { PaneModePref.set($0) }
-                )) {
-                    ForEach(PaneMode.allCases, id: \.self) { mode in
-                        Image(systemName: mode.systemImage)
-                            .help(mode.displayName)
-                            .tag(mode)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .help("Editor, split, or preview layout")
             }
         }
         .task(id: document.text) {
@@ -124,12 +121,33 @@ struct DocumentView: View {
             paneMode = PaneModePref.mode
         }
         .onReceive(NotificationCenter.default.publisher(for: ToolbarPref.didChange)) { _ in
-            showToolbar = ToolbarPref.isOn
+            withAnimation(.easeInOut(duration: 0.2)) { showToolbar = ToolbarPref.isOn }
         }
         // Menu commands (Export to HTML/PDF) read the document through this,
         // not through the editor view, so they keep working in preview-only
         // layout where no editor exists.
         .focusedSceneValue(\.exportMarkdown, document.text)
+    }
+
+    /// The compact pane-layout toggle floating in the document's top-right
+    /// corner. Bound to PaneModePref, so it stays in sync with the View menu.
+    private var layoutToggle: some View {
+        Picker("Layout", selection: Binding(
+            get: { paneMode },
+            set: { PaneModePref.set($0) }
+        )) {
+            ForEach(PaneMode.allCases, id: \.self) { mode in
+                Image(systemName: mode.systemImage)
+                    .help(mode.displayName)
+                    .tag(mode)
+            }
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .fixedSize()
+        .controlSize(.small)
+        .padding(8)
+        .help("Editor, split, or preview layout")
     }
 
     private var editorPane: some View {
