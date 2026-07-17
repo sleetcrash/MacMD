@@ -12,52 +12,65 @@ enum CustomThemeScene {
 @MainActor
 final class CustomDraft: ObservableObject {
     @Published var active = false
-    @Published var scheme: Coloring = .standard
+    @Published var scheme: Coloring = .unified
+    @Published var kind: Kind = .dynamic
     @Published var name = ""
     @Published var editingId: String?
-    // Default to the standard scheme's three slots so the initial state is
-    // self-consistent (scheme → slotCount → array counts) before begin/beginEditing.
-    @Published var lights: [Color] = [.black, .black, .black]
-    @Published var darks: [Color] = [.white, .white, .white]
+    // The heading slots as two editable columns. A static theme edits only the
+    // light column; `buildPalette` collapses it to identical pairs. Default to
+    // the unified scheme's single slot so the initial state is self-consistent
+    // (scheme → slotCount → array counts) before begin/beginEditing.
+    @Published var lights: [Color] = [.black]
+    @Published var darks: [Color] = [.white]
+    /// The two background wells (dynamic uses both; static edits the light one).
+    @Published var bgLight = BackgroundWell(hex: EditorBackground.defaultPair.light, fromPanel: false)
+    @Published var bgDark = BackgroundWell(hex: EditorBackground.defaultPair.dark, fromPanel: false)
     /// Set to the id just saved/applied, so the Settings window can select it.
     @Published var savedId: String?
-    /// (side, slot) of the swatch whose color well is the active panel target, so
-    /// only that swatch draws a selection ring. nil = nothing selected.
+    /// (side, slot) of the heading swatch whose color well is the active panel
+    /// target, so only that swatch draws a selection ring. nil = nothing selected.
     @Published var selectedWell: SelectedWell?
 
     enum Side: Equatable { case light, dark }
     struct SelectedWell: Equatable { var side: Side; var slot: Int }
 
-    /// Which appearance sides the theme defines colors for. A single-sided
-    /// theme uses the same colors under both appearances (saved as identical
-    /// light/dark pairs, so the Palette model is unchanged).
-    enum SideMode: String, CaseIterable {
-        case both, light, dark
-
-        var displayName: String {
-            switch self {
-            case .both: return "Light + Dark"
-            case .light: return "Light"
-            case .dark: return "Dark"
-            }
-        }
+    /// Whether the theme is one fixed look (static, identical light/dark pairs) or
+    /// a light/dark pair that follows the Mode (dynamic).
+    enum Kind: Equatable {
+        case `static`, dynamic
+        var displayName: String { self == .static ? "Static" : "Dynamic" }
     }
 
-    @Published var sides: SideMode = .both
+    /// A background color well: its current hex plus whether that value was last
+    /// set from the color panel. Save adds panel-sourced backgrounds to the
+    /// library; quick-picks clear the flag so they never auto-add.
+    struct BackgroundWell: Equatable {
+        var hex: String
+        var fromPanel: Bool
+    }
 
-    var slotCount: Int { scheme == .standard ? 3 : 1 }
+    static func slotCount(for scheme: Coloring) -> Int {
+        switch scheme {
+        case .off: return 0
+        case .unified: return 1
+        case .standard: return 3
+        }
+    }
+    var slotCount: Int { Self.slotCount(for: scheme) }
 
-    /// Start a brand-new custom theme for `scheme`.
+    /// Start a brand-new custom theme (Dynamic, Unified, default background).
     func begin(scheme: Coloring) {
         self.scheme = scheme
-        let count = scheme == .standard ? 3 : 1
+        kind = .dynamic
         name = ""
         editingId = nil
-        // Default to black (light) / white (dark) so the preview shows the
-        // default look until a swatch is given a color.
+        let count = Self.slotCount(for: scheme)
+        // Black (light) / white (dark) so the preview shows the default look until
+        // a swatch is given a color.
         lights = Array(repeating: .black, count: count)
         darks = Array(repeating: .white, count: count)
-        sides = .both
+        bgLight = BackgroundWell(hex: EditorBackground.defaultPair.light, fromPanel: false)
+        bgDark = BackgroundWell(hex: EditorBackground.defaultPair.dark, fromPanel: false)
         savedId = nil
         selectedWell = nil
         active = true
@@ -67,15 +80,19 @@ final class CustomDraft: ObservableObject {
     /// affordance on a custom dropdown row).
     func beginEditing(_ palette: Palette) {
         scheme = palette.scheme
+        kind = palette.isStatic ? .static : .dynamic
         name = palette.name
         editingId = palette.id
         // Normalize to the scheme's slot count (padding with the begin() defaults
         // or truncating) so a malformed stored palette whose slot count disagrees
-        // with its scheme can't make the slotCount-indexed reads in `palette` and
-        // `persistPalette` run off the end of these arrays.
-        lights = Self.fit(palette.slots.map { Color(nsColor: $0.nsLight) }, to: slotCount, pad: .black)
-        darks = Self.fit(palette.slots.map { Color(nsColor: $0.nsDark) }, to: slotCount, pad: .white)
-        sides = .both
+        // with its scheme can't run the slot-indexed reads off the end.
+        let count = Self.slotCount(for: palette.scheme)
+        lights = Self.fit(palette.slots.map { Color(nsColor: $0.nsLight) }, to: count, pad: .black)
+        darks = Self.fit(palette.slots.map { Color(nsColor: $0.nsDark) }, to: count, pad: .white)
+        // The stored background was chosen but did not come from THIS session's
+        // panel, so re-saving without touching it must not re-add it.
+        bgLight = BackgroundWell(hex: palette.background.light, fromPanel: false)
+        bgDark = BackgroundWell(hex: palette.background.dark, fromPanel: false)
         savedId = nil
         selectedWell = nil
         active = true
@@ -90,24 +107,94 @@ final class CustomDraft: ObservableObject {
 
     func end() { active = false; selectedWell = nil }
 
-    /// The draft's slots under the chosen side mode: a single-sided theme
-    /// repeats its side's color across both halves of each pair.
-    var resolvedSlots: [ColorPair] {
-        (0..<slotCount).map { i in
-            switch sides {
-            case .both: return ColorPair(light: CustomDraft.hex(lights[i]), dark: CustomDraft.hex(darks[i]))
-            case .light: return ColorPair(light: CustomDraft.hex(lights[i]), dark: CustomDraft.hex(lights[i]))
-            case .dark: return ColorPair(light: CustomDraft.hex(darks[i]), dark: CustomDraft.hex(darks[i]))
-            }
+    /// Switch the heading scheme, clearing the active well selection. A non-None
+    /// scheme reshapes the visible grid via pad/truncate (padding new slots with
+    /// the black/white prefill); None hides the grid but keeps the in-memory slots
+    /// so switching back re-shows them.
+    func changeScheme(_ new: Coloring) {
+        guard new != scheme else { return }
+        scheme = new
+        selectedWell = nil
+        guard new != .off else { return }
+        lights = Self.fit(lights, to: slotCount, pad: .black)
+        darks = Self.fit(darks, to: slotCount, pad: .white)
+    }
+
+    /// Switch the kind, clearing the active well selection. Dynamic to static
+    /// collapses to the light column's values and provenance; static to dynamic
+    /// leaves both columns (already equal) for independent editing.
+    func changeKind(_ new: Kind) {
+        guard new != kind else { return }
+        kind = new
+        selectedWell = nil
+        if new == .static {
+            darks = lights
+            bgDark = bgLight
         }
     }
 
-    /// The in-progress palette, for the Settings window's preview.
+    /// Apply a light/dark background pair to both wells (a dynamic quick-pick),
+    /// clearing panel provenance so it never auto-adds to the library.
+    func applyPairBackground(_ pair: ColorPair) {
+        bgLight = BackgroundWell(hex: pair.light, fromPanel: false)
+        bgDark = BackgroundWell(hex: pair.dark, fromPanel: false)
+        selectedWell = nil
+    }
+
+    /// Apply a single background color (a static quick-pick or a saved swatch),
+    /// clearing panel provenance. Static mirrors it across both wells so a later
+    /// switch to dynamic seeds both columns; dynamic fills the light well.
+    func applySingleBackground(_ hex: String) {
+        let well = BackgroundWell(hex: hex, fromPanel: false)
+        bgLight = well
+        if kind == .static { bgDark = well }
+        selectedWell = nil
+    }
+
+    var canSave: Bool { !name.trimmingCharacters(in: .whitespaces).isEmpty }
+
+    /// The background pair, collapsed to an identical pair when static.
+    var backgroundPair: ColorPair {
+        kind == .static ? ColorPair(light: bgLight.hex, dark: bgLight.hex)
+                        : ColorPair(light: bgLight.hex, dark: bgDark.hex)
+    }
+
+    /// The active scheme's slots, collapsed to identical pairs when static. None
+    /// yields zero slots regardless of any retained in-memory columns.
+    private var builtSlots: [ColorPair] {
+        let n = min(slotCount, lights.count, darks.count)
+        guard n > 0 else { return [] }
+        return (0..<n).map { i in
+            let l = CustomDraft.hex(lights[i])
+            return ColorPair(light: l, dark: kind == .static ? l : CustomDraft.hex(darks[i]))
+        }
+    }
+
+    /// The in-progress palette for the Settings window's preview (stable id so
+    /// SwiftUI identity doesn't churn on each edit).
     var palette: Palette {
         let trimmed = name.trimmingCharacters(in: .whitespaces)
         return Palette(id: editingId ?? "draft.custom",
                        name: trimmed.isEmpty ? "Custom" : trimmed,
-                       scheme: scheme, slots: resolvedSlots)
+                       scheme: scheme, slots: builtSlots,
+                       background: backgroundPair, isStatic: kind == .static)
+    }
+
+    /// The palette to persist: scheme-correct slot count (0, 1, or 3), identical
+    /// pairs when static, background from the wells.
+    func buildPalette() -> Palette {
+        Palette(id: editingId ?? "custom.\(UUID().uuidString)",
+                name: name.trimmingCharacters(in: .whitespaces),
+                scheme: scheme, slots: builtSlots,
+                background: backgroundPair, isStatic: kind == .static)
+    }
+
+    /// The background hexes owed to the library on Save: each well whose current
+    /// value was last set from the color panel (both wells for dynamic; the
+    /// single collapsed value for static). Last-writer-per-well provenance.
+    func panelPickedBackgrounds() -> [String] {
+        if kind == .static { return bgLight.fromPanel ? [bgLight.hex] : [] }
+        return [bgLight, bgDark].filter(\.fromPanel).map(\.hex)
     }
 
     static func hex(_ color: Color) -> String {
@@ -130,6 +217,8 @@ struct CustomThemeEditor: View {
 
     private let wellSize: CGFloat = 24
     @State private var showDeleteConfirm = false
+    /// Re-read the saved-background library after a remove so the row updates.
+    @State private var libraryTick = 0
     static let deleteRed = Color(red: 0.80, green: 0.25, blue: 0.27)
     /// One width for every action button (Delete / Save / Cancel) so a row of them
     /// is uniform across the editor and the confirmation. The explicit width also
@@ -142,7 +231,11 @@ struct CustomThemeEditor: View {
     // The slot count that is safe to index across every per-slot array, guarding
     // renders during a scheme change (or any momentarily inconsistent state).
     private var safeCount: Int { min(draft.lights.count, draft.darks.count, slotLabels.count) }
-    private var canSave: Bool { !draft.name.trimmingCharacters(in: .whitespaces).isEmpty }
+
+    private var savedBackgrounds: [String] {
+        _ = libraryTick
+        return BackgroundLibrary.all()
+    }
 
     var body: some View {
         // The confirmation REPLACES the editor as the window's content instead of
@@ -194,84 +287,17 @@ struct CustomThemeEditor: View {
                 .font(.system(size: 12, weight: .semibold))
                 .frame(maxWidth: .infinity, alignment: .center)
 
-            // Whether the theme defines a light/dark pair or one side only (a
-            // single side saves the same colors for both appearances).
-            sidesControl
+            // Static or dynamic, then the heading scheme (None / Unified / Standard).
+            kindControl
+            schemeControl
 
-            // One swatch row laid out like the Settings window theme box: light trio │
-            // dark trio, with a sun (left) and moon (right) marking which is which.
-            // Heading labels sit centered above each swatch; the Name field spans
-            // the swatch columns just below them. The grid and header are centered.
-            // A single-sided theme shows just its trio.
-            Grid(alignment: .center, horizontalSpacing: 6, verticalSpacing: 8) {
-                GridRow {
-                    Text("")
-                    ForEach(0..<safeCount, id: \.self) { i in
-                        Text(slotLabels[i]).font(.system(size: 10)).foregroundStyle(Pane.muted)
-                    }
-                    if draft.sides == .both {
-                        Text("")
-                        ForEach(0..<safeCount, id: \.self) { i in
-                            Text(slotLabels[i]).font(.system(size: 10)).foregroundStyle(Pane.muted)
-                        }
-                    }
-                    Text("")
-                }
-                GridRow {
-                    if draft.sides != .dark {
-                        Image(systemName: "sun.max").font(.system(size: 12)).foregroundStyle(Pane.muted)
-                            .accessibilityLabel("Light")
-                        ForEach(0..<safeCount, id: \.self) { i in
-                            SquareColorWell(color: $draft.lights[i], size: wellSize,
-                                            isSelected: draft.selectedWell == CustomDraft.SelectedWell(side: .light, slot: i)) {
-                                draft.selectedWell = CustomDraft.SelectedWell(side: .light, slot: i)
-                            }
-                            .accessibilityLabel("\(slotLabels[i]) light color")
-                        }
-                    }
-                    if draft.sides == .both {
-                        Text("|").opacity(0.35)
-                    }
-                    if draft.sides != .light {
-                        if draft.sides == .dark {
-                            Image(systemName: "moon.fill").font(.system(size: 12)).foregroundStyle(Pane.muted)
-                                .accessibilityLabel("Dark")
-                        }
-                        ForEach(0..<safeCount, id: \.self) { i in
-                            SquareColorWell(color: $draft.darks[i], size: wellSize,
-                                            isSelected: draft.selectedWell == CustomDraft.SelectedWell(side: .dark, slot: i)) {
-                                draft.selectedWell = CustomDraft.SelectedWell(side: .dark, slot: i)
-                            }
-                            .accessibilityLabel("\(slotLabels[i]) dark color")
-                        }
-                        if draft.sides == .both {
-                            Image(systemName: "moon.fill").font(.system(size: 12)).foregroundStyle(Pane.muted)
-                                .accessibilityLabel("Dark")
-                        }
-                    }
-                    if draft.sides == .light || draft.sides == .dark {
-                        Text("")
-                    }
-                }
-                GridRow {
-                    Color.clear.gridCellUnsizedAxes([.horizontal, .vertical])   // leading icon column
-                    TextField("Name", text: $draft.name)
-                        .textFieldStyle(.plain)
-                        .font(.system(size: 11))
-                        .padding(.horizontal, 8)
-                        .frame(height: 26)
-                        .frame(maxWidth: .infinity)
-                        .background(Pane.field)
-                        .overlay(Rectangle().strokeBorder(Pane.border, lineWidth: 1))
-                        .onChange(of: draft.name) { _, v in if v.count > 10 { draft.name = String(v.prefix(10)) } }
-                        .padding(.top, 6)
-                        // Spans the swatch columns: 6 + divider under Both, the
-                        // single trio otherwise.
-                        .gridCellColumns(draft.sides == .both ? safeCount * 2 + 1 : safeCount)
-                    Color.clear.gridCellUnsizedAxes([.horizontal, .vertical])   // trailing icon column
-                }
-            }
-            .frame(maxWidth: .infinity)
+            // The heading swatch grid: two columns (light │ dark) when dynamic, a
+            // single column when static, absent under None. The background wells,
+            // quick-picks, and saved library follow, then the Name field and the
+            // Save / Delete actions.
+            headingSection
+            backgroundSection
+            nameField
 
             // Save sits bottom-right and Delete (red outline, only when editing a
             // saved theme) bottom-left, at the window margins -- the macOS-standard
@@ -285,7 +311,7 @@ struct CustomThemeEditor: View {
                 Spacer()
                 Button("Save") { save() }
                     .buttonStyle(SquareButtonStyle(width: Self.actionWidth))
-                    .disabled(!canSave)
+                    .disabled(!draft.canSave)
                     .keyboardShortcut(.defaultAction)
             }
             .frame(maxWidth: .infinity)
@@ -294,40 +320,251 @@ struct CustomThemeEditor: View {
         .foregroundStyle(Pane.text)
     }
 
-    /// Light + Dark | Light | Dark segments, in the settings-window segment
-    /// style (recessed selection, no accent). Switching sides clears any active
-    /// swatch selection so the ring never points at a hidden well.
-    private var sidesControl: some View {
+    // MARK: - Segments
+
+    /// Static | Dynamic, in the settings-window segment style.
+    private var kindControl: some View {
         HStack(spacing: 0) {
-            ForEach(CustomDraft.SideMode.allCases, id: \.self) { m in
-                let selected = draft.sides == m
-                Button {
-                    draft.sides = m
-                    draft.selectedWell = nil
-                } label: {
-                    Text(m.displayName)
-                        .font(.system(size: 10))
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background {
-                            if selected {
-                                Rectangle().fill(
-                                    Color.black.opacity(0.28)
-                                        .shadow(.inner(color: .black.opacity(0.55), radius: 3, y: 1.5))
-                                )
-                            } else {
-                                Rectangle().fill(Color.white.opacity(0.10))
-                            }
-                        }
-                        .foregroundStyle(selected ? Pane.text : Pane.muted)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityAddTraits(selected ? .isSelected : [])
+            segment(title: CustomDraft.Kind.static.displayName, selected: draft.kind == .static) {
+                draft.changeKind(.static)
+            }
+            segment(title: CustomDraft.Kind.dynamic.displayName, selected: draft.kind == .dynamic) {
+                draft.changeKind(.dynamic)
             }
         }
         .frame(height: 24)
         .background(Pane.field)
         .overlay(Rectangle().strokeBorder(Pane.border, lineWidth: 1))
+    }
+
+    /// None | Unified | Standard, in the same segment style. "None" labels the
+    /// off scheme here (the dropdown calls it "Default").
+    private var schemeControl: some View {
+        HStack(spacing: 0) {
+            ForEach([Coloring.off, .unified, .standard], id: \.self) { c in
+                segment(title: c == .off ? "None" : c.displayName, selected: draft.scheme == c) {
+                    draft.changeScheme(c)
+                }
+            }
+        }
+        .frame(height: 24)
+        .background(Pane.field)
+        .overlay(Rectangle().strokeBorder(Pane.border, lineWidth: 1))
+    }
+
+    /// One segment button (recessed selection, no accent), shared by the kind and
+    /// scheme controls.
+    private func segment(title: String, selected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 10))
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background {
+                    if selected {
+                        Rectangle().fill(
+                            Color.black.opacity(0.28)
+                                .shadow(.inner(color: .black.opacity(0.55), radius: 3, y: 1.5))
+                        )
+                    } else {
+                        Rectangle().fill(Color.white.opacity(0.10))
+                    }
+                }
+                .foregroundStyle(selected ? Pane.text : Pane.muted)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
+    // MARK: - Heading grid
+
+    /// The heading swatch grid, sized to the scheme. Header labels (H1/H2/H3 or
+    /// Color) sit above the wells. Absent under None, so the window closes up with
+    /// no blank hole.
+    @ViewBuilder private var headingSection: some View {
+        if draft.scheme != .off {
+            Grid(alignment: .center, horizontalSpacing: 6, verticalSpacing: 8) {
+                GridRow {
+                    if draft.kind == .dynamic {
+                        Text("")
+                        ForEach(0..<safeCount, id: \.self) { headingLabel($0) }
+                        Text("")
+                        ForEach(0..<safeCount, id: \.self) { headingLabel($0) }
+                        Text("")
+                    } else {
+                        ForEach(0..<safeCount, id: \.self) { headingLabel($0) }
+                    }
+                }
+                GridRow {
+                    if draft.kind == .dynamic {
+                        Image(systemName: "sun.max").font(.system(size: 12)).foregroundStyle(Pane.muted)
+                            .accessibilityLabel("Light")
+                        ForEach(0..<safeCount, id: \.self) { headingWell(.light, $0) }
+                        Text("|").opacity(0.35)
+                        ForEach(0..<safeCount, id: \.self) { headingWell(.dark, $0) }
+                        Image(systemName: "moon.fill").font(.system(size: 12)).foregroundStyle(Pane.muted)
+                            .accessibilityLabel("Dark")
+                    } else {
+                        ForEach(0..<safeCount, id: \.self) { headingWell(.light, $0) }
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity)
+        }
+    }
+
+    private func headingLabel(_ i: Int) -> some View {
+        Text(slotLabels[i]).font(.system(size: 10)).foregroundStyle(Pane.muted)
+    }
+
+    private func headingWell(_ side: CustomDraft.Side, _ i: Int) -> some View {
+        let binding = side == .light ? $draft.lights[i] : $draft.darks[i]
+        return SquareColorWell(
+            color: binding, size: wellSize,
+            isSelected: draft.selectedWell == CustomDraft.SelectedWell(side: side, slot: i)
+        ) {
+            draft.selectedWell = CustomDraft.SelectedWell(side: side, slot: i)
+        }
+        .accessibilityLabel("\(slotLabels[i]) \(side == .light ? "light" : "dark") color")
+    }
+
+    // MARK: - Background
+
+    /// The editor background: one well when static, a light │ dark pair when
+    /// dynamic, plus the quick-pick strip and the saved-library row.
+    private var backgroundSection: some View {
+        VStack(spacing: 8) {
+            Text("BACKGROUND")
+                .font(.system(size: 9)).tracking(0.6)
+                .foregroundStyle(Pane.muted).opacity(0.55)
+            HStack(spacing: 6) {
+                if draft.kind == .dynamic {
+                    Image(systemName: "sun.max").font(.system(size: 12)).foregroundStyle(Pane.muted)
+                        .accessibilityLabel("Light")
+                    backgroundWell(.light)
+                    Text("|").opacity(0.35)
+                    backgroundWell(.dark)
+                    Image(systemName: "moon.fill").font(.system(size: 12)).foregroundStyle(Pane.muted)
+                        .accessibilityLabel("Dark")
+                } else {
+                    backgroundWell(.light)
+                }
+            }
+            quickPickStrip
+            if !savedBackgrounds.isEmpty { savedRow }
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    /// A background well. A panel pick marks the well panel-sourced (so Save adds
+    /// it to the library); static mirrors the light well to the dark one so the
+    /// identical-pair invariant survives editing. Activating clears the heading
+    /// selection ring so it never points at a hidden well.
+    private func backgroundWell(_ side: CustomDraft.Side) -> some View {
+        let binding = Binding<Color>(
+            get: {
+                let well = side == .light ? draft.bgLight : draft.bgDark
+                return Color(nsColor: NSColor(hex: well.hex) ?? .white)
+            },
+            set: { c in
+                let well = CustomDraft.BackgroundWell(hex: CustomDraft.hex(c), fromPanel: true)
+                if side == .light {
+                    draft.bgLight = well
+                    if draft.kind == .static { draft.bgDark = well }
+                } else {
+                    draft.bgDark = well
+                }
+            })
+        return SquareColorWell(color: binding, size: wellSize) {
+            draft.selectedWell = nil
+        }
+        .accessibilityLabel("Background \(side == .light ? "light" : "dark") color")
+    }
+
+    /// Default plus the three tinted preset pairs. Dynamic shows each as a
+    /// light │ dark pair applied to both wells; static shows each side as its own
+    /// single swatch applied to the one well.
+    private var presetPairs: [(id: String, pair: ColorPair)] {
+        [(id: "bg.default", pair: EditorBackground.defaultPair)]
+            + BackgroundPreset.all.map { (id: $0.id, pair: $0.pair) }
+    }
+
+    private var presetSingles: [(id: String, hex: String)] {
+        presetPairs.flatMap { item in
+            [(id: item.id + ".l", hex: item.pair.light), (id: item.id + ".d", hex: item.pair.dark)]
+        }
+    }
+
+    @ViewBuilder private var quickPickStrip: some View {
+        HStack(spacing: 6) {
+            if draft.kind == .dynamic {
+                ForEach(presetPairs, id: \.id) { item in
+                    Button { draft.applyPairBackground(item.pair) } label: {
+                        HStack(spacing: 0) {
+                            Rectangle().fill(Color(nsColor: item.pair.nsLight)).frame(width: 12, height: 16)
+                            Rectangle().fill(Color(nsColor: item.pair.nsDark)).frame(width: 12, height: 16)
+                        }
+                        .overlay(Rectangle().strokeBorder(Color(white: 0.47).opacity(0.5), lineWidth: 1))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Background preset")
+                }
+            } else {
+                ForEach(presetSingles, id: \.id) { item in
+                    Button { draft.applySingleBackground(item.hex) } label: {
+                        Rectangle().fill(Color(nsColor: NSColor(hex: item.hex) ?? .white))
+                            .frame(width: 14, height: 16)
+                            .overlay(Rectangle().strokeBorder(Color(white: 0.47).opacity(0.5), lineWidth: 1))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Background preset \(item.hex)")
+                }
+            }
+        }
+    }
+
+    /// The saved backgrounds row: each library swatch applies to the well, with a
+    /// small x that removes it from the library.
+    private var savedRow: some View {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 22), spacing: 8)], alignment: .leading, spacing: 8) {
+            ForEach(savedBackgrounds, id: \.self) { hex in
+                Button { draft.applySingleBackground(hex) } label: {
+                    Rectangle().fill(Color(nsColor: NSColor(hex: hex) ?? .white))
+                        .frame(width: 18, height: 18)
+                        .overlay(Rectangle().strokeBorder(Color(white: 0.47).opacity(0.5), lineWidth: 1))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Saved background \(hex)")
+                .overlay(alignment: .topTrailing) {
+                    Button {
+                        BackgroundLibrary.remove(hex)
+                        libraryTick += 1
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 9))
+                            .foregroundStyle(Pane.muted)
+                    }
+                    .buttonStyle(.plain)
+                    .offset(x: 5, y: -5)
+                    .accessibilityLabel("Remove saved background \(hex)")
+                }
+            }
+        }
+        .padding(.top, 2)
+    }
+
+    // MARK: - Name
+
+    private var nameField: some View {
+        TextField("Name", text: $draft.name)
+            .textFieldStyle(.plain)
+            .font(.system(size: 11))
+            .padding(.horizontal, 8)
+            .frame(height: 26)
+            .frame(maxWidth: .infinity)
+            .background(Pane.field)
+            .overlay(Rectangle().strokeBorder(Pane.border, lineWidth: 1))
+            .onChange(of: draft.name) { _, v in if v.count > 10 { draft.name = String(v.prefix(10)) } }
     }
 
     /// The delete confirmation page, styled like the editor (same window chrome,
@@ -373,34 +610,20 @@ struct CustomThemeEditor: View {
         dismiss()
     }
 
-    /// Persist the palette into the theme library and select it back in the
-    /// Settings window (via `savedId`), then close. The Custom builder only
+    /// Persist the built palette into the theme library (insert or update), add
+    /// any panel-picked backgrounds to the library, and select the theme back in
+    /// the Settings window (via `savedId`), then close. The Custom builder only
     /// DEFINES a palette; choosing it and applying it to the document happens in
-    /// the Settings window, like any preset. `onDisappear` dismisses the color
-    /// picker and returns focus to the Settings window.
+    /// the Settings window, like any preset.
     private func save() {
-        let id = persistPalette()
-        draft.savedId = id
-        dismiss()
-    }
-
-    /// Write the draft into the saved customs (insert or update) and return its id.
-    @discardableResult
-    private func persistPalette() -> String {
-        let id = draft.editingId ?? "custom.\(UUID().uuidString)"
+        let palette = draft.buildPalette()
         var all = ThemeSettings.decodeCustoms(customsData)
-        // Editing preserves the theme's existing background + kind (this interim
-        // builder can't edit them yet, Task 6), so saving a migrated theme never
-        // strips them; a brand-new theme is a dynamic default background.
-        let existing = all.first { $0.id == id }
-        let palette = Palette(id: id, name: draft.name.trimmingCharacters(in: .whitespaces),
-                              scheme: draft.scheme, slots: draft.resolvedSlots,
-                              background: existing?.background ?? EditorBackground.defaultPair,
-                              isStatic: existing?.isStatic ?? false)
-        if let idx = all.firstIndex(where: { $0.id == id }) { all[idx] = palette } else { all.append(palette) }
+        if let idx = all.firstIndex(where: { $0.id == palette.id }) { all[idx] = palette } else { all.append(palette) }
         customsData = ThemeSettings.encodeCustoms(all)
-        draft.editingId = id
-        return id
+        for hex in draft.panelPickedBackgrounds() { BackgroundLibrary.add(hex) }
+        draft.editingId = palette.id
+        draft.savedId = palette.id
+        dismiss()
     }
 }
 

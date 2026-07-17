@@ -240,7 +240,7 @@ final class ColorThemingTests: XCTestCase {
         let draft = CustomDraft()
 
         // A standard palette with too few slots (e.g. a corrupt prefs blob) is
-        // padded to 3, so the slotCount-indexed reads in `palette`/`persistPalette`
+        // padded to 3, so the slot-indexed reads in `palette`/`buildPalette`
         // can't run off the end. Reading `palette` would have trapped before.
         draft.beginEditing(Palette(id: "x", name: "X", scheme: .standard,
                                    slots: [ColorPair(light: "#112233", dark: "#445566")]))
@@ -258,29 +258,151 @@ final class ColorThemingTests: XCTestCase {
         XCTAssertEqual(draft.palette.slots.count, 1)
     }
 
-    // MARK: - CustomDraft side modes
+    // MARK: - CustomDraft rework (kind + scheme + background)
+    //
+    // The old SideMode segment (Light + Dark | Light | Dark) and `resolvedSlots`
+    // side-collapsing were deleted this task; the Static/Dynamic kind collapse
+    // replaces them. The two SideMode tests that covered that machinery
+    // (testSingleSidedDraftRepeatsItsColorsAcrossBothAppearances,
+    // testBeginResetsSideModeToBoth) were retired with it (retire-vs-rewrite).
 
-    func testSingleSidedDraftRepeatsItsColorsAcrossBothAppearances() {
+    private func color(_ hex: String) -> Color { Color(nsColor: NSColor(hex: hex)!) }
+
+    func testDraftFreshDefaults() {
         let draft = CustomDraft()
         draft.begin(scheme: .unified)
-        draft.lights = [Color(nsColor: NSColor(hex: "#112233")!)]
-        draft.darks = [Color(nsColor: NSColor(hex: "#AABBCC")!)]
-
-        draft.sides = .light
-        XCTAssertEqual(draft.resolvedSlots, [ColorPair(light: "#112233", dark: "#112233")])
-
-        draft.sides = .dark
-        XCTAssertEqual(draft.resolvedSlots, [ColorPair(light: "#AABBCC", dark: "#AABBCC")])
-
-        draft.sides = .both
-        XCTAssertEqual(draft.resolvedSlots, [ColorPair(light: "#112233", dark: "#AABBCC")])
+        XCTAssertEqual(draft.kind, .dynamic)
+        XCTAssertEqual(draft.scheme, .unified)
+        XCTAssertEqual(draft.bgLight.hex, "#FFFFFF")
+        XCTAssertEqual(draft.bgDark.hex, "#1E1E1E")
+        XCTAssertFalse(draft.bgLight.fromPanel)
+        XCTAssertFalse(draft.bgDark.fromPanel)
+        XCTAssertEqual(draft.lights.count, 1)
+        XCTAssertEqual(CustomDraft.hex(draft.lights[0]), "#000000")   // black light prefill
+        XCTAssertEqual(CustomDraft.hex(draft.darks[0]), "#FFFFFF")    // white dark prefill
+        XCTAssertEqual(draft.name, "")
     }
 
-    func testBeginResetsSideModeToBoth() {
+    func testDraftSchemeSwitchUnifiedToStandardPadsSlots() {
         let draft = CustomDraft()
-        draft.sides = .dark
+        draft.begin(scheme: .unified)
+        draft.lights = [color("#112233")]
+        draft.darks = [color("#445566")]
+        draft.changeScheme(.standard)
+        XCTAssertEqual(draft.lights.count, 3)
+        XCTAssertEqual(draft.darks.count, 3)
+        XCTAssertEqual(CustomDraft.hex(draft.lights[0]), "#112233")   // slot 0 kept
+        XCTAssertEqual(CustomDraft.hex(draft.darks[0]), "#445566")
+        XCTAssertEqual(CustomDraft.hex(draft.lights[1]), "#000000")   // padded prefill
+        XCTAssertEqual(CustomDraft.hex(draft.darks[1]), "#FFFFFF")
+        XCTAssertEqual(CustomDraft.hex(draft.lights[2]), "#000000")
+        XCTAssertEqual(CustomDraft.hex(draft.darks[2]), "#FFFFFF")
+    }
+
+    func testDraftSchemeSwitchStandardToUnifiedTruncates() {
+        let draft = CustomDraft()
         draft.begin(scheme: .standard)
-        XCTAssertEqual(draft.sides, .both)
+        draft.lights = [color("#111111"), color("#222222"), color("#333333")]
+        draft.darks = [color("#AAAAAA"), color("#BBBBBB"), color("#CCCCCC")]
+        draft.changeScheme(.unified)
+        XCTAssertEqual(draft.lights.count, 1)
+        XCTAssertEqual(draft.darks.count, 1)
+        XCTAssertEqual(CustomDraft.hex(draft.lights[0]), "#111111")
+        XCTAssertEqual(CustomDraft.hex(draft.darks[0]), "#AAAAAA")
+    }
+
+    func testDraftSchemeToNoneHidesButRetainsSlots() {
+        let draft = CustomDraft()
+        draft.begin(scheme: .standard)
+        draft.lights = [color("#111111"), color("#222222"), color("#333333")]
+        draft.darks = [color("#AAAAAA"), color("#BBBBBB"), color("#CCCCCC")]
+        draft.changeScheme(.off)
+        // Grid hidden: zero persisted slots, but the in-memory columns survive.
+        XCTAssertEqual(draft.slotCount, 0)
+        XCTAssertTrue(draft.buildPalette().slots.isEmpty)
+        XCTAssertEqual(draft.lights.count, 3)
+        // Switching back re-shows the retained values unchanged.
+        draft.changeScheme(.standard)
+        XCTAssertEqual(CustomDraft.hex(draft.lights[0]), "#111111")
+        XCTAssertEqual(CustomDraft.hex(draft.lights[2]), "#333333")
+        XCTAssertEqual(CustomDraft.hex(draft.darks[0]), "#AAAAAA")
+        XCTAssertEqual(CustomDraft.hex(draft.darks[2]), "#CCCCCC")
+    }
+
+    func testDraftKindCollapseToStatic() {
+        let draft = CustomDraft()
+        draft.begin(scheme: .unified)
+        draft.lights = [color("#112233")]
+        draft.darks = [color("#445566")]
+        draft.bgLight = CustomDraft.BackgroundWell(hex: "#ABCDEF", fromPanel: true)
+        draft.bgDark = CustomDraft.BackgroundWell(hex: "#123456", fromPanel: false)
+        draft.changeKind(.static)
+        // Dark column takes the light column's values and provenance.
+        XCTAssertEqual(CustomDraft.hex(draft.darks[0]), "#112233")
+        XCTAssertEqual(draft.bgDark, CustomDraft.BackgroundWell(hex: "#ABCDEF", fromPanel: true))
+    }
+
+    func testDraftStaticSaveWritesIdenticalPairs() {
+        let draft = CustomDraft()
+        draft.begin(scheme: .standard)
+        draft.lights = [color("#111111"), color("#222222"), color("#333333")]
+        draft.darks = [color("#AAAAAA"), color("#BBBBBB"), color("#CCCCCC")]
+        draft.bgLight = CustomDraft.BackgroundWell(hex: "#F0F0F0", fromPanel: true)
+        draft.changeKind(.static)
+        draft.name = "Fixed"
+        let p = draft.buildPalette()
+        XCTAssertTrue(p.isStatic)
+        XCTAssertEqual(p.background.light, p.background.dark)
+        XCTAssertEqual(p.slots.count, 3)
+        for slot in p.slots { XCTAssertEqual(slot.light, slot.dark) }
+        // Collapsed from the visible (light) column.
+        XCTAssertEqual(p.slots[0].light, "#111111")
+    }
+
+    func testDraftNoneSaveWritesZeroSlots() {
+        let draft = CustomDraft()
+        draft.begin(scheme: .unified)
+        draft.changeScheme(.off)
+        draft.name = "None"
+        let p = draft.buildPalette()
+        XCTAssertEqual(p.scheme, .off)
+        XCTAssertTrue(p.slots.isEmpty)
+    }
+
+    func testSaveGatesOnNameOnly() {
+        let draft = CustomDraft()
+        for scheme in [Coloring.off, .unified, .standard] {
+            draft.begin(scheme: scheme == .off ? .unified : scheme)
+            if scheme == .off { draft.changeScheme(.off) }
+            draft.name = ""
+            XCTAssertFalse(draft.canSave)
+            draft.name = "   "
+            XCTAssertFalse(draft.canSave)   // whitespace-only is empty
+            draft.name = "X"
+            XCTAssertTrue(draft.canSave, "\(scheme) should save on a non-empty name")
+        }
+    }
+
+    func testPanelPickedBackgroundJoinsLibraryOnSave() {
+        let d = UserDefaults(suiteName: "BackgroundLibraryJoin.\(Int.random(in: 1...1_000_000))")!
+        d.removePersistentDomain(forName: "BackgroundLibraryJoin")
+
+        let draft = CustomDraft()
+        draft.begin(scheme: .unified)
+        draft.bgLight = CustomDraft.BackgroundWell(hex: "#ABCDEF", fromPanel: true)
+        draft.bgDark = CustomDraft.BackgroundWell(hex: "#123456", fromPanel: true)
+        XCTAssertEqual(draft.panelPickedBackgrounds(), ["#ABCDEF", "#123456"])
+        for hex in draft.panelPickedBackgrounds() { BackgroundLibrary.add(hex, to: d) }
+        XCTAssertEqual(BackgroundLibrary.all(d), ["#ABCDEF", "#123456"])
+    }
+
+    func testQuickPickDoesNotJoinLibrary() {
+        let draft = CustomDraft()
+        draft.begin(scheme: .unified)
+        // A panel pick, then a quick-pick overwrite clears panel provenance.
+        draft.bgLight = CustomDraft.BackgroundWell(hex: "#ABCDEF", fromPanel: true)
+        draft.applyPairBackground(BackgroundPreset.all[0].pair)
+        XCTAssertTrue(draft.panelPickedBackgrounds().isEmpty)
     }
 
     // MARK: - Hex parsing

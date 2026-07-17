@@ -148,14 +148,11 @@ struct SettingsView: View {
     }
     private var wcFontFamily: FontFamily { FontFamily.resolve(id: wcFontFamilyId) }
     /// The background pair + kind the preview paints and the Mode inertness
-    /// reads: while a draft is being edited, its seed theme's; otherwise the
-    /// resolved working theme's. A brand-new draft has no seed, so it is dynamic.
+    /// reads: while a draft is being edited, the draft's own live background and
+    /// kind; otherwise the resolved working theme's.
     private var previewBackground: (pair: ColorPair, isStatic: Bool) {
         if customDraft.active {
-            if let id = customDraft.editingId, let t = customs.first(where: { $0.id == id }) {
-                return (t.background, t.isStatic)
-            }
-            return (EditorBackground.defaultPair, false)
+            return (customDraft.backgroundPair, customDraft.kind == .static)
         }
         return (wcResolvedTheme.background, wcResolvedTheme.isStatic)
     }
@@ -534,10 +531,11 @@ struct SettingsView: View {
                 customDraft.begin(scheme: .unified)
                 openWindow(id: CustomThemeScene.id)
             })]
-            // (2) Custom header + saved customs (pencil on standard/unified only).
+            // (2) Custom header + saved customs (all editable: the builder now
+            // edits scheme-off customs too, opening them in None).
             if !customs.isEmpty {
                 rows.append(DropdownItem(id: "hdr.custom", kind: .header("Custom")))
-                rows.append(contentsOf: customs.map { themeRow($0, editable: $0.scheme != .off) })
+                rows.append(contentsOf: customs.map { themeRow($0, editable: true) })
             }
             // (3) Default, then (4) the Cream/Parchment/Gray tints (its siblings).
             rows.append(themeRow(Palette.defaultTheme, editable: false))
@@ -582,8 +580,9 @@ struct SettingsView: View {
 
     /// One Theme dropdown row for a full theme. Scheme-off themes (Default,
     /// tints, off-scheme customs) show a background pair swatch; standard and
-    /// unified themes show their heading trio. An editable custom (standard or
-    /// unified this task) gets a trailing pencil that reopens the builder.
+    /// unified themes show their heading trio. An editable custom gets a trailing
+    /// pencil that reopens the builder on the theme (its scheme, kind, and
+    /// background).
     private func themeRow(_ p: Palette, editable: Bool) -> DropdownItem {
         let kind: DropdownItem.Kind = p.scheme == .off
             ? .backgroundPair(name: p.name, pair: p.background)
