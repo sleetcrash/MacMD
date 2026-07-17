@@ -115,7 +115,7 @@ final class ThemeController: ObservableObject {
     }
 
     /// Preview an editor background in the live document without persisting it.
-    func applyBackground(mode: BackgroundMode, hex: String?, presetId: String? = nil) {
+    func applyBackground(mode: BackgroundMode, hex: String?, presetId: String?) {
         self.backgroundMode = mode
         self.customBackgroundHex = hex
         self.backgroundPresetId = presetId
@@ -123,7 +123,7 @@ final class ThemeController: ObservableObject {
 
     /// Persist and apply the editor background. The hex and preset id are kept
     /// even under other modes, so a previous pick stays remembered.
-    func saveBackground(mode: BackgroundMode, hex: String?, presetId: String? = nil) {
+    func saveBackground(mode: BackgroundMode, hex: String?, presetId: String?) {
         defaults.set(mode.rawValue, forKey: ThemeSettings.backgroundModeKey)
         if let hex {
             defaults.set(hex, forKey: ThemeSettings.customBackgroundKey)

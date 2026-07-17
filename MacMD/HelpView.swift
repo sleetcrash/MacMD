@@ -21,7 +21,7 @@ struct HelpView: View {
                         "Headings, bold, italic, inline code, fenced code, links, lists, task lists, blockquotes, strikethrough, and horizontal rules are highlighted as you type. Front matter at the top of a file (--- for YAML or +++ for TOML) is shown as muted metadata; under a color scheme its keys take the theme's H1 color, in the editor and the preview.")
 
                 section("Preview and layout",
-                        "The titlebar's layout control switches between editor only, split, and preview only; View > Show Preview (Shift-Command-P) toggles the pane. In split layout the panes scroll together, in both directions. The titlebar's copy button copies the whole document. Mermaid code fences render as diagrams in the preview.")
+                        "The layout control at the toolbar's right edge switches between editor only, split, and preview only; View > Show Preview (Shift-Command-P) toggles the pane. In split layout the panes scroll together, in both directions. The toolbar's copy button copies the whole document. Mermaid code fences render as diagrams in the preview.")
 
                 section("Toolbar and line numbers",
                         "The toolbar at the top of the document gives one-click formatting, the editor font and size, and, at its right edge, theme customization, copy text, and the pane layout control. By default it hides itself and slides in when the pointer reaches the top of the document; right-click the toolbar (or use Settings > Editing) to turn automatic hiding off, and hide the toolbar entirely from Settings > Editing or View > Show Toolbar. Line numbers show in the editor gutter; toggle them with View > Show Line Numbers.")

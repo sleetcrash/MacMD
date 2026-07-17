@@ -55,6 +55,13 @@ struct DocumentView: View {
     /// Whether the auto-hidden toolbar is currently slid in (pointer at the
     /// top of the document or on the strip itself).
     @State private var toolbarRevealed = false
+    /// Live pointer state for the reveal zone and the strip. The hide task
+    /// re-checks these at fire time: the zone (12pt) sits inside the taller
+    /// strip (26pt), so drifting from the zone onto a button exits the zone
+    /// with no fresh strip hover event, and an unconditional hide would slide
+    /// the toolbar out from under the pointer.
+    @State private var zoneHovered = false
+    @State private var stripHovered = false
     /// Pending slide-out; cancelled whenever the pointer re-enters.
     @State private var toolbarHideTask: Task<Void, Never>?
     @State private var paneMode = PaneModePref.mode
@@ -105,12 +112,14 @@ struct DocumentView: View {
                 if showToolbar && toolbarAutoHides {
                     ZStack(alignment: .top) {
                         HoverRevealZone { inside in
+                            zoneHovered = inside
                             if inside { revealToolbar() } else { scheduleToolbarHide() }
                         }
                         .frame(height: 12)
                         if toolbarRevealed {
                             toolbarStrip(overlaid: true)
                                 .onHover { inside in
+                                    stripHovered = inside
                                     if inside { revealToolbar() } else { scheduleToolbarHide() }
                                 }
                                 .transition(.move(edge: .top).combined(with: .opacity))
@@ -138,6 +147,10 @@ struct DocumentView: View {
             withAnimation(.easeInOut(duration: 0.2)) { showToolbar = ToolbarPref.isOn }
         }
         .onReceive(NotificationCenter.default.publisher(for: ToolbarAutoHidePref.didChange)) { _ in
+            // Removing the strip mid-hover delivers no exit event, so clear
+            // the hover flags here or a stale true would block future hides.
+            zoneHovered = false
+            stripHovered = false
             withAnimation(.easeInOut(duration: 0.2)) {
                 toolbarAutoHides = ToolbarAutoHidePref.isOn
                 toolbarRevealed = false
@@ -174,12 +187,14 @@ struct DocumentView: View {
     }
 
     /// Slide the toolbar out after a short grace period, so crossing the gap
-    /// between the hover zone and the strip does not flicker it away.
+    /// between the hover zone and the strip does not flicker it away. The
+    /// fire-time hover re-check covers the zone-exit-onto-a-button path,
+    /// where no fresh enter event arrives to cancel the pending hide.
     private func scheduleToolbarHide() {
         toolbarHideTask?.cancel()
         toolbarHideTask = Task { @MainActor in
             try? await Task.sleep(nanoseconds: 500_000_000)
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled, !zoneHovered, !stripHovered else { return }
             withAnimation(.easeInOut(duration: 0.2)) { toolbarRevealed = false }
         }
     }

@@ -101,7 +101,10 @@ struct EditorToolbarStrip: View {
     var overlaid = false
     @EnvironmentObject private var theme: ThemeController
     @Environment(\.openWindow) private var openWindow
-    @AppStorage(ToolbarAutoHidePref.key) private var autoHide = true
+    /// Notification-backed (not @AppStorage, which does not reliably propagate
+    /// across DocumentGroup windows in MacMD), so the right-click menu's
+    /// checkmark stays truthful in every open window.
+    @State private var autoHide = ToolbarAutoHidePref.isOn
 
     var body: some View {
         HStack(spacing: 2) {
@@ -160,6 +163,9 @@ struct EditorToolbarStrip: View {
                 get: { autoHide },
                 set: { ToolbarAutoHidePref.set($0) }
             ))
+        }
+        .onReceive(NotificationCenter.default.publisher(for: ToolbarAutoHidePref.didChange)) { _ in
+            autoHide = ToolbarAutoHidePref.isOn
         }
     }
 

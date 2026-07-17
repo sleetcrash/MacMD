@@ -1661,7 +1661,7 @@ private struct SettingsColorWell: NSViewRepresentable {
     }
 }
 
-/// The well behind `BackgroundColorWell`: exclusive activation configures the
+/// The well behind `SettingsColorWell`: exclusive activation configures the
 /// shared panel (opaque colors only, floated above this floating window, same
 /// as the Custom Theme swatches), and `hitTest` returns nil because this well
 /// is only ever activated programmatically.
