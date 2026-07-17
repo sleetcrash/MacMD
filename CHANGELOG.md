@@ -2,6 +2,25 @@
 
 All notable changes to MacMD will be documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-07-16
+
+### Added
+- The toolbar now hides itself and slides in when you move the pointer to the top of the document, like the macOS menu bar in full screen. Right-click the toolbar (or use Settings → Editing) to turn automatic hiding off and keep it always visible.
+- Cursor color: pick any fixed caret color in Settings → Appearance (Default keeps the system accent).
+- Background presets: the Background dropdown offers Cream (cream | navy), Parchment (parchment | charcoal), and Gray (light | dark gray) pairs that follow your light/dark mode, shown with the same light | dark swatches as the themes.
+- A "Show word count" checkbox in Settings → Editing, alongside the existing View menu toggle.
+
+### Changed
+- The copy-text button and the pane layout control moved from the titlebar into the toolbar's right edge, ordered customize, copy, layout. The toolbar is shorter and transparent, and its button groups spread across the full window width.
+- "Custom+" is now "Customize" in the theme and background dropdowns, with the create plus icon in the same spot custom entries show their edit pencil.
+- The preview renders a single newline as a line break, matching the line breaks you see in the editor.
+
+### Removed
+- The "New windows" size setting in Settings → Editing. New windows and tabs now follow standard macOS sizing.
+
+### Fixed
+- Adding a tab no longer shrinks the whole window to the new-window size.
+
 ## [2.1.0] - 2026-07-12
 
 ### Added
