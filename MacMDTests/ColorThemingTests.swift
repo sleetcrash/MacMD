@@ -384,8 +384,9 @@ final class ColorThemingTests: XCTestCase {
     }
 
     func testPanelPickedBackgroundJoinsLibraryOnSave() {
-        let d = UserDefaults(suiteName: "BackgroundLibraryJoin.\(Int.random(in: 1...1_000_000))")!
-        d.removePersistentDomain(forName: "BackgroundLibraryJoin")
+        let suite = "ColorThemingTests-\(UUID().uuidString)"
+        let d = UserDefaults(suiteName: suite)!
+        defer { d.removePersistentDomain(forName: suite) }
 
         let draft = CustomDraft()
         draft.begin(scheme: .unified)

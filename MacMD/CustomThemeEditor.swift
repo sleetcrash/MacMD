@@ -484,14 +484,15 @@ struct CustomThemeEditor: View {
     /// Default plus the three tinted preset pairs. Dynamic shows each as a
     /// light │ dark pair applied to both wells; static shows each side as its own
     /// single swatch applied to the one well.
-    private var presetPairs: [(id: String, pair: ColorPair)] {
-        [(id: "bg.default", pair: EditorBackground.defaultPair)]
-            + BackgroundPreset.all.map { (id: $0.id, pair: $0.pair) }
+    private var presetPairs: [(id: String, name: String, pair: ColorPair)] {
+        [(id: "bg.default", name: "Default", pair: EditorBackground.defaultPair)]
+            + BackgroundPreset.all.map { (id: $0.id, name: $0.name, pair: $0.pair) }
     }
 
-    private var presetSingles: [(id: String, hex: String)] {
+    private var presetSingles: [(id: String, name: String, hex: String)] {
         presetPairs.flatMap { item in
-            [(id: item.id + ".l", hex: item.pair.light), (id: item.id + ".d", hex: item.pair.dark)]
+            [(id: item.id + ".l", name: item.name + " light", hex: item.pair.light),
+             (id: item.id + ".d", name: item.name + " dark", hex: item.pair.dark)]
         }
     }
 
@@ -507,7 +508,7 @@ struct CustomThemeEditor: View {
                         .overlay(Rectangle().strokeBorder(Color(white: 0.47).opacity(0.5), lineWidth: 1))
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("Background preset")
+                    .accessibilityLabel("\(item.name) background")
                 }
             } else {
                 ForEach(presetSingles, id: \.id) { item in
@@ -517,7 +518,7 @@ struct CustomThemeEditor: View {
                             .overlay(Rectangle().strokeBorder(Color(white: 0.47).opacity(0.5), lineWidth: 1))
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("Background preset \(item.hex)")
+                    .accessibilityLabel("\(item.name) background")
                 }
             }
         }
