@@ -15,16 +15,17 @@ struct MacMDApp: App {
 
     init() {
         PaneModePref.migrate()
+        // The New Windows size setting was removed in 2.2 (its setContentSize
+        // hook resized whole tab groups); drop any persisted values.
+        UserDefaults.standard.removeObject(forKey: "newWindowWidth")
+        UserDefaults.standard.removeObject(forKey: "newWindowHeight")
     }
 
     private var paneMode: PaneMode { PaneMode(rawValue: paneModeRaw) ?? .editor }
 
     var body: some Scene {
         DocumentGroup(newDocument: MarkdownDocument()) { file in
-            // fileURL is nil for a brand-new Untitled document; those windows
-            // get the preferred New Windows size, while reopened files keep
-            // whatever frame macOS restores for them.
-            DocumentView(document: file.$document, isNewDocument: file.fileURL == nil,
+            DocumentView(document: file.$document,
                          documentDirectory: file.fileURL?.deletingLastPathComponent())
                 .environmentObject(themeController)
         }
@@ -117,7 +118,7 @@ struct MacMDApp: App {
         }
 
         // These three auxiliary windows are opened programmatically (MacMD ▸
-        // Settings, Help ▸ MacMD Help, and Custom+ in the Theme dropdown), so
+        // Settings, Help ▸ MacMD Help, and Customize in the Theme dropdown), so
         // `.commandsRemoved()` strips the open-command SwiftUI would otherwise add
         // to the Window menu. That command duplicated the app-menu / Help entries
         // and cluttered the Window menu; openWindow(id:) still opens each window.

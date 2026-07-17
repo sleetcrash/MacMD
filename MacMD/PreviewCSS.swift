@@ -19,10 +19,16 @@ enum PreviewCSS {
         let base = CGFloat(theme.fontSize)
         let family = FontFamily.resolve(id: theme.fontFamilyId)
         let stack = fontStack(for: family.resolver, isMonospace: family.isMonospace)
-        let customBg = EditorBackground.customColor(mode: theme.backgroundMode, hex: theme.customBackgroundHex)
+        // Resolved per side: a custom color is the same in both blocks, while a
+        // preset pair contributes its light color to `aqua` and its dark color
+        // to `darkAqua`, exactly like the editor following the Mode.
+        let lightBg = EditorBackground.activeColor(mode: theme.backgroundMode, hex: theme.customBackgroundHex,
+                                                   presetId: theme.backgroundPresetId, dark: false)
+        let darkBg = EditorBackground.activeColor(mode: theme.backgroundMode, hex: theme.customBackgroundHex,
+                                                  presetId: theme.backgroundPresetId, dark: true)
 
-        return block(class: "aqua", appearance: light, dark: false, palette: palette, base: base, fontStack: stack, customBg: customBg)
-             + block(class: "darkAqua", appearance: dark, dark: true, palette: palette, base: base, fontStack: stack, customBg: customBg)
+        return block(class: "aqua", appearance: light, dark: false, palette: palette, base: base, fontStack: stack, customBg: lightBg)
+             + block(class: "darkAqua", appearance: dark, dark: true, palette: palette, base: base, fontStack: stack, customBg: darkBg)
     }
 
     private static func block(class cls: String, appearance: NSAppearance, dark: Bool,

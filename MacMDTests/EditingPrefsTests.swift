@@ -6,8 +6,7 @@ final class EditingPrefsTests: XCTestCase {
     // The test host is the real app, so UserDefaults.standard is the user's
     // live prefs domain. Snapshot the touched keys and RESTORE them (not just
     // remove), so a suite run never resets prefs the user set on purpose.
-    private static let keys = [SpellingPref.spellingKey, SpellingPref.grammarKey,
-                               NewWindowSize.widthKey, NewWindowSize.heightKey]
+    private static let keys = [SpellingPref.spellingKey, SpellingPref.grammarKey]
     private var saved: [String: Any] = [:]
 
     override func setUp() {
@@ -66,34 +65,5 @@ final class EditingPrefsTests: XCTestCase {
         let exp = expectation(forNotification: SpellingPref.didChange, object: nil, handler: nil)
         SpellingPref.setCheckGrammar(true)
         wait(for: [exp], timeout: 1.0)
-    }
-
-    // MARK: - NewWindowSize
-
-    func testSizeDefaults() {
-        UserDefaults.standard.removeObject(forKey: NewWindowSize.widthKey)
-        UserDefaults.standard.removeObject(forKey: NewWindowSize.heightKey)
-        XCTAssertEqual(NewWindowSize.width, 760)
-        XCTAssertEqual(NewWindowSize.height, 680)
-    }
-
-    func testSetPersistsRoundedValues() {
-        NewWindowSize.set(width: 800.6, height: 600.4)
-        XCTAssertEqual(NewWindowSize.width, 801)
-        XCTAssertEqual(NewWindowSize.height, 600)
-    }
-
-    func testClampBounds() {
-        XCTAssertEqual(NewWindowSize.clampWidth(10), NewWindowSize.minWidth)
-        XCTAssertEqual(NewWindowSize.clampHeight(10), NewWindowSize.minHeight)
-        XCTAssertEqual(NewWindowSize.clampWidth(99999), NewWindowSize.maxWidth)
-        XCTAssertEqual(NewWindowSize.clampHeight(99999), NewWindowSize.maxHeight)
-    }
-
-    func testStoredOutOfRangeValueReadsClamped() {
-        UserDefaults.standard.set(12.0, forKey: NewWindowSize.widthKey)
-        UserDefaults.standard.set(90000.0, forKey: NewWindowSize.heightKey)
-        XCTAssertEqual(NewWindowSize.width, NewWindowSize.minWidth)
-        XCTAssertEqual(NewWindowSize.height, NewWindowSize.maxHeight)
     }
 }
