@@ -162,6 +162,57 @@ final class ColorThemingTests: XCTestCase {
         XCTAssertEqual(shortPalette.headingColor(level: 2), .labelColor)
     }
 
+    // MARK: - Palette background + kind
+
+    func testPaletteDecodesLegacyShapeWithDefaults() throws {
+        let json = """
+        [{"id":"custom.X","name":"Old","scheme":"unified","slots":[{"light":"#FF0000","dark":"#00FF00"}]}]
+        """.data(using: .utf8)!
+        let palettes = try JSONDecoder().decode([Palette].self, from: json)
+        XCTAssertEqual(palettes[0].background, ColorPair(light: "#FFFFFF", dark: "#1E1E1E"))
+        XCTAssertFalse(palettes[0].isStatic)
+    }
+
+    func testPaletteEncodesFullShape() throws {
+        let p = Palette(id: "custom.1", name: "Mine", scheme: .standard,
+                        slots: [ColorPair(light: "#111111", dark: "#222222")])
+        let data = try JSONEncoder().encode(p)
+        let json = String(data: data, encoding: .utf8)!
+        XCTAssertTrue(json.contains("\"background\""))
+        XCTAssertTrue(json.contains("\"isStatic\""))
+    }
+
+    func testStaticDecodeRecollapsesToLightValues() throws {
+        let json = """
+        {"id":"custom.2","name":"Frozen","scheme":"standard","isStatic":true,
+         "background":{"light":"#111111","dark":"#222222"},
+         "slots":[{"light":"#333333","dark":"#444444"}]}
+        """.data(using: .utf8)!
+        let p = try JSONDecoder().decode(Palette.self, from: json)
+        XCTAssertEqual(p.background, ColorPair(light: "#111111", dark: "#111111"))
+        XCTAssertEqual(p.slots[0], ColorPair(light: "#333333", dark: "#333333"))
+    }
+
+    func testTintThemesMatchBackgroundPresets() {
+        XCTAssertEqual(Palette.tintThemes.count, 3)
+        XCTAssertEqual(Palette.tintThemes.map(\.id), ["tint.cream", "tint.parchment", "tint.gray"])
+        for (tint, preset) in zip(Palette.tintThemes, BackgroundPreset.all) {
+            XCTAssertEqual(tint.scheme, .off)
+            XCTAssertTrue(tint.slots.isEmpty)
+            XCTAssertFalse(tint.isStatic)
+            XCTAssertEqual(tint.background, preset.pair)
+        }
+    }
+
+    func testDefaultTheme() {
+        let d = Palette.defaultTheme
+        XCTAssertEqual(d.id, "default")
+        XCTAssertEqual(d.scheme, .off)
+        XCTAssertTrue(d.slots.isEmpty)
+        XCTAssertEqual(d.background, EditorBackground.defaultPair)
+        XCTAssertFalse(d.isStatic)
+    }
+
     // MARK: - Theme active state
 
     func testDefaultColoringHeadingColorIsLabelColor() {

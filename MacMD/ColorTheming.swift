@@ -85,6 +85,8 @@ struct Palette: Codable, Equatable, Identifiable {
     var name: String
     let scheme: Coloring
     let slots: [ColorPair]
+    var background: ColorPair = EditorBackground.defaultPair
+    var isStatic: Bool = false
 
     /// The dynamic color for a heading of `level` under this palette, or
     /// `labelColor` if the level maps outside the slots.
@@ -95,11 +97,52 @@ struct Palette: Codable, Equatable, Identifiable {
     }
 }
 
+extension Palette {
+    enum CodingKeys: String, CodingKey {
+        case id, name, scheme, slots, background, isStatic
+    }
+
+    /// Legacy saved palettes predate `background`/`isStatic`; both fall back to
+    /// their defaults so old prefs blobs decode unchanged. A static palette
+    /// collapses every pair (background and slots) to its light value, so a
+    /// stale dark-mode variant can never resurface after a later re-encode.
+    /// Declared in this extension, not the struct body, so the compiler keeps
+    /// synthesizing the memberwise `init(id:name:scheme:slots:)` every existing
+    /// call site relies on.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        name = try c.decode(String.self, forKey: .name)
+        scheme = try c.decode(Coloring.self, forKey: .scheme)
+        let decodedSlots = try c.decode([ColorPair].self, forKey: .slots)
+        let decodedBackground = try c.decodeIfPresent(ColorPair.self, forKey: .background) ?? EditorBackground.defaultPair
+        isStatic = try c.decodeIfPresent(Bool.self, forKey: .isStatic) ?? false
+        if isStatic {
+            background = ColorPair(light: decodedBackground.light, dark: decodedBackground.light)
+            slots = decodedSlots.map { ColorPair(light: $0.light, dark: $0.light) }
+        } else {
+            background = decodedBackground
+            slots = decodedSlots
+        }
+    }
+
+    /// One flat, backgroundless tint per curated background preset, for the
+    /// Theme dropdown's tint row.
+    static let tintThemes: [Palette] = BackgroundPreset.all.map { preset in
+        Palette(id: preset.id.replacingOccurrences(of: "bg.", with: "tint."),
+                name: preset.name, scheme: .off, slots: [], background: preset.pair)
+    }
+
+    /// The app's out-of-the-box theme: no heading color, the standard editor
+    /// background.
+    static let defaultTheme = Palette(id: "default", name: "Default", scheme: .off, slots: [])
+}
+
 /// Pure theming engine: scheme → slot mapping and the preset palette library.
 enum ColorTheming {
     /// Which palette slot colors a heading of `level` under `scheme`.
     /// nil means "no palette color", use `labelColor` (the Default scheme).
-    /// Standard: H1→0, H2→1, H3–H6→2. Unified: always 0.
+    /// Standard: H1→0, H2→1, H3-H6→2. Unified: always 0.
     static func slotIndex(forHeadingLevel level: Int, scheme: Coloring) -> Int? {
         switch scheme {
         case .off: return nil
