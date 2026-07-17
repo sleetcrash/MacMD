@@ -314,6 +314,28 @@ final class ThemeSettingsTests: XCTestCase {
         ThemeSettings.migrateIfNeeded(dGarbage)
         XCTAssertEqual(dGarbage.string(forKey: ThemeSettings.selectedThemeKey), "default")
         XCTAssertTrue(ThemeSettings.decodeCustoms(dGarbage.data(forKey: ThemeSettings.customThemesKey) ?? Data()).isEmpty)
+
+        // A selected custom (not just the off-scheme default) must also
+        // degrade to its bg-default sibling, keeping the user's theme instead
+        // of silently falling to "default".
+        let selectedCustom = Palette(id: "custom.mine", name: "Mine", scheme: .unified,
+                                     slots: [ColorPair(light: "#111111", dark: "#222222")])
+        let dSelectedNil = scratchDefaults()
+        dSelectedNil.set(ThemeSettings.encodeCustoms([selectedCustom]), forKey: ThemeSettings.customsKey)
+        dSelectedNil.set(Coloring.unified.rawValue, forKey: ThemeSettings.schemeKey)
+        dSelectedNil.set("custom.mine", forKey: ThemeSettings.themeIdKey)
+        dSelectedNil.set(BackgroundMode.custom.rawValue, forKey: ThemeSettings.backgroundModeKey)
+        ThemeSettings.migrateIfNeeded(dSelectedNil)
+        assertSurvivesAsDynamicDefault(dSelectedNil, original: selectedCustom)
+
+        let dSelectedGarbage = scratchDefaults()
+        dSelectedGarbage.set(ThemeSettings.encodeCustoms([selectedCustom]), forKey: ThemeSettings.customsKey)
+        dSelectedGarbage.set(Coloring.unified.rawValue, forKey: ThemeSettings.schemeKey)
+        dSelectedGarbage.set("custom.mine", forKey: ThemeSettings.themeIdKey)
+        dSelectedGarbage.set(BackgroundMode.custom.rawValue, forKey: ThemeSettings.backgroundModeKey)
+        dSelectedGarbage.set("garbage", forKey: ThemeSettings.customBackgroundKey)
+        ThemeSettings.migrateIfNeeded(dSelectedGarbage)
+        assertSurvivesAsDynamicDefault(dSelectedGarbage, original: selectedCustom)
     }
 
     func testMigrationUnknownPresetIdDegradesToDefaultSibling() {
@@ -323,6 +345,35 @@ final class ThemeSettingsTests: XCTestCase {
         d.set("bg.nonexistent", forKey: ThemeSettings.backgroundPresetKey)
         ThemeSettings.migrateIfNeeded(d)
         XCTAssertEqual(d.string(forKey: ThemeSettings.selectedThemeKey), "default")
+
+        // Same degenerate-preset rule, but for a selected custom: it must
+        // survive as its dynamic bg-default self, not get discarded.
+        let selectedCustom = Palette(id: "custom.mine", name: "Mine", scheme: .unified,
+                                     slots: [ColorPair(light: "#111111", dark: "#222222")])
+        let dSelected = scratchDefaults()
+        dSelected.set(ThemeSettings.encodeCustoms([selectedCustom]), forKey: ThemeSettings.customsKey)
+        dSelected.set(Coloring.unified.rawValue, forKey: ThemeSettings.schemeKey)
+        dSelected.set("custom.mine", forKey: ThemeSettings.themeIdKey)
+        dSelected.set(BackgroundMode.preset.rawValue, forKey: ThemeSettings.backgroundModeKey)
+        dSelected.set("bg.nonsense", forKey: ThemeSettings.backgroundPresetKey)
+        ThemeSettings.migrateIfNeeded(dSelected)
+        assertSurvivesAsDynamicDefault(dSelected, original: selectedCustom)
+    }
+
+    /// Shared assertion for the selected-custom degenerate-input blocks above:
+    /// the custom must survive as dynamic with the default background pair,
+    /// id/name/scheme/slots preserved, selected, with no stray synthesis.
+    private func assertSurvivesAsDynamicDefault(_ d: UserDefaults, original: Palette) {
+        XCTAssertEqual(d.string(forKey: ThemeSettings.selectedThemeKey), original.id)
+        let customs = ThemeSettings.decodeCustoms(d.data(forKey: ThemeSettings.customThemesKey) ?? Data())
+        XCTAssertEqual(customs.count, 1)
+        let c = customs[0]
+        XCTAssertEqual(c.id, original.id)
+        XCTAssertEqual(c.name, original.name)
+        XCTAssertEqual(c.scheme, original.scheme)
+        XCTAssertEqual(c.slots, original.slots)
+        XCTAssertEqual(c.background, EditorBackground.defaultPair)
+        XCTAssertFalse(c.isStatic)
     }
 
     func testFreshInstallWritesFlagOnly() {

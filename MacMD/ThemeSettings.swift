@@ -200,6 +200,8 @@ enum ThemeSettings {
                 }
             }
         } else {
+            // Unreachable for non-off schemes: resolvePalette always falls back
+            // to the scheme's first preset, so `resolved` is never nil here.
             selectedThemeId = "default"
         }
 
