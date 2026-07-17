@@ -119,6 +119,7 @@ struct SettingsView: View {
     @State private var cursorColorPickerActivation = 0
     @State private var wcBackgroundModeRaw = BackgroundMode.default.rawValue
     @State private var wcCustomBackgroundHex: String?
+    @State private var wcBackgroundPresetId: String?
     /// Bump to open the shared color panel on the background well (picking
     /// Custom with no color yet, or the pencil).
     @State private var backgroundPickerActivation = 0
@@ -159,10 +160,12 @@ struct SettingsView: View {
     /// The stored Custom color (even while Default is selected, for the Custom
     /// row's swatch and pencil); nil until one is picked or for a bad hex.
     private var wcStoredCustomColor: NSColor? { wcCustomBackgroundHex.flatMap { NSColor(hex: $0) } }
-    /// The custom color only when Custom is the active selection (what the
-    /// preview paints).
+    /// The fixed background of the active selection (what the preview paints):
+    /// the custom color, a preset's resolved side, or nil for Default.
     private var wcActiveCustomColor: NSColor? {
-        EditorBackground.customColor(mode: wcBackgroundMode, hex: wcCustomBackgroundHex)
+        EditorBackground.activeColor(mode: wcBackgroundMode, hex: wcCustomBackgroundHex,
+                                     presetId: wcBackgroundPresetId,
+                                     dark: wcAppearance.resolvesDark)
     }
     // Apply lights up when the selection differs from what the editor is
     // currently showing (the applied/effective state), so you can always apply
@@ -179,6 +182,7 @@ struct SettingsView: View {
         || wcCursorColorHex != theme.cursorColorHex
         || wcBackgroundModeRaw != theme.backgroundMode.rawValue
         || wcCustomBackgroundHex != theme.customBackgroundHex
+        || wcBackgroundPresetId != theme.backgroundPresetId
     }
     private var saveDirty: Bool {
         wcSchemeRaw != theme.savedColoring.rawValue
@@ -191,6 +195,7 @@ struct SettingsView: View {
         || wcCursorColorHex != theme.savedCursorColor
         || wcBackgroundModeRaw != theme.savedBackgroundMode.rawValue
         || wcCustomBackgroundHex != theme.savedCustomBackground
+        || wcBackgroundPresetId != theme.savedBackgroundPreset
     }
     // A new custom theme is being edited in the Custom Theme window but hasn't been
     // saved yet, so it has no committable id. The preview shows the live draft, but
@@ -359,7 +364,8 @@ struct SettingsView: View {
                     theme.applyFontFamily(wcFontFamilyId)
                     theme.applyCursor(style: CursorStyle(rawValue: wcCursorStyleRaw) ?? .bar, blink: wcCursorBlink)
                     theme.applyCursorColor(wcCursorColorHex)
-                    theme.applyBackground(mode: wcBackgroundMode, hex: wcCustomBackgroundHex)
+                    theme.applyBackground(mode: wcBackgroundMode, hex: wcCustomBackgroundHex,
+                                          presetId: wcBackgroundPresetId)
                 }
                     .buttonStyle(SquareButtonStyle())
                     .disabled(!applyDirty || draftUncommitted)
@@ -369,7 +375,8 @@ struct SettingsView: View {
                     theme.saveFontFamily(wcFontFamilyId)
                     theme.saveCursor(style: CursorStyle(rawValue: wcCursorStyleRaw) ?? .bar, blink: wcCursorBlink)
                     theme.saveCursorColor(wcCursorColorHex)
-                    theme.saveBackground(mode: wcBackgroundMode, hex: wcCustomBackgroundHex)
+                    theme.saveBackground(mode: wcBackgroundMode, hex: wcCustomBackgroundHex,
+                                         presetId: wcBackgroundPresetId)
                     // A saved custom background joins the library, so it stays
                     // one dropdown pick away after trying other colors.
                     if wcBackgroundMode == .custom, let hex = wcCustomBackgroundHex {
@@ -490,12 +497,22 @@ struct SettingsView: View {
         .reportsFrame(.theme)
     }
 
+    /// The selected background option's display name.
+    private var backgroundLabel: String {
+        switch wcBackgroundMode {
+        case .default: return "Default"
+        case .preset: return BackgroundPreset.preset(id: wcBackgroundPresetId)?.name ?? "Default"
+        case .custom: return "Custom+"
+        }
+    }
+
     /// The Background trigger: the selected option's name plus its swatch
-    /// right-aligned against the chevron, like the Theme box.
+    /// right-aligned against the chevron, like the Theme box. Preset and
+    /// Default swatches show the current Mode's side of their pair.
     private var backgroundBox: some View {
         Button { toggle(.background) } label: {
             HStack(spacing: 0) {
-                Text(wcBackgroundMode == .custom ? "Custom+" : "Default")
+                Text(backgroundLabel)
                     .font(.system(size: 11))
                     .lineLimit(1)
                 Spacer(minLength: 8)
@@ -506,7 +523,8 @@ struct SettingsView: View {
                         PlusSwatch()
                     }
                 } else {
-                    Swatch(color: Color(nsColor: EditorBackground.defaultBackground(dark: wcAppearance.resolvesDark)))
+                    Swatch(color: Color(nsColor: wcActiveCustomColor
+                        ?? EditorBackground.defaultBackground(dark: wcAppearance.resolvesDark)))
                 }
                 Image(systemName: "chevron.down").font(.system(size: 8)).opacity(0.5)
                     .padding(.leading, 8)
@@ -596,10 +614,14 @@ struct SettingsView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .contentShape(Rectangle())
                 .onTapGesture { openMenu = nil; NSApp.keyWindow?.makeFirstResponder(nil) }
+            // The Background list needs more room than its narrow trigger
+            // (preset names plus light | dark pair swatches), so it widens
+            // leftward, staying right-aligned under the trigger's edge.
+            let width = field == .background ? max(frame.width, 168) : frame.width
             InlineDropdown(items: items(for: field), keyboardNav: field != .size)
                 .id(field)
-                .frame(width: frame.width, alignment: .topLeading)
-                .offset(x: frame.minX, y: frame.maxY)
+                .frame(width: width, alignment: .topLeading)
+                .offset(x: frame.maxX - width, y: frame.maxY)
         }
     }
 
@@ -649,10 +671,16 @@ struct SettingsView: View {
             _ = backgroundLibraryVersion   // re-derive rows after a delete
             var rows = [
                 DropdownItem(id: "bg.default",
-                             kind: .backgroundSwatch(EditorBackground.defaultBackground(dark: wcAppearance.resolvesDark)),
+                             kind: .backgroundPair(name: "Default", pair: EditorBackground.defaultPair),
                              selected: wcBackgroundMode == .default,
                              action: { pickBackground(.default) }),
             ]
+            rows.append(contentsOf: BackgroundPreset.all.map { p in
+                DropdownItem(id: p.id,
+                             kind: .backgroundPair(name: p.name, pair: p.pair),
+                             selected: wcBackgroundMode == .preset && wcBackgroundPresetId == p.id,
+                             action: { pickBackgroundPreset(p.id) })
+            })
             let saved = BackgroundLibrary.all()
             if !saved.isEmpty {
                 rows.append(DropdownItem(id: "hdr.savedBackgrounds", kind: .header("Saved")))
@@ -704,6 +732,13 @@ struct SettingsView: View {
         wcBackgroundModeRaw = mode.rawValue
         openMenu = nil
         if mode == .custom, wcCustomBackgroundHex == nil { backgroundPickerActivation += 1 }
+    }
+
+    /// A preset pair row: the background follows the Mode through the pair.
+    private func pickBackgroundPreset(_ id: String) {
+        wcBackgroundModeRaw = BackgroundMode.preset.rawValue
+        wcBackgroundPresetId = id
+        openMenu = nil
     }
 
     /// The Custom row's pencil: select Custom and reopen the panel on the
@@ -769,6 +804,7 @@ struct SettingsView: View {
         wcCursorColorHex = theme.savedCursorColor
         wcBackgroundModeRaw = theme.savedBackgroundMode.rawValue
         wcCustomBackgroundHex = theme.savedCustomBackground
+        wcBackgroundPresetId = theme.savedBackgroundPreset
         sizeText = "\(Int(theme.savedFontSize))"
     }
 
@@ -822,7 +858,8 @@ struct DropdownItem: Identifiable {
         case header(String)         // non-selectable subheading
         case text(String)           // plain title (scheme / size)
         case fontSample(FontFamily) // family name rendered in its own face
-        case backgroundSwatch(NSColor)   // Background's Default row: the mode's bg
+        case backgroundSwatch(NSColor)   // a single-swatch Default row (cursor color)
+        case backgroundPair(name: String, pair: ColorPair)  // Default/preset: light | dark pair
         case backgroundCustom(NSColor?)  // Background's Custom row: the picked color, or nil = blank "+"
         case backgroundSaved(hex: String, color: NSColor)  // a library swatch, removable
     }
@@ -1137,6 +1174,13 @@ private struct DropdownRow: View {
                 Swatch(color: Color(nsColor: color))
                 // Reserve the pencil slot so this swatch stays column-aligned
                 // with the Custom row's (same trick as the Custom+ theme row).
+                Color.clear.frame(width: iconSlot, height: 1)
+            }
+        case .backgroundPair(let name, let pair):
+            row {
+                Text(name).font(.system(size: 11)).lineLimit(1)
+                Spacer(minLength: 8)
+                SwatchTrio(slots: [pair])
                 Color.clear.frame(width: iconSlot, height: 1)
             }
         case .backgroundCustom(let color):

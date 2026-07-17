@@ -65,10 +65,19 @@ struct DocumentView: View {
     /// survives re-renders while scroll ticks never touch SwiftUI state.
     @State private var syncBridge = ScrollSyncBridge()
 
-    /// The fixed editor background when Custom is active, else nil (Default
-    /// keeps the appearance-driven `.textBackgroundColor`).
+    /// Follows the window's live appearance so a preset background under
+    /// System mode flips with the OS (the environment read is what triggers
+    /// the re-render; resolvesDark alone would go stale).
+    @Environment(\.colorScheme) private var colorScheme
+
+    /// The fixed editor background when a preset or Custom is active, else nil
+    /// (Default keeps the appearance-driven `.textBackgroundColor`).
     private var customBackground: NSColor? {
-        EditorBackground.customColor(mode: theme.backgroundMode, hex: theme.customBackgroundHex)
+        let dark = theme.appearance == .system ? colorScheme == .dark : theme.appearance == .dark
+        return EditorBackground.activeColor(mode: theme.backgroundMode,
+                                            hex: theme.customBackgroundHex,
+                                            presetId: theme.backgroundPresetId,
+                                            dark: dark)
     }
 
     var body: some View {

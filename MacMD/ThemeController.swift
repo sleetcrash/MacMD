@@ -20,6 +20,8 @@ final class ThemeController: ObservableObject {
     @Published private(set) var cursorColorHex: String?
     @Published private(set) var backgroundMode: BackgroundMode
     @Published private(set) var customBackgroundHex: String?
+    /// The selected BackgroundPreset id (meaningful under `.preset` mode).
+    @Published private(set) var backgroundPresetId: String?
 
     private let defaults: UserDefaults
 
@@ -35,6 +37,7 @@ final class ThemeController: ObservableObject {
         self.cursorColorHex = ThemeController.loadCursorColor(defaults)
         self.backgroundMode = ThemeController.loadBackgroundMode(defaults)
         self.customBackgroundHex = ThemeController.loadCustomBackground(defaults)
+        self.backgroundPresetId = ThemeController.loadBackgroundPreset(defaults)
     }
 
     // MARK: - Saved (persisted) state
@@ -49,6 +52,7 @@ final class ThemeController: ObservableObject {
     var savedCursorColor: String? { ThemeController.loadCursorColor(defaults) }
     var savedBackgroundMode: BackgroundMode { ThemeController.loadBackgroundMode(defaults) }
     var savedCustomBackground: String? { ThemeController.loadCustomBackground(defaults) }
+    var savedBackgroundPreset: String? { ThemeController.loadBackgroundPreset(defaults) }
 
     // MARK: - Transitions
 
@@ -111,21 +115,27 @@ final class ThemeController: ObservableObject {
     }
 
     /// Preview an editor background in the live document without persisting it.
-    func applyBackground(mode: BackgroundMode, hex: String?) {
+    func applyBackground(mode: BackgroundMode, hex: String?, presetId: String? = nil) {
         self.backgroundMode = mode
         self.customBackgroundHex = hex
+        self.backgroundPresetId = presetId
     }
 
-    /// Persist and apply the editor background. The hex is kept even under
-    /// Default mode, so a previously picked Custom color stays remembered.
-    func saveBackground(mode: BackgroundMode, hex: String?) {
+    /// Persist and apply the editor background. The hex and preset id are kept
+    /// even under other modes, so a previous pick stays remembered.
+    func saveBackground(mode: BackgroundMode, hex: String?, presetId: String? = nil) {
         defaults.set(mode.rawValue, forKey: ThemeSettings.backgroundModeKey)
         if let hex {
             defaults.set(hex, forKey: ThemeSettings.customBackgroundKey)
         } else {
             defaults.removeObject(forKey: ThemeSettings.customBackgroundKey)
         }
-        applyBackground(mode: mode, hex: hex)
+        if let presetId {
+            defaults.set(presetId, forKey: ThemeSettings.backgroundPresetKey)
+        } else {
+            defaults.removeObject(forKey: ThemeSettings.backgroundPresetKey)
+        }
+        applyBackground(mode: mode, hex: hex, presetId: presetId)
     }
 
     /// Discard any unsaved Apply and snap the effective state back to saved.
@@ -136,7 +146,8 @@ final class ThemeController: ObservableObject {
         self.cursorStyle = savedCursorStyle
         self.cursorBlink = savedCursorBlink
         self.cursorColorHex = savedCursorColor
-        applyBackground(mode: savedBackgroundMode, hex: savedCustomBackground)
+        applyBackground(mode: savedBackgroundMode, hex: savedCustomBackground,
+                        presetId: savedBackgroundPreset)
     }
 
     /// Immediately change AND persist only the font size (for the View-menu
@@ -185,5 +196,8 @@ final class ThemeController: ObservableObject {
     }
     private static func loadCustomBackground(_ d: UserDefaults) -> String? {
         d.string(forKey: ThemeSettings.customBackgroundKey)
+    }
+    private static func loadBackgroundPreset(_ d: UserDefaults) -> String? {
+        d.string(forKey: ThemeSettings.backgroundPresetKey)
     }
 }

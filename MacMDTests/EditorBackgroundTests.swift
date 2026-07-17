@@ -97,7 +97,45 @@ final class EditorBackgroundTests: XCTestCase {
 
     func testBackgroundModeRawValues() {
         XCTAssertEqual(BackgroundMode.default.rawValue, "default")
+        XCTAssertEqual(BackgroundMode.preset.rawValue, "preset")
         XCTAssertEqual(BackgroundMode.custom.rawValue, "custom")
+    }
+
+    // MARK: - Presets
+
+    func testPresetColorResolvesEachModeSide() {
+        let cream = BackgroundPreset.all[0]
+        XCTAssertEqual(EditorBackground.presetColor(id: cream.id, dark: false)?.hexString,
+                       cream.pair.light)
+        XCTAssertEqual(EditorBackground.presetColor(id: cream.id, dark: true)?.hexString,
+                       cream.pair.dark)
+    }
+
+    func testPresetColorUnknownIdIsNil() {
+        XCTAssertNil(EditorBackground.presetColor(id: "bg.plaid", dark: false))
+        XCTAssertNil(EditorBackground.presetColor(id: nil, dark: true))
+    }
+
+    func testActiveColorSwitchesByMode() {
+        XCTAssertNil(EditorBackground.activeColor(mode: .default, hex: "#123456",
+                                                  presetId: "bg.gray", dark: false))
+        XCTAssertEqual(EditorBackground.activeColor(mode: .custom, hex: "#123456",
+                                                    presetId: "bg.gray", dark: true)?.hexString,
+                       "#123456")
+        XCTAssertEqual(EditorBackground.activeColor(mode: .preset, hex: "#123456",
+                                                    presetId: "bg.gray", dark: true)?.hexString,
+                       BackgroundPreset.preset(id: "bg.gray")?.pair.dark)
+        // A preset selection with a dead id behaves as Default, never crashes.
+        XCTAssertNil(EditorBackground.activeColor(mode: .preset, hex: nil,
+                                                  presetId: "bg.gone", dark: false))
+    }
+
+    func testPresetAppearanceFollowsTheMode() {
+        // Unlike Custom (luma-derived), a preset never overrides the Mode.
+        XCTAssertEqual(EditorBackground.effectiveAppearance(mode: .preset, hex: nil,
+                                                            appearance: .light), .light)
+        XCTAssertEqual(EditorBackground.effectiveAppearance(mode: .preset, hex: nil,
+                                                            appearance: .dark), .dark)
     }
 
     func testDefaultBackgroundMatchesTheModeColors() {
