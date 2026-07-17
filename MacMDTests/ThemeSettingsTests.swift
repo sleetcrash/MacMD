@@ -58,4 +58,36 @@ final class ThemeSettingsTests: XCTestCase {
         let p = ThemeSettings.resolvePalette(coloring: .standard, themeId: "custom.u", customs: [unifiedCustom])
         XCTAssertEqual(p?.id, ColorTheming.defaultStandardId)
     }
+
+    // MARK: - resolveTheme (Task 2: total resolver, no Coloring/scheme gate)
+
+    func testResolveThemeDefault() {
+        XCTAssertEqual(ThemeSettings.resolveTheme(id: "default", customs: []), Palette.defaultTheme)
+    }
+
+    func testResolveThemeTint() {
+        let p = ThemeSettings.resolveTheme(id: "tint.cream", customs: [])
+        XCTAssertEqual(p.id, "tint.cream")
+    }
+
+    func testResolveThemeStandardPreset() {
+        let p = ThemeSettings.resolveTheme(id: "std.rgb", customs: [])
+        XCTAssertEqual(p.id, "std.rgb")
+    }
+
+    func testResolveThemeUnifiedPreset() {
+        let p = ThemeSettings.resolveTheme(id: "uni.red", customs: [])
+        XCTAssertEqual(p.id, "uni.red")
+    }
+
+    func testResolveThemeCustom() {
+        let custom = Palette(id: "custom.mine", name: "Mine", scheme: .unified,
+                             slots: [ColorPair(light: "#111111", dark: "#222222")])
+        let p = ThemeSettings.resolveTheme(id: "custom.mine", customs: [custom])
+        XCTAssertEqual(p.id, "custom.mine")
+    }
+
+    func testResolveThemeUnknownFallsBackToDefault() {
+        XCTAssertEqual(ThemeSettings.resolveTheme(id: "garbage.nonexistent", customs: []), Palette.defaultTheme)
+    }
 }
