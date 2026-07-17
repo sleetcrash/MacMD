@@ -61,14 +61,50 @@ enum ToolbarPref {
     }
 }
 
-/// The format bar under the titlebar: Format-menu parity buttons, font family
-/// and size quick controls, and a Settings shortcut.
+/// The "automatically hide and show the toolbar" preference (the macOS menu-bar
+/// hiding model). On by default: the toolbar stays out of the way and slides in
+/// when the pointer reaches the top of the document. Off keeps it always
+/// visible. Toggled from the toolbar's right-click menu and Settings > Editing.
+enum ToolbarAutoHidePref {
+    static let key = "toolbarAutoHide"
+    static let didChange = Notification.Name("MacMDToolbarAutoHidePrefDidChange")
+
+    static var isOn: Bool {
+        UserDefaults.standard.object(forKey: key) == nil
+            ? true
+            : UserDefaults.standard.bool(forKey: key)
+    }
+
+    static func set(_ on: Bool) {
+        UserDefaults.standard.set(on, forKey: key)
+        NotificationCenter.default.post(name: didChange, object: nil)
+    }
+}
+
+/// The format bar at the top of the document: Format-menu parity buttons, font
+/// family and size quick controls, and the window chrome that used to live in
+/// the titlebar, grouped left to right as formatting | font | customize, copy,
+/// pane layout. Groups spread across the full width; related buttons stay
+/// tight. Transparent, appearance-following, and pane-toggle height.
 struct EditorToolbarStrip: View {
     /// False in preview-only layout: no editor exists, so the format buttons
     /// gray out (font and Settings controls still apply to the preview).
     var formatEnabled = true
+    /// Bound to PaneModePref by the document view, so the picker stays in sync
+    /// with the View menu.
+    @Binding var paneMode: PaneMode
+    /// Copies the document's markdown source (the document view owns the text).
+    var onCopy: () -> Void
+    /// True when the strip floats over the document (auto-hide reveal): it
+    /// gets a translucent backing so it reads over text. Inline (always-
+    /// visible) placement stays fully transparent against the window.
+    var overlaid = false
     @EnvironmentObject private var theme: ThemeController
     @Environment(\.openWindow) private var openWindow
+    /// Notification-backed (not @AppStorage, which does not reliably propagate
+    /// across DocumentGroup windows in MacMD), so the right-click menu's
+    /// checkmark stays truthful in every open window.
+    @State private var autoHide = ToolbarAutoHidePref.isOn
 
     var body: some View {
         HStack(spacing: 2) {
@@ -79,33 +115,74 @@ struct EditorToolbarStrip: View {
                     }
                 } label: {
                     Image(systemName: item.systemImage)
-                        .font(.system(size: 12))
-                        .frame(width: 24, height: 22)
+                        .font(.system(size: 11))
+                        .frame(width: 24, height: 20)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.borderless)
                 .disabled(!formatEnabled)
                 .help(item.label)
             }
-            Divider().frame(height: 16).padding(.horizontal, 4)
+            Spacer(minLength: 12)
             fontFamilyMenu
             sizeControls
-            Spacer()
+            Spacer(minLength: 12)
             Button {
                 openWindow(id: SettingsScene.id)
             } label: {
                 Image(systemName: "paintbrush")
-                    .font(.system(size: 12))
-                    .frame(width: 24, height: 22)
+                    .font(.system(size: 11))
+                    .frame(width: 24, height: 20)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.borderless)
-            .help("Theme and appearance settings")
+            .help("Customize theme and appearance")
+            Button {
+                onCopy()
+            } label: {
+                Image(systemName: "doc.on.doc")
+                    .font(.system(size: 11))
+                    .frame(width: 24, height: 20)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.borderless)
+            .help("Copy the document text")
+            layoutPicker
+                .padding(.leading, 4)
         }
-        .padding(.horizontal, 8)
-        .frame(height: 30)
-        .background(Color(nsColor: .windowBackgroundColor))
-        .overlay(alignment: .bottom) { Divider() }
+        .foregroundStyle(.primary)
+        .padding(.horizontal, 10)
+        .frame(height: 26)
+        .background {
+            if overlaid {
+                Rectangle().fill(.ultraThinMaterial)
+            }
+        }
+        .contextMenu {
+            Toggle("Automatically Hide Toolbar", isOn: Binding(
+                get: { autoHide },
+                set: { ToolbarAutoHidePref.set($0) }
+            ))
+        }
+        .onReceive(NotificationCenter.default.publisher(for: ToolbarAutoHidePref.didChange)) { _ in
+            autoHide = ToolbarAutoHidePref.isOn
+        }
+    }
+
+    /// The three-way editor | split | preview control, far right by design.
+    private var layoutPicker: some View {
+        Picker("Layout", selection: $paneMode) {
+            ForEach(PaneMode.allCases, id: \.self) { mode in
+                Image(systemName: mode.systemImage)
+                    .help(mode.displayName)
+                    .tag(mode)
+            }
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .fixedSize()
+        .controlSize(.small)
+        .help("Editor, split, or preview layout")
     }
 
     /// Immediate-effect font family (persists at once, like the View menu's
@@ -140,7 +217,7 @@ struct EditorToolbarStrip: View {
             } label: {
                 Image(systemName: "minus")
                     .font(.system(size: 10))
-                    .frame(width: 18, height: 22)
+                    .frame(width: 18, height: 20)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.borderless)
@@ -153,12 +230,48 @@ struct EditorToolbarStrip: View {
             } label: {
                 Image(systemName: "plus")
                     .font(.system(size: 10))
-                    .frame(width: 18, height: 22)
+                    .frame(width: 18, height: 20)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.borderless)
             .help("Increase font size")
         }
         .padding(.leading, 6)
+    }
+}
+
+/// An invisible strip along the document's top edge that reveals the auto-
+/// hidden toolbar on hover. Tracking areas fire on geometry, independent of
+/// hit-testing, so `hitTest` returns nil: clicks and typing land on the editor
+/// beneath while the pointer is still noticed.
+struct HoverRevealZone: NSViewRepresentable {
+    var onHover: (Bool) -> Void
+
+    func makeNSView(context: Context) -> NSView {
+        let view = TrackingView()
+        view.onHover = onHover
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        (nsView as? TrackingView)?.onHover = onHover
+    }
+
+    final class TrackingView: NSView {
+        var onHover: ((Bool) -> Void)?
+
+        override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+        override func updateTrackingAreas() {
+            super.updateTrackingAreas()
+            trackingAreas.forEach(removeTrackingArea)
+            addTrackingArea(NSTrackingArea(
+                rect: .zero,
+                options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect],
+                owner: self))
+        }
+
+        override func mouseEntered(with event: NSEvent) { onHover?(true) }
+        override func mouseExited(with event: NSEvent) { onHover?(false) }
     }
 }

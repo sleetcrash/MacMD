@@ -12,10 +12,10 @@
 <div id="content" class="markdown-body"></div>
 <script nonce="__MACMD_NONCE__">
 "use strict";
-// markdown-it only in M2. mermaid.min.js is bundled and loaded but NOT invoked;
-// mermaid.run() / mermaid.initialize() wiring is added in M4. html:false escapes
-// any raw HTML in the untrusted document (the security model).
-var md = window.markdownit({ html: false, linkify: true, typographer: false });
+// html:false escapes any raw HTML in the untrusted document (the security
+// model). breaks:true renders a single newline as a line break, so the preview
+// mirrors the line breaks visible in the editor.
+var md = window.markdownit({ html: false, breaks: true, linkify: true, typographer: false });
 
 // Stamp each top-level block with its 1-based source line (from token.map) so the
 // editor's top visible line can drive editor-to-preview scroll sync. The offset

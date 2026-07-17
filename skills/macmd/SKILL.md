@@ -38,18 +38,21 @@ defaults write com.sleetcrash.MacMD editorFontSize -float 14        # 9 to 32
 defaults write com.sleetcrash.MacMD editorFontFamily -string menlo  # system-mono | menlo | monaco | courier-new | system | new-york | helvetica-neue | georgia
 defaults write com.sleetcrash.MacMD cursorStyle -string bar         # bar | block | underline
 defaults write com.sleetcrash.MacMD cursorBlink -bool true
-defaults write com.sleetcrash.MacMD backgroundMode -string custom   # default | custom
+defaults write com.sleetcrash.MacMD cursorColor -string "#FF8800"   # #RRGGBB; delete the key for the system accent
+defaults write com.sleetcrash.MacMD backgroundMode -string custom   # default | preset | custom
+defaults write com.sleetcrash.MacMD backgroundPreset -string bg.cream  # bg.cream | bg.parchment | bg.gray (preset mode)
 defaults write com.sleetcrash.MacMD customBackground -string "#15151A"
 defaults write com.sleetcrash.MacMD paneMode -string split          # editor | split | preview
 defaults write com.sleetcrash.MacMD showFormatting -bool true       # styled vs plain editor
 defaults write com.sleetcrash.MacMD showLineNumbers -bool true
 defaults write com.sleetcrash.MacMD showToolbar -bool true
+defaults write com.sleetcrash.MacMD toolbarAutoHide -bool true      # slide-in toolbar; false = always visible
 defaults write com.sleetcrash.MacMD showWordCount -bool false
 defaults write com.sleetcrash.MacMD checkSpellingWhileTyping -bool true
 defaults write com.sleetcrash.MacMD checkGrammarWithSpelling -bool false
-defaults write com.sleetcrash.MacMD newWindowWidth -float 760       # 520 to 5000
-defaults write com.sleetcrash.MacMD newWindowHeight -float 680      # 400 to 5000
 ```
+
+Version note: `cursorColor`, `backgroundPreset`, `toolbarAutoHide`, and the `preset` background mode are 2.2 keys (PR #80); 2.2 also removed the `newWindowWidth`/`newWindowHeight` keys (the New Windows size setting). Against a 2.1.x build, skip all of those.
 
 Theme ids: Standard scheme presets `std.rgb`, `std.cmyk`, `std.eva00`, `std.eva01`, `std.eva02`, `std.evaend`; Unified presets `uni.red`, `uni.orange`, `uni.yellow`, `uni.green`, `uni.teal`, `uni.blue`, `uni.purple`, `uni.periwinkle`. Custom palettes persist as JSON in the `customPalettes` key; saved custom backgrounds as a string array in `customBackgrounds`.
 

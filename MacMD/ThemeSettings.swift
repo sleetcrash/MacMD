@@ -12,8 +12,10 @@ enum ThemeSettings {
     static let fontFamilyKey = "editorFontFamily"
     static let cursorStyleKey = "cursorStyle"
     static let cursorBlinkKey = "cursorBlink"
+    static let cursorColorKey = "cursorColor"
     static let backgroundModeKey = "backgroundMode"
     static let customBackgroundKey = "customBackground"
+    static let backgroundPresetKey = "backgroundPreset"
 
     // MARK: - Pure resolver (unit-tested)
 

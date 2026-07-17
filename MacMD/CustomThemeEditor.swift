@@ -1,7 +1,7 @@
 import SwiftUI
 import AppKit
 
-/// Identifies the Custom Theme window, opened from the Theme dropdown's Custom+.
+/// Identifies the Custom Theme window, opened from the Theme dropdown’s Customize row.
 enum CustomThemeScene {
     static let id = "customTheme"
 }

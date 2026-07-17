@@ -78,6 +78,14 @@ final class PreviewDOMTests: XCTestCase {
         XCTAssertNil(h.handler.imageURL(forToken: "..%2Fescape.png"))
     }
 
+    func testSingleNewlineRendersAsLineBreak() async {
+        let h = PreviewHarness()
+        await h.load()
+        await h.render("line one\nline two")
+        let brCount = (await h.eval("document.querySelectorAll('p br').length") as? NSNumber)?.intValue
+        XCTAssertEqual(brCount, 1, "a single newline inside a paragraph renders as a visible line break")
+    }
+
     func testSourceLinesAndScrollToLine() async {
         let h = PreviewHarness()
         await h.load()

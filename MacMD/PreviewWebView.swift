@@ -212,6 +212,7 @@ struct PreviewWebView: NSViewRepresentable {
             h.combine(t.appearance)
             h.combine(t.backgroundMode)
             h.combine(t.customBackgroundHex)
+            h.combine(t.backgroundPresetId)
             h.combine(EditorBackground.effectiveAppearance(mode: t.backgroundMode,
                                                            hex: t.customBackgroundHex,
                                                            appearance: t.appearance).resolvesDark)

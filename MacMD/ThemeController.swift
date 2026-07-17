@@ -16,8 +16,12 @@ final class ThemeController: ObservableObject {
     @Published private(set) var fontFamilyId: String
     @Published private(set) var cursorStyle: CursorStyle
     @Published private(set) var cursorBlink: Bool
+    /// The caret's fixed color as `#RRGGBB`, or nil for the system accent.
+    @Published private(set) var cursorColorHex: String?
     @Published private(set) var backgroundMode: BackgroundMode
     @Published private(set) var customBackgroundHex: String?
+    /// The selected BackgroundPreset id (meaningful under `.preset` mode).
+    @Published private(set) var backgroundPresetId: String?
 
     private let defaults: UserDefaults
 
@@ -30,8 +34,10 @@ final class ThemeController: ObservableObject {
         self.fontFamilyId = ThemeController.loadFontFamilyId(defaults)
         self.cursorStyle = ThemeController.loadCursorStyle(defaults)
         self.cursorBlink = ThemeController.loadCursorBlink(defaults)
+        self.cursorColorHex = ThemeController.loadCursorColor(defaults)
         self.backgroundMode = ThemeController.loadBackgroundMode(defaults)
         self.customBackgroundHex = ThemeController.loadCustomBackground(defaults)
+        self.backgroundPresetId = ThemeController.loadBackgroundPreset(defaults)
     }
 
     // MARK: - Saved (persisted) state
@@ -43,8 +49,10 @@ final class ThemeController: ObservableObject {
     var savedFontFamilyId: String { ThemeController.loadFontFamilyId(defaults) }
     var savedCursorStyle: CursorStyle { ThemeController.loadCursorStyle(defaults) }
     var savedCursorBlink: Bool { ThemeController.loadCursorBlink(defaults) }
+    var savedCursorColor: String? { ThemeController.loadCursorColor(defaults) }
     var savedBackgroundMode: BackgroundMode { ThemeController.loadBackgroundMode(defaults) }
     var savedCustomBackground: String? { ThemeController.loadCustomBackground(defaults) }
+    var savedBackgroundPreset: String? { ThemeController.loadBackgroundPreset(defaults) }
 
     // MARK: - Transitions
 
@@ -91,22 +99,43 @@ final class ThemeController: ObservableObject {
         self.cursorBlink = blink
     }
 
-    /// Preview an editor background in the live document without persisting it.
-    func applyBackground(mode: BackgroundMode, hex: String?) {
-        self.backgroundMode = mode
-        self.customBackgroundHex = hex
+    /// Preview a caret color in the live editor without persisting it.
+    func applyCursorColor(_ hex: String?) {
+        self.cursorColorHex = hex
     }
 
-    /// Persist and apply the editor background. The hex is kept even under
-    /// Default mode, so a previously picked Custom color stays remembered.
-    func saveBackground(mode: BackgroundMode, hex: String?) {
+    /// Persist and apply the caret color (nil restores the system accent).
+    func saveCursorColor(_ hex: String?) {
+        if let hex {
+            defaults.set(hex, forKey: ThemeSettings.cursorColorKey)
+        } else {
+            defaults.removeObject(forKey: ThemeSettings.cursorColorKey)
+        }
+        self.cursorColorHex = hex
+    }
+
+    /// Preview an editor background in the live document without persisting it.
+    func applyBackground(mode: BackgroundMode, hex: String?, presetId: String?) {
+        self.backgroundMode = mode
+        self.customBackgroundHex = hex
+        self.backgroundPresetId = presetId
+    }
+
+    /// Persist and apply the editor background. The hex and preset id are kept
+    /// even under other modes, so a previous pick stays remembered.
+    func saveBackground(mode: BackgroundMode, hex: String?, presetId: String?) {
         defaults.set(mode.rawValue, forKey: ThemeSettings.backgroundModeKey)
         if let hex {
             defaults.set(hex, forKey: ThemeSettings.customBackgroundKey)
         } else {
             defaults.removeObject(forKey: ThemeSettings.customBackgroundKey)
         }
-        applyBackground(mode: mode, hex: hex)
+        if let presetId {
+            defaults.set(presetId, forKey: ThemeSettings.backgroundPresetKey)
+        } else {
+            defaults.removeObject(forKey: ThemeSettings.backgroundPresetKey)
+        }
+        applyBackground(mode: mode, hex: hex, presetId: presetId)
     }
 
     /// Discard any unsaved Apply and snap the effective state back to saved.
@@ -116,7 +145,9 @@ final class ThemeController: ObservableObject {
         self.fontFamilyId = savedFontFamilyId
         self.cursorStyle = savedCursorStyle
         self.cursorBlink = savedCursorBlink
-        applyBackground(mode: savedBackgroundMode, hex: savedCustomBackground)
+        self.cursorColorHex = savedCursorColor
+        applyBackground(mode: savedBackgroundMode, hex: savedCustomBackground,
+                        presetId: savedBackgroundPreset)
     }
 
     /// Immediately change AND persist only the font size (for the View-menu
@@ -157,10 +188,16 @@ final class ThemeController: ObservableObject {
     private static func loadCursorBlink(_ d: UserDefaults) -> Bool {
         d.object(forKey: ThemeSettings.cursorBlinkKey) == nil ? true : d.bool(forKey: ThemeSettings.cursorBlinkKey)
     }
+    private static func loadCursorColor(_ d: UserDefaults) -> String? {
+        d.string(forKey: ThemeSettings.cursorColorKey)
+    }
     private static func loadBackgroundMode(_ d: UserDefaults) -> BackgroundMode {
         BackgroundMode(rawValue: d.string(forKey: ThemeSettings.backgroundModeKey) ?? "") ?? .default
     }
     private static func loadCustomBackground(_ d: UserDefaults) -> String? {
         d.string(forKey: ThemeSettings.customBackgroundKey)
+    }
+    private static func loadBackgroundPreset(_ d: UserDefaults) -> String? {
+        d.string(forKey: ThemeSettings.backgroundPresetKey)
     }
 }
