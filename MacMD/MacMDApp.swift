@@ -118,7 +118,7 @@ struct MacMDApp: App {
         }
 
         // These three auxiliary windows are opened programmatically (MacMD ▸
-        // Settings, Help ▸ MacMD Help, and Custom+ in the Theme dropdown), so
+        // Settings, Help ▸ MacMD Help, and Customize in the Theme dropdown), so
         // `.commandsRemoved()` strips the open-command SwiftUI would otherwise add
         // to the Window menu. That command duplicated the app-menu / Help entries
         // and cluttered the Window menu; openWindow(id:) still opens each window.

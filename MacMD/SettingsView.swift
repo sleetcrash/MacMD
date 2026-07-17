@@ -144,7 +144,7 @@ struct SettingsView: View {
     static let space = "settingsMenu"
     private let wideWidth: CGFloat = 225
     // Wide enough for the Background box to show its selected option's label
-    // ("Default" / "Custom+") plus swatch and chevron; Scheme, Size, and the
+    // ("Default" / "Customize") plus swatch and chevron; Scheme, Size, and the
     // Blink toggle share it so the right column stays uniform.
     private let segWidth: CGFloat = 110
     private let rowHeight: CGFloat = 32
@@ -502,7 +502,7 @@ struct SettingsView: View {
         switch wcBackgroundMode {
         case .default: return "Default"
         case .preset: return BackgroundPreset.preset(id: wcBackgroundPresetId)?.name ?? "Default"
-        case .custom: return "Custom+"
+        case .custom: return "Customize"
         }
     }
 
@@ -854,7 +854,7 @@ extension View {
 struct DropdownItem: Identifiable {
     enum Kind {
         case palette(Palette)       // name (left) + light | dark swatches (right)
-        case customPlus(Coloring)   // "Custom+" + empty light | dark swatches
+        case customPlus(Coloring)   // "Customize" + empty light | dark swatches + plus
         case header(String)         // non-selectable subheading
         case text(String)           // plain title (scheme / size)
         case fontSample(FontFamily) // family name rendered in its own face
@@ -1143,13 +1143,18 @@ private struct DropdownRow: View {
             paletteRow(p)
         case .customPlus(let scheme):
             row {
-                Text("Custom+").font(.system(size: 11))
+                Text("Customize").font(.system(size: 11))
                 Spacer(minLength: 8)
                 emptyTrio(count: scheme == .standard ? 3 : 1)
-                // Reserve the same trailing slot the palette rows give the pencil
-                // icon, so Custom+'s swatches sit in the same column as every other
-                // row instead of 16pt to the right.
-                Color.clear.frame(width: iconSlot, height: 1)
+                // The create glyph sits in the same trailing slot the palette
+                // rows give the pencil, so swatches stay column-aligned and
+                // plus reads as this row's counterpart to edit.
+                ZStack(alignment: .trailing) {
+                    Color.clear.frame(width: iconSlot, height: 1)
+                    Image(systemName: "plus")
+                        .font(.system(size: 10))
+                        .foregroundStyle(Pane.muted)
+                }
             }
         case .text(let title):
             row {
@@ -1173,7 +1178,7 @@ private struct DropdownRow: View {
                 Spacer(minLength: 8)
                 Swatch(color: Color(nsColor: color))
                 // Reserve the pencil slot so this swatch stays column-aligned
-                // with the Custom row's (same trick as the Custom+ theme row).
+                // with the Custom row's (same trick as the Customize theme row).
                 Color.clear.frame(width: iconSlot, height: 1)
             }
         case .backgroundPair(let name, let pair):
@@ -1231,7 +1236,7 @@ private struct DropdownRow: View {
 
     // Reserved trailing area for the edit icon, matched to the trigger box's
     // chevron area so a row's swatches line up with the selected-theme swatches.
-    // The Custom+ row (which has no pencil) reserves the same width so its
+    // The Customize row (whose slot holds plus) reserves the same width so its
     // placeholder swatches stay column-aligned with the palette rows.
     private let iconSlot: CGFloat = 16
 
@@ -1271,21 +1276,21 @@ private struct DropdownRow: View {
         .contentShape(Rectangle())
     }
 
-    /// The Background dropdown's Custom row: a "Custom+" label, the picked
-    /// color's swatch right-aligned like the theme rows (a blank "+" before
-    /// one is picked), and a trailing pencil that reopens the color panel.
-    /// Mirrors paletteRow's two-button split so the pencil is not nested
-    /// inside the select button.
+    /// The Background dropdown's Customize row: the picked color's swatch
+    /// right-aligned like the theme rows (an empty swatch before one is
+    /// picked), and the trailing icon slot holding plus (nothing picked yet)
+    /// or the pencil that reopens the color panel. Mirrors paletteRow's
+    /// two-button split so the pencil is not nested inside the select button.
     private func backgroundCustomRow(_ color: NSColor?) -> some View {
         HStack(spacing: 0) {
             Button { item.action?() } label: {
                 HStack(spacing: 0) {
-                    Text("Custom+").font(.system(size: 11)).lineLimit(1)
+                    Text("Customize").font(.system(size: 11)).lineLimit(1)
                     Spacer(minLength: 8)
                     if let color {
                         Swatch(color: Color(nsColor: color))
                     } else {
-                        PlusSwatch()
+                        EmptySwatch()
                     }
                 }
                 .frame(maxWidth: .infinity)
@@ -1303,6 +1308,8 @@ private struct DropdownRow: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Edit custom background color")
+                } else {
+                    Image(systemName: "plus").font(.system(size: 10))
                 }
             }
             .foregroundStyle(Pane.muted)
