@@ -50,6 +50,12 @@ struct DocumentView: View {
 
     @State private var showWordCount = WordCountPref.isOn
     @State private var showToolbar = ToolbarPref.isOn
+    @State private var toolbarAutoHides = ToolbarAutoHidePref.isOn
+    /// Whether the auto-hidden toolbar is currently slid in (pointer at the
+    /// top of the document or on the strip itself).
+    @State private var toolbarRevealed = false
+    /// Pending slide-out; cancelled whenever the pointer re-enters.
+    @State private var toolbarHideTask: Task<Void, Never>?
     @State private var paneMode = PaneModePref.mode
     /// The debounced document text handed to the preview, so it does not
     /// re-render on every keystroke.
@@ -66,8 +72,8 @@ struct DocumentView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if showToolbar {
-                EditorToolbarStrip(formatEnabled: paneMode != .preview)
+            if showToolbar && !toolbarAutoHides {
+                toolbarStrip(overlaid: false)
                     .transition(.move(edge: .top).combined(with: .opacity))
             }
             HSplitView {
@@ -82,32 +88,30 @@ struct DocumentView: View {
                         .frame(minWidth: 320, idealWidth: CGFloat(NewWindowSize.width) * 0.7)
                 }
             }
-            .overlay(alignment: .topTrailing) { layoutToggle }
+            // The auto-hiding toolbar overlays the panes (the macOS menu-bar
+            // hiding model): a thin hover zone at the top slides it in, and it
+            // slides back out when the pointer leaves it.
+            .overlay(alignment: .top) {
+                if showToolbar && toolbarAutoHides {
+                    ZStack(alignment: .top) {
+                        HoverRevealZone { inside in
+                            if inside { revealToolbar() } else { scheduleToolbarHide() }
+                        }
+                        .frame(height: 12)
+                        if toolbarRevealed {
+                            toolbarStrip(overlaid: true)
+                                .onHover { inside in
+                                    if inside { revealToolbar() } else { scheduleToolbarHide() }
+                                }
+                                .transition(.move(edge: .top).combined(with: .opacity))
+                        }
+                    }
+                }
+            }
         }
         .frame(minWidth: paneMode == .split ? 700 : 520,
                idealWidth: DocumentLayout.idealSize(previewVisible: paneMode == .split).width,
                minHeight: 400, idealHeight: CGFloat(NewWindowSize.height))
-        .toolbar {
-            // Always-visible window chrome: collapse/restore the format toolbar,
-            // and one-click copy of the markdown source. The pane-layout control
-            // floats in the document's top-right corner.
-            ToolbarItemGroup(placement: .primaryAction) {
-                Button {
-                    ToolbarPref.set(!showToolbar)
-                } label: {
-                    Label("Toggle Format Toolbar", systemImage: "textformat")
-                }
-                .help(showToolbar ? "Hide the format toolbar" : "Show the format toolbar")
-                Button {
-                    let pb = NSPasteboard.general
-                    pb.clearContents()
-                    pb.setString(document.text, forType: .string)
-                } label: {
-                    Label("Copy Text", systemImage: "doc.on.doc")
-                }
-                .help("Copy the document text")
-            }
-        }
         .task(id: document.text) {
             // Debounce the preview render (~200 ms) so typing stays smooth; the
             // markdown render itself runs in the web process, off the main thread.
@@ -123,31 +127,51 @@ struct DocumentView: View {
         .onReceive(NotificationCenter.default.publisher(for: ToolbarPref.didChange)) { _ in
             withAnimation(.easeInOut(duration: 0.2)) { showToolbar = ToolbarPref.isOn }
         }
+        .onReceive(NotificationCenter.default.publisher(for: ToolbarAutoHidePref.didChange)) { _ in
+            withAnimation(.easeInOut(duration: 0.2)) {
+                toolbarAutoHides = ToolbarAutoHidePref.isOn
+                toolbarRevealed = false
+            }
+        }
         // Menu commands (Export to HTML/PDF) read the document through this,
         // not through the editor view, so they keep working in preview-only
         // layout where no editor exists.
         .focusedSceneValue(\.exportMarkdown, document.text)
     }
 
-    /// The compact pane-layout toggle floating in the document's top-right
-    /// corner. Bound to PaneModePref, so it stays in sync with the View menu.
-    private var layoutToggle: some View {
-        Picker("Layout", selection: Binding(
-            get: { paneMode },
-            set: { PaneModePref.set($0) }
-        )) {
-            ForEach(PaneMode.allCases, id: \.self) { mode in
-                Image(systemName: mode.systemImage)
-                    .help(mode.displayName)
-                    .tag(mode)
-            }
+    /// The format toolbar wired to this document: pane picker bound to
+    /// PaneModePref (kept in sync with the View menu) and one-click copy of
+    /// the markdown source.
+    private func toolbarStrip(overlaid: Bool) -> some View {
+        EditorToolbarStrip(formatEnabled: paneMode != .preview,
+                           paneMode: Binding(
+                               get: { paneMode },
+                               set: { PaneModePref.set($0) }
+                           ),
+                           onCopy: {
+                               let pb = NSPasteboard.general
+                               pb.clearContents()
+                               pb.setString(document.text, forType: .string)
+                           },
+                           overlaid: overlaid)
+    }
+
+    /// Slide the auto-hidden toolbar in and cancel any pending slide-out.
+    private func revealToolbar() {
+        toolbarHideTask?.cancel()
+        toolbarHideTask = nil
+        withAnimation(.easeInOut(duration: 0.2)) { toolbarRevealed = true }
+    }
+
+    /// Slide the toolbar out after a short grace period, so crossing the gap
+    /// between the hover zone and the strip does not flicker it away.
+    private func scheduleToolbarHide() {
+        toolbarHideTask?.cancel()
+        toolbarHideTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 500_000_000)
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeInOut(duration: 0.2)) { toolbarRevealed = false }
         }
-        .pickerStyle(.segmented)
-        .labelsHidden()
-        .fixedSize()
-        .controlSize(.small)
-        .padding(8)
-        .help("Editor, split, or preview layout")
     }
 
     private var editorPane: some View {

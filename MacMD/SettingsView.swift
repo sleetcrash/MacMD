@@ -128,6 +128,7 @@ struct SettingsView: View {
     @AppStorage(SpellingPref.spellingKey) private var checkSpelling = true
     @AppStorage(SpellingPref.grammarKey) private var checkGrammar = false
     @AppStorage(ToolbarPref.key) private var showToolbar = true
+    @AppStorage(ToolbarAutoHidePref.key) private var toolbarAutoHides = true
     @State private var windowWidthText = ""
     @State private var windowHeightText = ""
     @FocusState private var focusedSizeField: SizeField?
@@ -417,6 +418,13 @@ struct SettingsView: View {
                 ))
                 .toggleStyle(.checkbox)
                 .font(.system(size: 12))
+                Toggle("Automatically hide and show the toolbar", isOn: Binding(
+                    get: { toolbarAutoHides },
+                    set: { ToolbarAutoHidePref.set($0) }
+                ))
+                .toggleStyle(.checkbox)
+                .font(.system(size: 12))
+                .disabled(!showToolbar)
             }
             VStack(alignment: .leading, spacing: 10) {
                 caption("Spelling")
