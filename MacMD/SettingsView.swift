@@ -461,7 +461,7 @@ struct SettingsView: View {
     }
 
     /// The Cursor Color trigger: Default (the system accent) or the picked
-    /// fixed color, swatch right-aligned against the chevron like Background.
+    /// fixed color, swatch right-aligned against the chevron.
     private var cursorColorBox: some View {
         Button { toggle(.cursorColor) } label: {
             HStack(spacing: 0) {
@@ -1104,7 +1104,7 @@ private struct DropdownRow: View {
         .contentShape(Rectangle())
     }
 
-    /// The Background dropdown's Customize row: the picked color's swatch
+    /// The Cursor Color dropdown's Customize row: the picked color's swatch
     /// right-aligned like the theme rows (an empty swatch before one is
     /// picked), and the trailing icon slot holding plus (nothing picked yet)
     /// or the pencil that reopens the color panel. Mirrors paletteRow's
@@ -1429,8 +1429,8 @@ struct SizeControl: View {
 }
 
 /// An invisible, zero-sized color well bridging the shared `NSColorPanel` to a
-/// hex working copy (the Background and Cursor Color pickers each mount one),
-/// reusing the CustomThemeEditor bridge pattern (the panel reports picks
+/// hex working copy (the Cursor Color picker mounts one), reusing the
+/// CustomThemeEditor bridge pattern (the panel reports picks
 /// through a real NSColorWell). Unlike that one it is never clicked directly:
 /// it activates programmatically when `activation` bumps (picking Custom with
 /// no color, or the pencil), and it opts out of hit-testing entirely so it can
@@ -1440,8 +1440,8 @@ private struct SettingsColorWell: NSViewRepresentable {
     /// Bump to open the panel. Compared against the coordinator's last seen
     /// value so re-renders never re-open it.
     var activation: Int
-    /// What the panel shows when no custom color has been picked yet (the
-    /// current mode's background, so picking starts from a familiar color).
+    /// What the panel shows when no custom color has been picked yet, so
+    /// picking starts from a familiar color.
     var initialColor: NSColor
 
     func makeCoordinator() -> Coordinator { Coordinator(hex: $hex) }

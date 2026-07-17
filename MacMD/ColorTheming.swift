@@ -201,7 +201,6 @@ enum ColorTheming {
     ]
 
     static let defaultStandardId = "std.rgb"
-    static let defaultUnifiedId = "uni.red"
 
     static func presets(for scheme: Coloring) -> [Palette] {
         switch scheme {

@@ -31,17 +31,14 @@ Accepted extensions: `.md`, `.markdown`, `.mdown`, `.mkd`, plus any plain text. 
 Preferences live in `defaults` under `com.sleetcrash.MacMD`. QUIT THE APP FIRST (`osascript -e 'quit app "MacMD"'`); a running app overwrites external writes.
 
 ```sh
-defaults write com.sleetcrash.MacMD appAppearance -string dark      # light | dark | system
-defaults write com.sleetcrash.MacMD colorScheme -string standard    # off (Default) | unified | standard
-defaults write com.sleetcrash.MacMD themeId -string std.cmyk        # see Theme ids below
+defaults write com.sleetcrash.MacMD appAppearance -string dark      # light | dark | system (the Mode; inert while a static theme is applied)
+defaults write com.sleetcrash.MacMD selectedTheme -string std.cmyk  # see Theme ids below; delete the key for Default
+defaults write com.sleetcrash.MacMD themeSchemaVersion -int 2       # REQUIRED when staging: without it a launch runs the legacy migration
 defaults write com.sleetcrash.MacMD editorFontSize -float 14        # 9 to 32
 defaults write com.sleetcrash.MacMD editorFontFamily -string menlo  # system-mono | menlo | monaco | courier-new | system | new-york | helvetica-neue | georgia
 defaults write com.sleetcrash.MacMD cursorStyle -string bar         # bar | block | underline
 defaults write com.sleetcrash.MacMD cursorBlink -bool true
 defaults write com.sleetcrash.MacMD cursorColor -string "#FF8800"   # #RRGGBB; delete the key for the system accent
-defaults write com.sleetcrash.MacMD backgroundMode -string custom   # default | preset | custom
-defaults write com.sleetcrash.MacMD backgroundPreset -string bg.cream  # bg.cream | bg.parchment | bg.gray (preset mode)
-defaults write com.sleetcrash.MacMD customBackground -string "#15151A"
 defaults write com.sleetcrash.MacMD paneMode -string split          # editor | split | preview
 defaults write com.sleetcrash.MacMD showFormatting -bool true       # styled vs plain editor
 defaults write com.sleetcrash.MacMD showLineNumbers -bool true
@@ -52,9 +49,9 @@ defaults write com.sleetcrash.MacMD checkSpellingWhileTyping -bool true
 defaults write com.sleetcrash.MacMD checkGrammarWithSpelling -bool false
 ```
 
-Version note: `cursorColor`, `backgroundPreset`, `toolbarAutoHide`, and the `preset` background mode are 2.2 keys (PR #80); 2.2 also removed the `newWindowWidth`/`newWindowHeight` keys (the New Windows size setting). Against a 2.1.x build, skip all of those.
+Version note: `selectedTheme`, `customThemes`, and `themeSchemaVersion` are the theme-restructure keys (post-2.2). That build's one-shot migration DELETED the six legacy keys (`colorScheme`, `themeId`, `backgroundMode`, `customBackground`, `backgroundPreset`, `customPalettes`); writing them against it does nothing. Against a 2.2.x build, use the legacy keys instead: `colorScheme` (off | unified | standard) + `themeId`, `backgroundMode` (default | preset | custom) + `backgroundPreset` (bg.cream | bg.parchment | bg.gray) or `customBackground` (#RRGGBB), and custom palettes as JSON in `customPalettes`. 2.2 also removed `newWindowWidth`/`newWindowHeight`.
 
-Theme ids: Standard scheme presets `std.rgb`, `std.cmyk`, `std.eva00`, `std.eva01`, `std.eva02`, `std.evaend`; Unified presets `uni.red`, `uni.orange`, `uni.yellow`, `uni.green`, `uni.teal`, `uni.blue`, `uni.purple`, `uni.periwinkle`. Custom palettes persist as JSON in the `customPalettes` key; saved custom backgrounds as a string array in `customBackgrounds`.
+Theme ids: `default` (or key absent); tinted `tint.cream`, `tint.parchment`, `tint.gray`; Standard presets `std.rgb`, `std.cmyk`, `std.eva00`, `std.eva01`, `std.eva02`, `std.evaend`; Unified presets `uni.red`, `uni.orange`, `uni.yellow`, `uni.green`, `uni.teal`, `uni.blue`, `uni.purple`, `uni.periwinkle`; customs `custom.<UUID>`. Custom themes persist as JSON in the `customThemes` key (fields: id, name, scheme off|unified|standard, slots, background {light, dark}, isStatic; a static theme stores identical light/dark values and forces the window appearance from its background's luminance). Saved custom backgrounds remain a string array in `customBackgrounds`.
 
 Read current state: `defaults read com.sleetcrash.MacMD`.
 

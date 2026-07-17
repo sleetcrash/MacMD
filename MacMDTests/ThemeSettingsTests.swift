@@ -257,7 +257,7 @@ final class ThemeSettingsTests: XCTestCase {
         let customs = ThemeSettings.decodeCustoms(d.data(forKey: ThemeSettings.customThemesKey) ?? Data())
         XCTAssertEqual(customs.count, 1)
         let c = customs[0]
-        let uniRed = ColorTheming.unifiedPresets.first { $0.id == ColorTheming.defaultUnifiedId }!
+        let uniRed = ColorTheming.unifiedPresets.first { $0.id == "uni.red" }!
         XCTAssertEqual(c.slots, uniRed.slots)
         XCTAssertEqual(c.name, uniRed.name)
         XCTAssertEqual(d.string(forKey: ThemeSettings.selectedThemeKey), c.id)
