@@ -98,6 +98,22 @@ enum EditorBackground {
 
     /// `defaultBackground` as a pair, for the dropdown's light | dark swatches.
     static let defaultPair = ColorPair(light: "#FFFFFF", dark: "#1E1E1E")
+
+    /// The appearance a theme's background should force: a static background's
+    /// own luminance (so its text stays readable regardless of Mode), or the
+    /// Mode passthrough for a dynamic background that already follows it.
+    static func effectiveAppearance(background: ColorPair, isStatic: Bool,
+                                    appearance: AppAppearance) -> AppAppearance {
+        guard isStatic else { return appearance }
+        return isLight(background.nsLight) ? .light : .dark
+    }
+
+    /// The color a theme's background should paint, or nil for the default
+    /// pair so consumers keep painting the semantic `.textBackgroundColor`.
+    static func activeColor(background: ColorPair, dark: Bool) -> NSColor? {
+        guard background != defaultPair else { return nil }
+        return dark ? background.nsDark : background.nsLight
+    }
 }
 
 /// The saved custom-background swatches (uppercase `#RRGGBB` strings), listed

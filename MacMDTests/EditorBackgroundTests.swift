@@ -159,4 +159,32 @@ final class EditorBackgroundTests: XCTestCase {
         BackgroundLibrary.remove("#15151a", from: d)
         XCTAssertEqual(BackgroundLibrary.all(d), ["#FF8800"])
     }
+
+    // MARK: - Theme-based background resolution
+
+    func testEffectiveAppearanceStaticFollowsLuminance() {
+        let dark = ColorPair(light: "#111111", dark: "#111111")
+        XCTAssertEqual(EditorBackground.effectiveAppearance(background: dark, isStatic: true, appearance: .light), .dark)
+
+        let cream = ColorPair(light: "#F8F1E1", dark: "#F8F1E1")
+        XCTAssertEqual(EditorBackground.effectiveAppearance(background: cream, isStatic: true, appearance: .dark), .light)
+    }
+
+    func testEffectiveAppearanceDynamicFollowsMode() {
+        let pair = BackgroundPreset.all[0].pair
+        XCTAssertEqual(EditorBackground.effectiveAppearance(background: pair, isStatic: false, appearance: .light), .light)
+        XCTAssertEqual(EditorBackground.effectiveAppearance(background: pair, isStatic: false, appearance: .dark), .dark)
+        XCTAssertEqual(EditorBackground.effectiveAppearance(background: pair, isStatic: false, appearance: .system), .system)
+    }
+
+    func testActiveColorSemanticNilForDefaultPair() {
+        XCTAssertNil(EditorBackground.activeColor(background: EditorBackground.defaultPair, dark: false))
+        XCTAssertNil(EditorBackground.activeColor(background: EditorBackground.defaultPair, dark: true))
+    }
+
+    func testActiveColorPicksSideByDark() {
+        let cream = BackgroundPreset.all[0].pair
+        XCTAssertEqual(EditorBackground.activeColor(background: cream, dark: false)?.hexString, cream.light)
+        XCTAssertEqual(EditorBackground.activeColor(background: cream, dark: true)?.hexString, cream.dark)
+    }
 }
