@@ -34,19 +34,23 @@ struct DocumentView: View {
     /// path-validated local images. `MarkdownDocument` itself carries no URL.
     var documentDirectory: URL? = nil
     @EnvironmentObject private var theme: ThemeController
-    @AppStorage(ThemeSettings.customsKey) private var customsData = Data()
+    @AppStorage(ThemeSettings.customThemesKey) private var customThemesData = Data()
 
+    /// The full theme for the current selection, resolved against the customs
+    /// read straight from UserDefaults (not this window's @AppStorage copy): for
+    /// a DocumentGroup scene that copy can lag a custom just saved in the
+    /// Settings/Custom window, which made applying a brand-new custom fall back
+    /// until relaunch. Touching `customThemesData` keeps this view re-rendering
+    /// when @AppStorage *does* observe a change (e.g. editing the applied theme).
+    private var resolvedTheme: Palette {
+        _ = customThemesData
+        return theme.resolvedTheme
+    }
+    /// The selection's palette, or nil under a scheme-off theme so headings use
+    /// the label color (exactly like the old Default scheme).
     private var palette: Palette? {
-        // Resolve against the freshly-persisted customs read straight from
-        // UserDefaults, not this window's @AppStorage copy: for a DocumentGroup
-        // scene that copy can lag a custom just saved in the Settings/Custom
-        // window, which made applying a brand-new custom fall back to a preset
-        // until relaunch. Touching `customsData` keeps this view re-rendering when
-        // @AppStorage *does* observe a change (e.g. editing the applied theme).
-        _ = customsData
-        return ThemeSettings.resolvePalette(coloring: theme.coloring,
-                                            themeId: theme.themeId,
-                                            customs: ThemeSettings.savedCustoms())
+        let resolved = resolvedTheme
+        return resolved.scheme == .off ? nil : resolved
     }
 
     @State private var showWordCount = WordCountPref.isOn
@@ -77,14 +81,20 @@ struct DocumentView: View {
     /// the re-render; resolvesDark alone would go stale).
     @Environment(\.colorScheme) private var colorScheme
 
-    /// The fixed editor background when a preset or Custom is active, else nil
-    /// (Default keeps the appearance-driven `.textBackgroundColor`).
+    /// The appearance the theme forces: a static theme's luminance, or the Mode
+    /// for a dynamic theme (System resolving against the live OS appearance).
+    private var effectiveAppearance: AppAppearance {
+        let resolved = resolvedTheme
+        return EditorBackground.effectiveAppearance(background: resolved.background,
+                                                    isStatic: resolved.isStatic,
+                                                    appearance: theme.appearance)
+    }
+
+    /// The fixed editor background the theme paints, else nil (the default pair
+    /// keeps the appearance-driven `.textBackgroundColor`).
     private var customBackground: NSColor? {
-        let dark = theme.appearance == .system ? colorScheme == .dark : theme.appearance == .dark
-        return EditorBackground.activeColor(mode: theme.backgroundMode,
-                                            hex: theme.customBackgroundHex,
-                                            presetId: theme.backgroundPresetId,
-                                            dark: dark)
+        let dark = effectiveAppearance == .system ? colorScheme == .dark : effectiveAppearance == .dark
+        return EditorBackground.activeColor(background: resolvedTheme.background, dark: dark)
     }
 
     var body: some View {
@@ -206,14 +216,12 @@ struct DocumentView: View {
             MarkdownTextView(text: $document.text,
                              fontSize: CGFloat(theme.fontSize),
                              fontFamily: FontFamily.resolve(id: theme.fontFamilyId),
-                             coloring: theme.coloring,
+                             coloring: resolvedTheme.scheme,
                              palette: palette,
-                             // A custom background owns the look: its luminance
-                             // (not the Mode) decides the forced appearance, so
-                             // body text and heading variants stay readable.
-                             appearance: EditorBackground.effectiveAppearance(mode: theme.backgroundMode,
-                                                                              hex: theme.customBackgroundHex,
-                                                                              appearance: theme.appearance),
+                             // A static theme owns the look: its luminance (not
+                             // the Mode) decides the forced appearance, so body
+                             // text and heading variants stay readable.
+                             appearance: effectiveAppearance,
                              customBackground: customBackground,
                              cursorStyle: theme.cursorStyle,
                              cursorBlink: theme.cursorBlink,

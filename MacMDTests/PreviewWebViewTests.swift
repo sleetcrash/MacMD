@@ -31,8 +31,7 @@ final class PreviewWebViewTests: XCTestCase {
         // std.rgb has H1 light hex #C13F50.
         let suite = "PreviewWebViewTests-\(UUID().uuidString)"
         let d = UserDefaults(suiteName: suite)!
-        d.set(Coloring.standard.rawValue, forKey: ThemeSettings.schemeKey)
-        d.set("std.rgb", forKey: ThemeSettings.themeIdKey)
+        d.set("std.rgb", forKey: ThemeSettings.selectedThemeKey)
         let theme = ThemeController(defaults: d)
         d.removePersistentDomain(forName: suite)
 

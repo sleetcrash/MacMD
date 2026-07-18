@@ -131,7 +131,7 @@ struct MacMDApp: App {
         .defaultPosition(.center)
         .commandsRemoved()
 
-        Window("Custom Theme", id: CustomThemeScene.id) {
+        Window("Theme Builder", id: CustomThemeScene.id) {
             CustomThemeEditor()
                 .environmentObject(customDraft)
         }

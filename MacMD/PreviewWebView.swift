@@ -183,8 +183,9 @@ struct PreviewWebView: NSViewRepresentable {
                     lastCSS = css
                     webView.evaluateJavaScript("window.setThemeCSS(\(MarkdownRenderEngine.jsStringLiteral(css)))")
                 }
+                let resolved = theme.resolvedTheme
                 let cls = EditorBackground.effectiveAppearance(
-                    mode: theme.backgroundMode, hex: theme.customBackgroundHex, appearance: theme.appearance
+                    background: resolved.background, isStatic: resolved.isStatic, appearance: theme.appearance
                 ).resolvesDark ? "darkAqua" : "aqua"
                 if cls != lastAppearanceClass {
                     lastAppearanceClass = cls
@@ -202,21 +203,20 @@ struct PreviewWebView: NSViewRepresentable {
 
         /// A cheap fingerprint of every input to PreviewCSS: the theme scalars,
         /// the resolved light/dark state (so an OS appearance flip is caught even
-        /// under System mode), and the raw customs bytes (no JSON decode).
+        /// under System mode, and a static theme's luminance side), and the raw
+        /// customThemes bytes (so editing the applied custom's colors or
+        /// background re-renders).
         private func themeFingerprint(_ t: ThemeController) -> Int {
             var h = Hasher()
-            h.combine(t.coloring)
             h.combine(t.themeId)
             h.combine(t.fontSize)
             h.combine(t.fontFamilyId)
             h.combine(t.appearance)
-            h.combine(t.backgroundMode)
-            h.combine(t.customBackgroundHex)
-            h.combine(t.backgroundPresetId)
-            h.combine(EditorBackground.effectiveAppearance(mode: t.backgroundMode,
-                                                           hex: t.customBackgroundHex,
+            let resolved = t.resolvedTheme
+            h.combine(EditorBackground.effectiveAppearance(background: resolved.background,
+                                                           isStatic: resolved.isStatic,
                                                            appearance: t.appearance).resolvesDark)
-            h.combine(UserDefaults.standard.data(forKey: ThemeSettings.customsKey))
+            h.combine(UserDefaults.standard.data(forKey: ThemeSettings.customThemesKey))
             return h.finalize()
         }
 

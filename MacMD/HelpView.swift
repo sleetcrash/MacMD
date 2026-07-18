@@ -18,7 +18,7 @@ struct HelpView: View {
                         "MacMD opens and saves Markdown (.md, .markdown, .mdown, .mkd) and plain text (.txt). New documents are Markdown by default. Use File > Open and File > Save as usual. File > New from Template starts a prefilled SKILL.md, agent, CLAUDE.md, or AGENTS.md document.")
 
                 section("Markdown",
-                        "Headings, bold, italic, inline code, fenced code, links, lists, task lists, blockquotes, strikethrough, and horizontal rules are highlighted as you type. Front matter at the top of a file (--- for YAML or +++ for TOML) is shown as muted metadata; under a color scheme its keys take the theme's H1 color, in the editor and the preview.")
+                        "Headings, bold, italic, inline code, fenced code, links, lists, task lists, blockquotes, strikethrough, and horizontal rules are highlighted as you type. Front matter at the top of a file (--- for YAML or +++ for TOML) is shown as muted metadata; under a theme with heading colors its keys take the theme's H1 color, in the editor and the preview.")
 
                 section("Preview and layout",
                         "The layout control at the toolbar's right edge switches between editor only, split, and preview only; View > Show Preview (Shift-Command-P) toggles the pane. In split layout the panes scroll together, in both directions. The toolbar's copy button copies the whole document. Mermaid code fences render as diagrams in the preview.")
@@ -33,13 +33,10 @@ struct HelpView: View {
                         "Misspelled words are underlined as you type. Manage it from Edit > Spelling and Grammar.")
 
                 section("Appearance and themes",
-                        "Open MacMD > Settings (Command-Comma). The Appearance tab sets light, dark, or system appearance, the editor background, the heading color scheme, the editor font and size, and the cursor style, color, and blink. The Editing tab sets the toolbar, word count, and spelling defaults. Adjust font size quickly with Command-Plus, Command-Minus, and Command-0.")
+                        "Open MacMD > Settings (Command-Comma). The Appearance tab sets the theme, the light, dark, or system mode, the editor font and size, and the cursor style, color, and blink. A theme carries its heading colors and its editor background together: the Theme dropdown offers Default, the tinted Cream, Parchment, and Gray themes, the Standard and Unified presets, and your saved custom themes. The Editing tab sets the toolbar, word count, and spelling defaults. Adjust font size quickly with Command-Plus, Command-Minus, and Command-0.")
 
-                section("Custom themes",
-                        "In the Settings window's Theme dropdown choose Customize to open the Custom Theme builder. Pick heading colors for light and dark mode, or choose Light or Dark at the top to define one side and use it under both appearances. A Standard theme sets H1, H2, and H3 separately; a Unified theme uses one color for all headings. The Settings window previews each change live. Name and Save the theme, then choose it in the Settings window to apply it to your document.")
-
-                section("Custom backgrounds",
-                        "The Settings window's Background dropdown offers Default and preset light | dark pairs that follow the appearance, and Customize, which opens the color panel for any fixed color. Saving the settings with a custom background adds that color to a Saved list in the dropdown, so you can switch between backgrounds like themes; the x beside a saved color removes it.")
+                section("Theme Builder",
+                        "In the Theme dropdown choose Customize to open the Theme Builder, or click the pencil beside a saved theme to edit it. A dynamic theme defines light and dark variants and follows the Mode; a static theme keeps one fixed look, sets the window's appearance from its background color, and shows Set by theme on the Mode control while applied. Choose a scheme: None builds a background-only theme, Unified uses one color for all headings, Standard sets H1, H2, and H3 separately. Pick the heading colors, then a background: the quick swatches (Default, Cream, Parchment, Gray), a saved color, or the color panel. Colors picked with the panel join the Saved row when the theme is saved; the x beside a saved color removes it. The Settings window previews each change live. Name and Save the theme, then Apply or Save in Settings to use it.")
 
                 section("Word count",
                         "Use View > Show Word Count or Settings > Editing to show a live word count and reading-time estimate in a small tab at the editor's bottom-left corner. It is off by default. List markers and ordered-list numbers are not counted.")
