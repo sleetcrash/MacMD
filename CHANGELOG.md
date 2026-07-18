@@ -2,6 +2,21 @@
 
 All notable changes to MacMD will be documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Three tinted built-in themes, Cream, Parchment, and Gray, carrying the 2.2 background pairs as full themes.
+- Background-only custom themes: choose the None scheme in the Theme Builder to build a theme from just a background color.
+- Static themes: a custom theme can now keep one fixed look. It sets the window's light or dark appearance from its background color, and the Mode control shows "Set by theme" while one is applied.
+
+### Changed
+- Themes now own their backgrounds. The one Theme dropdown in Settings → Appearance covers everything: Default, the tinted themes, the Standard and Unified presets, and your custom themes, each carrying its own background.
+- The Custom Theme window is now the Theme Builder: pick static or dynamic, a scheme (None, Unified, or Standard), heading colors, and a background from quick swatches, your saved colors, or the color panel. Colors picked with the panel join your Saved list when the theme is saved.
+- Your existing setup migrates automatically on first launch and keeps its exact look, including custom themes, background choices, and the saved background list.
+
+### Removed
+- The separate Scheme and Background dropdowns in Settings → Appearance. Scheme choice lives in the Theme Builder; backgrounds ride with their themes.
+
 ## [2.2.0] - 2026-07-16
 
 ### Added

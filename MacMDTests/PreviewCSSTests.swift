@@ -7,12 +7,11 @@ final class PreviewCSSTests: XCTestCase {
 
     // Build a ThemeController from a throwaway defaults suite. The controller
     // reads the values in init, so the suite is removed immediately after.
-    private func theme(scheme: String? = nil, themeId: String? = nil,
+    private func theme(themeId: String? = nil,
                        fontFamily: String? = nil, fontSize: Double? = nil) -> ThemeController {
         let suiteName = "PreviewCSSTests-\(UUID().uuidString)"
         let d = UserDefaults(suiteName: suiteName)!
-        if let scheme { d.set(scheme, forKey: ThemeSettings.schemeKey) }
-        if let themeId { d.set(themeId, forKey: ThemeSettings.themeIdKey) }
+        if let themeId { d.set(themeId, forKey: ThemeSettings.selectedThemeKey) }
         if let fontFamily { d.set(fontFamily, forKey: ThemeSettings.fontFamilyKey) }
         if let fontSize { d.set(fontSize, forKey: FontSize.key) }
         let controller = ThemeController(defaults: d)
@@ -35,14 +34,14 @@ final class PreviewCSSTests: XCTestCase {
     }
 
     func testHeadingColorsMatchResolvedPalette() {
-        let css = PreviewCSS.css(theme: theme(scheme: Coloring.standard.rawValue, themeId: "std.rgb"))
+        let css = PreviewCSS.css(theme: theme(themeId: "std.rgb"))
         // std.rgb H1 is light #C13F50 / dark #E86577.
         XCTAssertNotNil(linesFor(css, class: "aqua").range(of: "c13f50", options: .caseInsensitive))
         XCTAssertNotNil(linesFor(css, class: "darkAqua").range(of: "e86577", options: .caseInsensitive))
     }
 
     func testEmitsLightAndDarkBlocks() {
-        let css = PreviewCSS.css(theme: theme(scheme: Coloring.standard.rawValue, themeId: "std.rgb"))
+        let css = PreviewCSS.css(theme: theme(themeId: "std.rgb"))
         XCTAssertTrue(css.contains("html.aqua "))
         XCTAssertTrue(css.contains("html.darkAqua "))
     }

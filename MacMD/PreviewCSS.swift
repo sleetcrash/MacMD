@@ -14,18 +14,16 @@ enum PreviewCSS {
         guard let light = NSAppearance(named: .aqua),
               let dark = NSAppearance(named: .darkAqua) else { return "" }
 
-        let palette = ThemeSettings.resolvePalette(
-            coloring: theme.coloring, themeId: theme.themeId, customs: ThemeSettings.savedCustoms())
+        let resolved = theme.resolvedTheme
+        let palette: Palette? = resolved.scheme == .off ? nil : resolved
         let base = CGFloat(theme.fontSize)
         let family = FontFamily.resolve(id: theme.fontFamilyId)
         let stack = fontStack(for: family.resolver, isMonospace: family.isMonospace)
-        // Resolved per side: a custom color is the same in both blocks, while a
-        // preset pair contributes its light color to `aqua` and its dark color
-        // to `darkAqua`, exactly like the editor following the Mode.
-        let lightBg = EditorBackground.activeColor(mode: theme.backgroundMode, hex: theme.customBackgroundHex,
-                                                   presetId: theme.backgroundPresetId, dark: false)
-        let darkBg = EditorBackground.activeColor(mode: theme.backgroundMode, hex: theme.customBackgroundHex,
-                                                  presetId: theme.backgroundPresetId, dark: true)
+        // Resolved per side: a static theme's collapsed pair is the same in both
+        // blocks, while a dynamic pair contributes its light color to `aqua` and
+        // its dark color to `darkAqua`, exactly like the editor following the Mode.
+        let lightBg = EditorBackground.activeColor(background: resolved.background, dark: false)
+        let darkBg = EditorBackground.activeColor(background: resolved.background, dark: true)
 
         return block(class: "aqua", appearance: light, dark: false, palette: palette, base: base, fontStack: stack, customBg: lightBg)
              + block(class: "darkAqua", appearance: dark, dark: true, palette: palette, base: base, fontStack: stack, customBg: darkBg)
