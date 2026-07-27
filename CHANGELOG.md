@@ -5,6 +5,8 @@ All notable changes to MacMD will be documented in this file. The format is base
 ## [Unreleased]
 
 ### Added
+- Mermaid diagrams follow the active theme. Labels take the body text color, boxes and actors take the editor surface, and multi-color series such as pie slices cycle the theme's heading colors. The Default scheme, which has no heading colors, uses neutral shades of the body color instead. Switching theme or appearance re-renders open diagrams.
+- `showcase.md` in the repo: a feature tour you can open in MacMD to see every supported element rendered.
 - Three tinted built-in themes, Cream, Parchment, and Gray, carrying the 2.2 background pairs as full themes.
 - Background-only custom themes: choose the None scheme in the Theme Builder to build a theme from just a background color.
 - Static themes: a custom theme can now keep one fixed look. It sets the window's light or dark appearance from its background color, and the Mode control shows "Set by theme" while one is applied.
@@ -13,6 +15,10 @@ All notable changes to MacMD will be documented in this file. The format is base
 - Themes now own their backgrounds. The one Theme dropdown in Settings → Appearance covers everything: Default, the tinted themes, the Standard and Unified presets, and your custom themes, each carrying its own background.
 - The Custom Theme window is now the Theme Builder: pick static or dynamic, a scheme (None, Unified, or Standard), heading colors, and a background from quick swatches, your saved colors, or the color panel. Colors picked with the panel join your Saved list when the theme is saved.
 - Your existing setup migrates automatically on first launch and keeps its exact look, including custom themes, background choices, and the saved background list.
+
+### Fixed
+- A diagram that could not be parsed, which is every diagram while you are still typing it, left a "Syntax error in text" graphic stacked at the bottom of the preview. The fence now simply stays a code block until it parses.
+- Exported HTML rendered its diagrams with fallback colors instead of the document's theme.
 
 ### Removed
 - The separate Scheme and Background dropdowns in Settings → Appearance. Scheme choice lives in the Theme Builder; backgrounds ride with their themes.

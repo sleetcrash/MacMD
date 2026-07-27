@@ -50,7 +50,74 @@ enum PreviewCSS {
         let fmKey = palette?.headingColor(level: 1) ?? .secondaryLabelColor
         css += "html.\(cls) .front-matter { color: \(hex(.secondaryLabelColor, under: appearance)); border-color: \(hex(.separatorColor, under: appearance)); background: \(codeBackgroundRGBA(under: appearance)); }\n"
         css += "html.\(cls) .front-matter .fm-key { color: \(hex(fmKey, under: appearance)); }\n"
+        css += mermaidVariables(class: cls, appearance: appearance, palette: palette, background: customBg ?? EditorBackground.defaultBackground(dark: dark))
         return css
+    }
+
+    /// Diagram palette primitives, published as custom properties so the preview
+    /// shell can map them onto mermaid's own variable names (the shell owns
+    /// mermaid's vocabulary; this owns the colors). Mermaid bakes colors into the
+    /// SVG, so a diagram cannot inherit them through CSS the way text does.
+    private static func mermaidVariables(class cls: String, appearance: NSAppearance,
+                                         palette: Palette?, background: NSColor) -> String {
+        let bg = solid(background, under: appearance)
+        // Exactly the body-text color the rest of this stylesheet emits, so a
+        // diagram label and the prose beside it are the same color.
+        let text = solid(.labelColor, under: appearance)
+        // Node and actor fills: the code block's layered look, flattened, since a
+        // diagram fill cannot be translucent without the arrows showing through.
+        let surface = blend(text, into: bg, fraction: 0.10)
+        let line = blend(text, into: bg, fraction: 0.45)
+
+        var css = "html.\(cls) { --mmd-bg: \(bg.hexString); --mmd-text: \(text.hexString);"
+        css += " --mmd-surface: \(surface.hexString); --mmd-line: \(line.hexString);"
+        for (i, color) in seriesColors(palette: palette, under: appearance, text: text, bg: bg).enumerated() {
+            css += " --mmd-series-\(i + 1): \(color.hexString);"
+        }
+        return css + " }\n"
+    }
+
+    /// Twelve series colors for multi-color diagrams (pie slices and kin). A themed
+    /// palette cycles its heading colors, each pass blended further toward the
+    /// background so a repeat never reads as the same slice; the Default scheme
+    /// falls back to a neutral ramp of the body color, matching the node fills.
+    private static func seriesColors(palette: Palette?, under appearance: NSAppearance,
+                                     text: NSColor, bg: NSColor) -> [NSColor] {
+        var base: [NSColor] = []
+        if let palette {
+            for level in 1...3 {
+                let color = solid(palette.headingColor(level: level), under: appearance)
+                if !base.contains(where: { $0.hexString == color.hexString }) { base.append(color) }
+            }
+        }
+        if base.isEmpty {
+            base = [0.85, 0.6, 0.35].map { blend(text, into: bg, fraction: $0) }
+        }
+        return (0..<12).map { i in
+            let color = base[i % base.count]
+            let cycle = CGFloat(i / base.count)
+            return cycle == 0 ? color : blend(color, into: bg, fraction: 1 - cycle * 0.22)
+        }
+    }
+
+    /// A dynamic color flattened to one opaque sRGB color under a specific
+    /// appearance; mermaid bakes solid values and cannot take an rgba().
+    private static func solid(_ color: NSColor, under appearance: NSAppearance) -> NSColor {
+        var result = NSColor.black
+        appearance.performAsCurrentDrawingAppearance {
+            result = (color.usingColorSpace(.sRGB) ?? color).withAlphaComponent(1)
+        }
+        return result
+    }
+
+    /// `fraction` of `color` over `base`, both already sRGB and opaque.
+    private static func blend(_ color: NSColor, into base: NSColor, fraction: CGFloat) -> NSColor {
+        let f = min(max(fraction, 0), 1)
+        guard let c = color.usingColorSpace(.sRGB), let b = base.usingColorSpace(.sRGB) else { return color }
+        return NSColor(srgbRed: b.redComponent + (c.redComponent - b.redComponent) * f,
+                       green: b.greenComponent + (c.greenComponent - b.greenComponent) * f,
+                       blue: b.blueComponent + (c.blueComponent - b.blueComponent) * f,
+                       alpha: 1)
     }
 
     /// Resolve a (possibly dynamic) color to a `#RRGGBB` string under a specific

@@ -90,12 +90,96 @@ window.__mermaidRenderCount = 0;
 var mermaidCache = {};
 var mermaidReady = false;
 
+// Mermaid bakes colors into the SVG it emits, so a diagram cannot inherit the
+// theme through CSS the way text does. PreviewCSS publishes the palette as custom
+// properties (--mmd-*) and this maps them onto mermaid's own variable names: node
+// and actor fills take the flattened code-block surface, every label takes the
+// body color, and multi-color series (pie slices) cycle the theme's heading
+// colors. Section labels sit ON a saturated slice, so they take the background
+// color for contrast instead of the body color.
+function mermaidThemeVariables() {
+  var s = getComputedStyle(document.documentElement);
+  function v(name, fallback) {
+    var value = (s.getPropertyValue(name) || "").trim();
+    return value === "" ? fallback : value;
+  }
+  var bg = v("--mmd-bg", "#1e1e1e");
+  var text = v("--mmd-text", "#ffffff");
+  var surface = v("--mmd-surface", "#2c2c2c");
+  var line = v("--mmd-line", "#808080");
+  var vars = {
+    background: bg,
+    primaryColor: surface, primaryTextColor: text, primaryBorderColor: line,
+    secondaryColor: surface, secondaryTextColor: text, secondaryBorderColor: line,
+    tertiaryColor: bg, tertiaryTextColor: text, tertiaryBorderColor: line,
+    mainBkg: surface, nodeBorder: line, nodeTextColor: text,
+    lineColor: line, textColor: text, titleColor: text,
+    edgeLabelBackground: bg, clusterBkg: bg, clusterBorder: line,
+    actorBkg: surface, actorBorder: line, actorTextColor: text, actorLineColor: line,
+    signalColor: line, signalTextColor: text,
+    labelBoxBkgColor: surface, labelBoxBorderColor: line, labelTextColor: text,
+    loopTextColor: text, altBackground: bg,
+    noteBkgColor: surface, noteBorderColor: line, noteTextColor: text,
+    pieTitleTextColor: text, pieLegendTextColor: text, pieSectionTextColor: bg,
+    pieStrokeColor: line, pieOuterStrokeColor: line,
+    // Mermaid dims slices to 0.7 by default, which would leave a slice a shade
+    // off the heading color it came from and off its own legend swatch.
+    pieOpacity: "1"
+  };
+  for (var i = 1; i <= 12; i++) {
+    vars["pie" + i] = v("--mmd-series-" + i, surface);
+    if (i <= 4) { vars["cScale" + (i - 1)] = vars["pie" + i]; }
+  }
+  return vars;
+}
+
 function ensureMermaid() {
   if (!mermaidReady && window.mermaid) {
-    window.mermaid.initialize({ startOnLoad: false, securityLevel: "strict" });
-    window.__mermaidConfig = { startOnLoad: false, securityLevel: "strict" };
+    // suppressErrorRendering: a half-typed diagram fails to parse on every
+    // keystroke, and mermaid's default is to APPEND its "Syntax error in text"
+    // graphic to the page body, outside #content, where it survives later
+    // renders and stacks up at the bottom of the preview. Suppressed, the render
+    // still throws and the fence stays a code block (see renderMermaid).
+    var config = { startOnLoad: false, securityLevel: "strict", theme: "base",
+                   suppressErrorRendering: true,
+                   themeVariables: mermaidThemeVariables() };
+    window.mermaid.initialize(config);
+    window.__mermaidConfig = config;
     mermaidReady = true;
   }
+}
+
+// A theme or appearance change moves every baked-in diagram color, so the cache
+// and the initialized config are both stale: re-init from the new custom
+// properties and re-render each diagram from the source kept on its wrapper.
+// Ids stay unique per pass so mermaid's SVG defs never collide across re-themes.
+var mermaidThemePass = 0;
+var mermaidRefreshPending = false;
+
+async function refreshMermaidTheme() {
+  mermaidReady = false;
+  mermaidCache = {};
+  var wrappers = document.querySelectorAll(".mermaid-diagram");
+  if (wrappers.length > 0 && window.mermaid) {
+    ensureMermaid();
+    mermaidThemePass++;
+    for (var i = 0; i < wrappers.length; i++) {
+      var source = wrappers[i]._mmdSource;
+      if (!source) continue;
+      try {
+        var out = await window.mermaid.render("mmd-t" + mermaidThemePass + "-" + i, source);
+        wrappers[i].innerHTML = out.svg;
+      } catch (e) { /* keep the previous SVG if the re-theme fails */ }
+    }
+  }
+  window.__mermaidThemePass = (window.__mermaidThemePass || 0) + 1;
+}
+
+function scheduleMermaidRefresh() {
+  if (mermaidRefreshPending) return;
+  mermaidRefreshPending = true;
+  // Coalesce: Swift pushes theme CSS and the appearance class back to back.
+  setTimeout(function () { mermaidRefreshPending = false; refreshMermaidTheme(); }, 0);
 }
 
 // FNV-1a hash of the diagram source, so an unchanged diagram skips re-render.
@@ -127,6 +211,10 @@ async function renderMermaid(container) {
     var wrapper = document.createElement("div");
     wrapper.className = "mermaid-diagram";
     wrapper.setAttribute("data-mermaid-hash", hash);
+    // Kept for re-theming: once the <pre> is replaced the fence source is gone
+    // from the DOM. A JS property, not an attribute, so the source never has to
+    // survive HTML escaping.
+    wrapper._mmdSource = source;
     // Keep the source-line anchor the <pre> carried, so scroll sync stays
     // precise around rendered diagrams.
     var srcLine = pre && pre.getAttribute && pre.getAttribute("data-source-line");
@@ -200,12 +288,14 @@ window.renderForExport = async function (markdown) {
 window.setThemeCSS = function (css) {
   var el = document.getElementById("macmd-theme");
   if (el) { el.textContent = css; }
+  scheduleMermaidRefresh();
 };
 
 // Activate the resolved light/dark block by class on the document element, so the
 // choice follows the editor appearance, not the system prefers-color-scheme.
 window.setAppearance = function (name) {
   document.documentElement.className = name;
+  scheduleMermaidRefresh();
 };
 
 // ---- Scroll sync ----------------------------------------------------------

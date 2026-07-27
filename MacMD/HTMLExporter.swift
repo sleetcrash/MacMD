@@ -31,6 +31,14 @@ enum HTMLExporter {
         webView.load(URLRequest(url: URL(string: "\(MarkdownSchemeHandler.scheme)://app/index.html")!))
         await loader.waitForLoad()
 
+        // Mermaid bakes its colors in at render time, so the shell needs the theme
+        // BEFORE renderForExport runs; the wrapper CSS below only reaches text.
+        // Same-page evaluateJavaScript calls run in order, ahead of the async call.
+        webView.evaluateJavaScript("window.setThemeCSS(\(MarkdownRenderEngine.jsStringLiteral(themeCSS)))",
+                                   completionHandler: nil)
+        webView.evaluateJavaScript("window.setAppearance(\(MarkdownRenderEngine.jsStringLiteral(appearanceClass)))",
+                                   completionHandler: nil)
+
         var body = ""
         if let result = try? await webView.callAsyncJavaScript(
             "return window.renderForExport(markdown)",
