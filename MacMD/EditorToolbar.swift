@@ -105,6 +105,8 @@ struct EditorToolbarStrip: View {
     /// across DocumentGroup windows in MacMD), so the right-click menu's
     /// checkmark stays truthful in every open window.
     @State private var autoHide = ToolbarAutoHidePref.isOn
+    @State private var copyCount = 0
+    @State private var copied = false
 
     var body: some View {
         HStack(spacing: 2) {
@@ -139,14 +141,24 @@ struct EditorToolbarStrip: View {
             .help("Customize theme and appearance")
             Button {
                 onCopy()
+                copyCount += 1
             } label: {
-                Image(systemName: "doc.on.doc")
+                Image(systemName: copied ? "checkmark" : "doc.on.doc")
                     .font(.system(size: 11))
                     .frame(width: 24, height: 20)
                     .contentShape(Rectangle())
+                    .contentTransition(.symbolEffect(.replace))
             }
             .buttonStyle(ToolbarButtonStyle())
-            .help("Copy the document text")
+            .help(copied ? "Copied" : "Copy the document text")
+            // A silent copy reads as a dead button: confirm with a brief
+            // checkmark. Each click restarts the timer (a new task id).
+            .task(id: copyCount) {
+                guard copyCount > 0 else { return }
+                copied = true
+                try? await Task.sleep(for: .seconds(1.2))
+                if !Task.isCancelled { copied = false }
+            }
             layoutPicker
                 .padding(.leading, 4)
         }
