@@ -150,6 +150,39 @@ final class EditingCommandsTests: XCTestCase {
         XCTAssertNil(EditingCommands.taskInsert(in: "- [x] done", selection: NSRange(location: 0, length: 0)))
     }
 
+    // MARK: - Task toggle by line (preview checkbox clicks)
+
+    func testTaskToggleFlipsTheBoxOnTheGivenLine() {
+        let text: NSString = "intro\n- [ ] one\n  * [x] two"
+        let one = EditingCommands.taskToggle(in: text, line: 2)
+        XCTAssertEqual(one?.range, NSRange(location: 9, length: 1))
+        XCTAssertEqual(one?.replacement, "x")
+        let two = EditingCommands.taskToggle(in: text, line: 3)
+        XCTAssertEqual(two?.range, NSRange(location: 21, length: 1))
+        XCTAssertEqual(two?.replacement, " ")
+    }
+
+    func testTaskToggleCountsLinesLikeMarkdownIt() {
+        // CRLF and a lone CR each end exactly one line, as markdown-it normalizes them.
+        let text: NSString = "a\r\nb\rc\n- [ ] d"
+        XCTAssertEqual(EditingCommands.taskToggle(in: text, line: 4)?.range, NSRange(location: 10, length: 1))
+    }
+
+    func testTaskToggleAcceptsAnEmptyTask() {
+        XCTAssertEqual(EditingCommands.taskToggle(in: "- [ ]", line: 1)?.replacement, "x")
+        XCTAssertEqual(EditingCommands.taskToggle(in: "- [ ] \nnext", line: 1)?.replacement, "x")
+    }
+
+    func testTaskToggleDeclinesNonTasksAndMissingLines() {
+        let text: NSString = "intro\n1. [ ] ordered\n- [ ]x\n- [ ] ok"
+        XCTAssertNil(EditingCommands.taskToggle(in: text, line: 1))
+        XCTAssertNil(EditingCommands.taskToggle(in: text, line: 2), "ordered items are not toggled")
+        XCTAssertNil(EditingCommands.taskToggle(in: text, line: 3), "the box needs whitespace after it")
+        XCTAssertNil(EditingCommands.taskToggle(in: text, line: 0))
+        XCTAssertNil(EditingCommands.taskToggle(in: text, line: 9))
+        XCTAssertNotNil(EditingCommands.taskToggle(in: text, line: 4))
+    }
+
     // MARK: - List continuation: task items continue unchecked
 
     func testTaskContinuationStartsUnchecked() {

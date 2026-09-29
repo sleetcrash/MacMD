@@ -111,7 +111,8 @@ struct DocumentView: View {
                 if paneMode != .editor {
                     PreviewWebView(text: debouncedText, theme: theme,
                                    syncBridge: paneMode == .split ? syncBridge : nil,
-                                   documentDirectory: documentDirectory)
+                                   documentDirectory: documentDirectory,
+                                   onToggleTask: toggleTask(atLine:))
                         .frame(minWidth: 320, idealWidth: DocumentLayout.baseSize.width * 0.7)
                 }
             }
@@ -187,6 +188,16 @@ struct DocumentView: View {
                                pb.setString(document.text, forType: .string)
                            },
                            overlaid: overlaid)
+    }
+
+    /// A preview checkbox click: flip the box through the editor when one is
+    /// showing (undo-aware, caret kept), else edit the document directly.
+    private func toggleTask(atLine line: Int) {
+        if paneMode != .preview, let editor = EditorFocus.resolve(in: NSApp.keyWindow) {
+            editor.toggleTask(atLine: line)
+        } else if let toggle = EditingCommands.taskToggle(in: document.text as NSString, line: line) {
+            document.text = (document.text as NSString).replacingCharacters(in: toggle.range, with: toggle.replacement)
+        }
     }
 
     /// Slide the auto-hidden toolbar in and cancel any pending slide-out.

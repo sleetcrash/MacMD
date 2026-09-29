@@ -768,12 +768,23 @@ final class ClickableTextView: NSTextView {
         let innerRange = NSRange(location: bracket.location + 1, length: 1)
         guard NSMaxRange(innerRange) <= ts.length else { return }
         let current = (ts.string as NSString).substring(with: innerRange)
-        let replacement = (current == " ") ? "x" : " "
+        replaceKeepingSelection(innerRange, with: current == " " ? "x" : " ")
+    }
 
+    /// Flips the bullet task on a 1-based source line: a preview checkbox click.
+    func toggleTask(atLine line: Int) {
+        guard let ts = textStorage,
+              let toggle = EditingCommands.taskToggle(in: ts.string as NSString, line: line) else { return }
+        replaceKeepingSelection(toggle.range, with: toggle.replacement)
+    }
+
+    /// An undo-aware one-spot edit that leaves the caret where it was.
+    private func replaceKeepingSelection(_ range: NSRange, with replacement: String) {
+        guard let ts = textStorage else { return }
         let priorSelection = selectedRange()
-        guard shouldChangeText(in: innerRange, replacementString: replacement) else { return }
+        guard shouldChangeText(in: range, replacementString: replacement) else { return }
         ts.beginEditing()
-        ts.replaceCharacters(in: innerRange, with: replacement)
+        ts.replaceCharacters(in: range, with: replacement)
         ts.endEditing()
         didChangeText()
         setSelectedRange(priorSelection)

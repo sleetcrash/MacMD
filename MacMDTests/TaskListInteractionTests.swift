@@ -81,6 +81,18 @@ final class TaskListInteractionTests: XCTestCase {
                        "a second press should check the box it just inserted")
     }
 
+    func testPreviewToggleFlipsItsLineAndKeepsTheCaret() {
+        let textView = ClickableTextView()
+        textView.string = "- [ ] one\n- [ ] two"
+        textView.setSelectedRange(NSRange(location: 3, length: 0))
+
+        textView.toggleTask(atLine: 2)
+
+        XCTAssertEqual(textView.string, "- [ ] one\n- [x] two")
+        XCTAssertEqual(textView.selectedRange(), NSRange(location: 3, length: 0),
+                       "a preview click must not move the editor caret")
+    }
+
     func testFormatCommandLeavesOrderedItemUnchanged() {
         let textView = ClickableTextView()
         let highlighter = MarkdownHighlighter()

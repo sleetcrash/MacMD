@@ -30,6 +30,36 @@ md.core.ruler.push("macmd_source_line", function (state) {
   });
 });
 
+// GitHub-style task items, bullets only: the editor recognizes and toggles
+// bullet tasks only, so an ordered "1. [ ]" stays text. The checkbox takes the
+// bullet's place and carries its 1-based source line, so a click can flip the
+// matching box in the document.
+md.core.ruler.push("macmd_task_list", function (state) {
+  var tokens = state.tokens;
+  var lists = [];
+  for (var i = 0; i < tokens.length; i++) {
+    var t = tokens[i];
+    if (t.type === "bullet_list_open" || t.type === "ordered_list_open") { lists.push(t.type); continue; }
+    if (t.type === "bullet_list_close" || t.type === "ordered_list_close") { lists.pop(); continue; }
+    if (t.type !== "list_item_open" || !t.map || lists[lists.length - 1] !== "bullet_list_open") { continue; }
+    var inline = tokens[i + 2];
+    if (tokens[i + 1].type !== "paragraph_open" || !inline || inline.type !== "inline" || !inline.children.length) { continue; }
+    var first = inline.children[0];
+    var mark = first.type === "text" && /^\[([ xX])\](?=\s|$)/.exec(first.content);
+    if (!mark) { continue; }
+    first.content = first.content.slice(mark[0].length).replace(/^\s/, "");
+    var box = new state.Token("task_checkbox", "input", 0);
+    box.meta = { checked: mark[1] !== " ", line: t.map[0] + 1 + sourceLineOffset };
+    inline.children.unshift(box);
+    t.attrJoin("class", "task-list-item");
+  }
+});
+md.renderer.rules.task_checkbox = function (tokens, idx) {
+  var meta = tokens[idx].meta;
+  return '<input type="checkbox" class="task-checkbox" data-task-line="' + meta.line + '"'
+    + (meta.checked ? " checked" : "") + ">";
+};
+
 // Leading YAML (---) or TOML (+++) front matter, mirroring the editor's rule
 // (MarkdownParser.frontMatterSpan): the document's FIRST line is exactly the
 // delimiter and a matching closing delimiter line follows. Without this split,
@@ -277,6 +307,12 @@ window.renderForExport = async function (markdown) {
     var isExternal = /^[a-z][a-z0-9+.-]*:/i.test(src) || src.slice(0, 2) === "//";
     if (isExternal && !isData) { imgs[i].removeAttribute("src"); }
   }
+  // An exported file is static: its checkboxes show state but cannot toggle.
+  var boxes = container.querySelectorAll("input.task-checkbox");
+  for (var b = 0; b < boxes.length; b++) {
+    boxes[b].setAttribute("disabled", "");
+    boxes[b].removeAttribute("data-task-line");
+  }
   // Inline any mermaid diagrams as SVG before serializing, so the export awaits
   // completion (callAsyncJavaScript awaits the returned promise). A failure falls
   // back to markdown-only rather than an empty export.
@@ -297,6 +333,16 @@ window.setAppearance = function (name) {
   document.documentElement.className = name;
   scheduleMermaidRefresh();
 };
+
+// A checkbox click asks Swift to flip that line's box in the document; the
+// re-render that follows keeps the preview truthful.
+document.getElementById("content").addEventListener("change", function (e) {
+  var box = e.target;
+  if (!box.classList || !box.classList.contains("task-checkbox")) { return; }
+  var bridge = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.macmdTaskToggle;
+  var line = parseInt(box.getAttribute("data-task-line"), 10);
+  if (bridge && !isNaN(line)) { bridge.postMessage(line); }
+});
 
 // ---- Scroll sync ----------------------------------------------------------
 // The source-line elements are cached per render (sorted by line, which is

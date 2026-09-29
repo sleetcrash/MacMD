@@ -133,6 +133,30 @@ enum EditingCommands {
         )
     }
 
+    /// The one-character edit that flips the bullet task's box on 1-based
+    /// `line` (`[ ]` to `[x]` and back), or nil when that line is not a bullet
+    /// task. Lines are counted the way the preview's markdown-it counts them
+    /// (LF, CRLF, or a lone CR), so a preview checkbox's line lands here.
+    static func taskToggle(in text: NSString, line: Int) -> (range: NSRange, replacement: String)? {
+        guard line >= 1 else { return nil }
+        var current = 1, lineStart = 0, i = 0
+        while current < line, i < text.length {
+            let c = text.character(at: i)
+            i += 1
+            if c == 0x0A || (c == 0x0D && (i == text.length || text.character(at: i) != 0x0A)) {
+                current += 1
+                lineStart = i
+            }
+        }
+        guard current == line else { return nil }
+        let task = try! NSRegularExpression(pattern: "[ \\t]*[-*+][ \\t]+\\[([ xX])\\](?=[ \\t\\r\\n]|$)")
+        guard let m = task.firstMatch(in: text as String, options: .anchored,
+                                      range: NSRange(location: lineStart, length: text.length - lineStart))
+        else { return nil }
+        let mark = m.range(at: 1)
+        return (mark, text.substring(with: mark) == " " ? "x" : " ")
+    }
+
     /// Decide what Return should do on a list line. Regexes are compiled per
     /// call: Return is human-paced, so the cost is negligible, and a local
     /// `let` keeps this type free of non-Sendable shared state under Swift 6
