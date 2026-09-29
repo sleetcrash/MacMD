@@ -102,7 +102,17 @@ final class ColorThemingTests: XCTestCase {
     func testStandardPresetCount() {
         XCTAssertEqual(ColorTheming.standardPresets.count, 6)
         XCTAssertEqual(ColorTheming.standardPresets.map(\.name),
-                       ["RGB", "CMY(K)", "EVA-00", "EVA-01", "EVA-02", "EVA-END"])
+                       ["RGB", "CMY", "EVA-00", "EVA-01", "EVA-02", "EVA-END"])
+    }
+
+    func testCMYPresetIsTheStaticDarkThemeUnderTheRetiredCMYKId() {
+        let cmy = ThemeSettings.resolveTheme(id: "std.cmyk", customs: [])
+        XCTAssertEqual(cmy.name, "CMY", "a saved CMY(K) selection now resolves to CMY")
+        XCTAssertTrue(cmy.isStatic)
+        XCTAssertEqual(cmy.background, ColorPair(light: "#15151A", dark: "#15151A"))
+        XCTAssertEqual(cmy.slots, [ColorPair(light: "#3EC6FF", dark: "#3EC6FF"),
+                                   ColorPair(light: "#FF4FB2", dark: "#FF4FB2"),
+                                   ColorPair(light: "#ECCB00", dark: "#ECCB00")])
     }
 
     func testUnifiedPresetCount() {
