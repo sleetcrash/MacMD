@@ -546,10 +546,11 @@ final class ClickableTextView: NSTextView {
     private var lastDrawnCaretRect: NSRect?
 
     /// Draw the caret per `Theme.cursorStyle` by widening / repositioning the
-    /// rect and calling super. Block uses reduced alpha so the glyph under it
+    /// rect and calling super. Block uses partial alpha so the glyph under it
     /// stays readable. The accent color is supplied by AppKit (set as
-    /// `insertionPointColor`). Blink-off is handled by `CaretBlink` (the blink
-    /// timer never fires), so an off pass here is always a real erase.
+    /// `insertionPointColor`). Blink-off is handled by `CaretBlink` (it keeps
+    /// restarting the blink timer before its off phase), so an off pass here
+    /// is always a real erase.
     override func drawInsertionPoint(in rect: NSRect, color: NSColor, turnedOn flag: Bool) {
         var caretRect = rect
         var caretColor = color
@@ -559,7 +560,7 @@ final class ClickableTextView: NSTextView {
         case .block:
             caretRect.size.width = CursorGeometry.blockWidth(glyphWidth: glyphWidthAtCaret(),
                                                              fallback: spaceAdvance())
-            caretColor = color.withAlphaComponent(0.5)
+            caretColor = color.withAlphaComponent(0.7)
         case .underline:
             caretRect = CursorGeometry.underlineRect(caret: rect,
                                                      glyphWidth: glyphWidthAtCaret(),
