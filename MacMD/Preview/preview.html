@@ -17,6 +17,18 @@
 // mirrors the line breaks visible in the editor.
 var md = window.markdownit({ html: false, breaks: true, linkify: true, typographer: false });
 
+// Autolink like GitHub: explicit schemes, emails, and "www." hosts only. Fuzzy
+// bare-domain matching turned file names into links, because ".md" is a
+// country domain ("SKILL.md" became http://SKILL.md).
+md.linkify.set({ fuzzyLink: false }).add("www.", {
+  validate: function (text, pos, self) {
+    if (!self.re.www) { self.re.www = new RegExp("^" + self.re.src_host_port_strict + self.re.src_path, "i"); }
+    var m = text.slice(pos).match(self.re.www);
+    return m ? m[0].length : 0;
+  },
+  normalize: function (match) { match.url = "http://" + match.url; }
+});
+
 // Stamp each top-level block with its 1-based source line (from token.map) so the
 // editor's top visible line can drive editor-to-preview scroll sync. The offset
 // re-anchors the numbers when a leading front-matter block was split off before
