@@ -123,7 +123,7 @@ gantt
 
 ## Pie (`pie`)
 
-Parts of a whole. Slices cycle the theme's heading colors.
+Parts of a whole. Slices take their colors from the theme.
 
 ```mermaid
 pie showData
