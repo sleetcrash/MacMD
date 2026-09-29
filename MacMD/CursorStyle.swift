@@ -58,7 +58,10 @@ enum CaretBlink {
                         .updateInsertionPointStateAndRestartTimer(true)
                 }
             }
-            // Common modes, so the caret also holds during scroll and drag tracking.
+            // Tolerance lets the system coalesce wakeups; the worst-case gap
+            // stays well inside the on phase. Common modes, so the caret also
+            // holds during scroll and drag tracking.
+            timer.tolerance = 0.05
             RunLoop.main.add(timer, forMode: .common)
             steadyTimer = timer
         }

@@ -604,7 +604,7 @@ struct SettingsView: View {
         openMenu = nil
     }
 
-    /// The cursor's Customize row and its pencil: open the color panel (the
+    /// The cursor's Custom row and its pencil: open the color panel (the
     /// first pick selects Customize).
     private func openCursorColorPicker() {
         openMenu = nil
@@ -1100,7 +1100,7 @@ private struct DropdownRow: View {
         .contentShape(Rectangle())
     }
 
-    /// The Cursor Color dropdown's Customize row: the picked color's swatch
+    /// The Cursor Color dropdown's Custom row: the picked color's swatch
     /// right-aligned like the theme rows (an empty swatch before one is
     /// picked), and the trailing icon slot holding plus (nothing picked yet)
     /// or the pencil that reopens the color panel. Mirrors paletteRow's
@@ -1428,8 +1428,8 @@ struct SizeControl: View {
 /// hex working copy (the Cursor Color picker mounts one), reusing the
 /// CustomThemeEditor bridge pattern (the panel reports picks
 /// through a real NSColorWell). Unlike that one it is never clicked directly:
-/// it activates programmatically when `activation` bumps (picking Custom with
-/// no color, or the pencil), and it opts out of hit-testing entirely so it can
+/// it activates programmatically when `activation` bumps (the Custom row or
+/// its pencil), and it opts out of hit-testing entirely so it can
 /// never swallow clicks meant for the controls.
 private struct SettingsColorWell: NSViewRepresentable {
     @Binding var hex: String?

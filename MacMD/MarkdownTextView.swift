@@ -671,8 +671,8 @@ final class ClickableTextView: NSTextView {
         (" " as NSString).size(withAttributes: [.font: Theme.editorFont]).width
     }
 
-    /// Force the caret to redraw after a style/blink change. Re-registers the
-    /// blink periods first, then restarts the caret timer so it picks them up.
+    /// Force the caret to redraw after a style/blink change. Starts or stops
+    /// the blink-off steady timer first, then restarts the caret timer.
     func refreshCaret() {
         CaretBlink.apply(Theme.cursorBlink)
         needsDisplay = true
