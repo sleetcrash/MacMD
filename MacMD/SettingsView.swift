@@ -465,7 +465,7 @@ struct SettingsView: View {
     private var cursorColorBox: some View {
         Button { toggle(.cursorColor) } label: {
             HStack(spacing: 0) {
-                Text(wcCursorColorHex == nil ? "Default" : "Customize")
+                Text(wcCursorColorHex == nil ? "Default" : "Custom")
                     .font(.system(size: 11))
                     .lineLimit(1)
                 Spacer(minLength: 8)
@@ -568,7 +568,7 @@ struct SettingsView: View {
                 DropdownItem(id: "cursor.custom",
                              kind: .backgroundCustom(picked),
                              selected: wcCursorColorHex != nil,
-                             action: { pickCursorColorCustom() },
+                             action: { openCursorColorPicker() },
                              onEdit: picked == nil ? nil : { openCursorColorPicker() }),
             ]
         }
@@ -604,13 +604,8 @@ struct SettingsView: View {
         openMenu = nil
     }
 
-    /// The cursor's Customize row: open the panel when no color is picked yet
-    /// (the first pick selects it); with one, the pencil reopens the panel.
-    private func pickCursorColorCustom() {
-        openMenu = nil
-        if wcCursorColorHex == nil { cursorColorPickerActivation += 1 }
-    }
-
+    /// The cursor's Customize row and its pencil: open the color panel (the
+    /// first pick selects Customize).
     private func openCursorColorPicker() {
         openMenu = nil
         cursorColorPickerActivation += 1
@@ -684,7 +679,7 @@ struct DropdownItem: Identifiable {
         case fontSample(FontFamily) // family name rendered in its own face
         case backgroundSwatch(NSColor)   // a single-swatch Default row (cursor color)
         case backgroundPair(name: String, pair: ColorPair)  // Default/preset: light | dark pair
-        case backgroundCustom(NSColor?)  // Background's Custom row: the picked color, or nil = blank "+"
+        case backgroundCustom(NSColor?)  // the cursor color's Custom row: the picked color, or nil = blank "+"
         case backgroundSaved(hex: String, color: NSColor)  // a library swatch, removable
     }
     let id: String
@@ -1114,7 +1109,7 @@ private struct DropdownRow: View {
         HStack(spacing: 0) {
             Button { item.action?() } label: {
                 HStack(spacing: 0) {
-                    Text("Customize").font(.system(size: 11)).lineLimit(1)
+                    Text("Custom").font(.system(size: 11)).lineLimit(1)
                     Spacer(minLength: 8)
                     if let color {
                         Swatch(color: Color(nsColor: color))
@@ -1126,7 +1121,7 @@ private struct DropdownRow: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Custom background")
+            .accessibilityLabel("Custom cursor color")
             .accessibilityAddTraits(item.selected ? .isSelected : [])
 
             ZStack(alignment: .trailing) {
@@ -1136,7 +1131,7 @@ private struct DropdownRow: View {
                         Image(systemName: "pencil").font(.system(size: 10))
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("Edit custom background color")
+                    .accessibilityLabel("Edit custom cursor color")
                 } else {
                     Image(systemName: "plus").font(.system(size: 10))
                 }
@@ -1460,7 +1455,10 @@ private struct SettingsColorWell: NSViewRepresentable {
         if context.coordinator.lastActivation != activation {
             context.coordinator.lastActivation = activation
             well.color = hex.flatMap { NSColor(hex: $0) } ?? initialColor
+            // Activating only makes the well the panel's target; it never
+            // shows the panel, so front it explicitly.
             well.activate(true)
+            NSColorPanel.shared.makeKeyAndOrderFront(nil)
         }
     }
 
