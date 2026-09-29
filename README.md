@@ -38,6 +38,13 @@ Mouse over the top of the doc and a toolbar will appear. On the far right side, 
 
 ***"This formatting is excessive!"***: If you prefer the no-frills experience, you can remove all formatting by switching to the **Classic View**: turn off **`View → Show Formatting`** [`Cmd-/`]. Formatting and theme remain viewable in the Preview Pane. Remember, the Preview Pane can be hidden by changing back to the default single-pane **Edit View**.
 
+<p>
+  <img src="docs/screenshots/macmd-edit-view-single-pane-screenshot.png" width="49%" alt="Edit View: the single-pane editor with styled Markdown" />
+  <img src="docs/screenshots/macmd-split-view-live-preview-screenshot.png" width="49%" alt="Split View: the Markdown source on the left and the live preview on the right" />
+  <img src="docs/screenshots/macmd-preview-view-screenshot.png" width="49%" alt="Preview View: the formatted document on its own" />
+  <img src="docs/screenshots/macmd-classic-view-screenshot.png" width="49%" alt="Classic View: plain Markdown source with formatting turned off" />
+</p>
+
 ### Mermaid Diagrams
 Fenced Mermaid code blocks render as real diagrams in the preview and in exports. Twelve diagram types are possible:
 
