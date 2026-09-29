@@ -99,12 +99,6 @@ Is this level of customization necessary? Yes. If you said "no," you can choose 
 
 MacMD is fully offline. It makes no network connections: no update checks, no crash reporting, no analytics. The preview and export render fully offline from a bundled engine, inside a web view with a strict content security policy, all network access denied, and no script execution from document content. The binary is code-signed with the hardened runtime enabled.
 
-**No App Sandbox**: The App Sandbox is an optional walled-off mode Apple offers for apps (it's required on the Mac App Store). Early versions of MacMD used it, but it caused random "you don't have permission" errors when saving to external drives, so it's turned off. MacMD still only opens and saves the files you choose, and it asks macOS for no extra permissions (entitlements). Check for yourself:
-
-```sh
-codesign -dv --entitlements - /Applications/MacMD.app
-```
-
 **Security Reports**: See [SECURITY.md](SECURITY.md).
 
 ## Install
