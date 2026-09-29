@@ -29,11 +29,11 @@ Notes for maintainers:
 
 ## make_social_preview.swift
 
-Generates the 1280x640 social preview card (`docs/social-preview.png`), the image GitHub shows when the repo link is shared. GitHub reads it from the Settings > General > Social preview upload, not from the repo, so upload it there by hand after regenerating. The script wraps the README hero screenshot (`docs/screenshots/macmd-live-preview-split-view-screenshot.png`) in a padded card; capture that screenshot first.
+Generates the 1280x640 social preview card (`docs/social-preview.png`), the image GitHub shows when the repo link is shared. GitHub reads it from the Settings > General > Social preview upload, not from the repo, so upload it there by hand after regenerating. The script wraps a README screenshot in a padded card; the current card uses `docs/screenshots/mermaid-charts-screenshot.png`.
 
 Run from the repo root:
 
-    swift Scripts/make_social_preview.swift docs/screenshots/macmd-live-preview-split-view-screenshot.png docs/social-preview.png
+    swift Scripts/make_social_preview.swift docs/screenshots/mermaid-charts-screenshot.png docs/social-preview.png
 
 ## build-preview-assets.sh
 

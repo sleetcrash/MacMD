@@ -4,7 +4,7 @@ import ImageIO
 import UniformTypeIdentifiers
 
 // Produce the 1280x640 social preview card (the image GitHub shows when the
-// repo link is shared) from the README hero screenshot. It is scaled to
+// repo link is shared) from a README screenshot. It is scaled to
 // fit inside the card with padding, centered on a black background that
 // matches the app's aesthetic.
 

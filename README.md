@@ -3,7 +3,7 @@ This is MacMD. I created it as a free, open-source Markdown editor for Mac.
 
 **[Download the latest release](../../releases/latest)** (macOS 14 or later)
 
-![MacMD in Split View: the Markdown source on the left and the live formatted preview on the right](docs/screenshots/macmd-live-preview-split-view-screenshot.png)
+![The MacMD editor with a short sample document: color-coded headings and body text](docs/screenshots/macmd-sample-screenshot.png)
 
 ## Features
 Here are some things you can do with MacMD.
@@ -37,12 +37,6 @@ Mouse over the top of the doc and a toolbar will appear. On the far right side, 
 - **Preview View**: The last view lets you see the file in its formatted form. This is a good way to review before sharing or saving. The Preview Pane is view-only (except checkboxes, which you can tick right there), so just switch to one of the other views to make changes.
 
 ***"This formatting is excessive!"***: If you prefer the no-frills experience, you can remove all formatting by switching to the **Classic View**: turn off **`View → Show Formatting`** [`Cmd-/`]. Formatting and theme remain viewable in the Preview Pane. Remember, the Preview Pane can be hidden by changing back to the default single-pane **Edit View**.
-
-<p>
-  <img src="docs/screenshots/macmd-single-pane-edit-view-screenshot.png" width="32%" alt="Edit View: the single-pane editor with styled headings, lists, and checkboxes" />
-  <img src="docs/screenshots/macmd-preview-view-screenshot.png" width="32%" alt="Preview View: the formatted document on its own" />
-  <img src="docs/screenshots/macmd-classic-view-screenshot.png" width="32%" alt="Classic View: plain Markdown source with formatting turned off" />
-</p>
 
 ### Mermaid Diagrams
 Fenced Mermaid code blocks render as real diagrams in the preview and in exports. Twelve diagram types are possible:
