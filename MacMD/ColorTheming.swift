@@ -162,11 +162,12 @@ enum ColorTheming {
             ColorPair(light: "#2E8049", dark: "#5CBE7C"),
             ColorPair(light: "#2E86AB", dark: "#54A9CC"),
         ]),
-        Palette(id: "std.cmyk", name: "CMY(K)", scheme: .standard, slots: [
-            ColorPair(light: "#1F5C82", dark: "#5B9AC4"),
-            ColorPair(light: "#A62A43", dark: "#D85A72"),
-            ColorPair(light: "#B5851C", dark: "#E0B445"),
-        ]),
+        // Keeps the retired CMY(K) preset's id so a saved selection carries over.
+        Palette(id: "std.cmyk", name: "CMY", scheme: .standard, slots: [
+            ColorPair(light: "#3EC6FF", dark: "#3EC6FF"),
+            ColorPair(light: "#FF4FB2", dark: "#FF4FB2"),
+            ColorPair(light: "#ECCB00", dark: "#ECCB00"),
+        ], background: ColorPair(light: "#15151A", dark: "#15151A"), isStatic: true),
         Palette(id: "std.eva00", name: "EVA-00", scheme: .standard, slots: [
             ColorPair(light: "#052A6A", dark: "#5566CC"),
             ColorPair(light: "#03559E", dark: "#4E84C8"),
