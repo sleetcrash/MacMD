@@ -67,7 +67,7 @@ Read current state: `defaults read com.sleetcrash.MacMD`.
 - Format: Bold (Cmd-B), Italic (Cmd-I), Strikethrough (Shift-Cmd-X), Inline Code, Link (Cmd-K), Toggle Task Checkbox (Cmd-Shift-L).
 - View: font size (Cmd-Plus / Cmd-Minus / Cmd-0 reset), Show Word Count, Show Formatting (Cmd-/), Show Line Numbers, Show Toolbar, Show Preview (Cmd-Shift-P), Layout (Editor Only / Split / Preview Only).
 - MacMD > Settings (Cmd-,): Appearance tab is transactional (Apply previews, Save persists, closing reverts unsaved Apply); Editing tab takes effect immediately.
-- Window chrome: a copy-text button (copies the whole Markdown source) and the three-segment layout control sit in the titlebar of every document window.
+- Window chrome: a copy-text button (copies the whole Markdown source) and the three-segment layout control sit at the right end of the format toolbar in every document window (the toolbar auto-hides by default and slides in when the pointer reaches the top of the document).
 
 ## Verification tips
 

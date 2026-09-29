@@ -39,7 +39,7 @@ In scope:
 Out of scope (these are documented design decisions, not vulnerabilities):
 
 - The app is signed ad-hoc and is not Apple-notarized. The README covers the one-time first-launch Gatekeeper approval.
-- The app is not sandboxed. The Security section of the README explains why.
+- The app is not sandboxed. The Privacy section of the README explains why.
 - Issues that require an attacker to already have local access to your account, or to modify the installed app bundle.
 
 ## Response

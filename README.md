@@ -1,5 +1,5 @@
 # MacMD
-This is MacMD. I made this because I wanted a simple Markdown editor on my Mac and apparently that doesn't exist.
+This is MacMD. I created it as a free, open-source Markdown editor for Mac.
 
 **[Download the latest release](../../releases/latest)** (macOS 14 or later)
 
@@ -19,7 +19,7 @@ The essential word processor features are here, too. Nothing fancy.
 
 - Font, font size
 - **Bold** [`Cmd-B`], *italics* [`Cmd-I`], ~~strikethrough~~ [`Cmd-Shift-X`]
-- `inline code` and fenced code blocks
+- `Inline code` and fenced code blocks
 - [Hyperlinks](https://github.com/sleetcrash/MacMD) [`Cmd-K`]
 - Checkboxes [`Cmd-Shift-L`]
 	- [x] projects
@@ -36,8 +36,7 @@ Mouse over the top of the doc and a toolbar will appear. On the far right side, 
 - **Split View**: Split View lets you see a live preview of the formatting as you type, with the Edit Pane on the left and the Preview Pane on the right.
 - **Preview View**: The last view lets you see the file in its formatted form. This is a good way to review before sharing or saving. The Preview Pane is view-only (except checkboxes, which you can tick right there), so just switch to one of the other views to make changes.
 
-- ***"This formatting is excessive!"***: If you prefer the no-frills experience, you can remove all formatting by switching to the **Classic View**: turn off **`View → Show Formatting`** [`Cmd-/`]. Formatting and theme remain viewable in the Preview Pane.
-	- Remember, the Preview Pane can be hidden by changing back to the default single-pane **Edit View**.
+***"This formatting is excessive!"***: If you prefer the no-frills experience, you can remove all formatting by switching to the **Classic View**: turn off **`View → Show Formatting`** [`Cmd-/`]. Formatting and theme remain viewable in the Preview Pane. Remember, the Preview Pane can be hidden by changing back to the default single-pane **Edit View**.
 
 <p>
   <img src="docs/screenshots/macmd-single-pane-edit-view-screenshot.png" width="32%" alt="Edit View: the single-pane editor with styled headings, lists, and checkboxes" />
@@ -77,7 +76,7 @@ Customize MacMD to your liking with pre-built and customizable themes that go be
 
 - Change the colors of your headings with a selection of pre-built themes (personally created by me).
 - Create your personalized experience by choosing colors you prefer. Compatible with the dynamic light/dark mode automatic settings.
-- Background color and cursor can also be customized to your liking for a fully unique setup.
+- Customize the background and cursor for a fully unique setup.
 
 Is this level of customization necessary? Yes. If you said "no," you can choose from the basic themes, keep the default, or toggle to the Classic View.
 
@@ -92,7 +91,7 @@ Is this level of customization necessary? Yes. If you said "no," you can choose 
 
 **`File → Export to HTML`** [`Cmd-Shift-E`]: Export the formatted preview as an HTML file, including all embedded diagrams and other elements.
 
-**`File → Export to PDF`**: Export the formatted preview as a single-page PDF.
+**`File → Export to PDF`**: Export the formatted preview as a PDF.
 
 **`File → Save`** [`Cmd-S`]: Save your `.md` file as plain Markdown. The preview is rebuilt from that text, so there is nothing extra to save. Want a copy? Hold [`Option`] with the **`File`** menu open and **`Duplicate`** becomes **`Save As`**.
 
@@ -100,7 +99,7 @@ Is this level of customization necessary? Yes. If you said "no," you can choose 
 
 MacMD is fully offline. It makes no network connections: no update checks, no crash reporting, no analytics. The preview and export render fully offline from a bundled engine, inside a web view with a strict content security policy, all network access denied, and no script execution from document content. The binary is code-signed with the hardened runtime enabled.
 
-The app is not sandboxed. It only touches files you open or save through the standard panels. Verify the entitlements:
+**No App Sandbox**: The App Sandbox is an optional walled-off mode Apple offers for apps (it's required on the Mac App Store). Early versions of MacMD used it, but it caused random "you don't have permission" errors when saving to external drives, so it's turned off. MacMD still only opens and saves the files you choose, and it asks macOS for no extra permissions (entitlements). Check for yourself:
 
 ```sh
 codesign -dv --entitlements - /Applications/MacMD.app
@@ -110,7 +109,7 @@ codesign -dv --entitlements - /Applications/MacMD.app
 
 ## Install
 
-Grab the DMG from the [latest release](../../releases/latest) and drag MacMD to Applications. It is signed but not notarized, so approve it once on first launch: on macOS 15 or later, **`System Settings → Privacy & Security → Open Anyway`**; on macOS 14, right-click the app and choose **`Open`**.
+Grab the DMG from the [latest release](../../releases/latest) and drag MacMD to Applications. It is signed but not notarized, so approve it once on first launch: on macOS 15 or later, go to **`System Settings → Privacy & Security`** and click **`Open Anyway`**; on macOS 14, right-click the app and choose **`Open`**.
 
 MacMD opens `.md`, `.markdown`, `.mdown`, and `.mkd`. To uninstall, drag it to the Trash. It leaves behind only its preferences file and small WebKit and cache folders under `~/Library`.
 
