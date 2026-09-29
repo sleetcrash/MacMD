@@ -2,6 +2,27 @@
 
 All notable changes to MacMD will be documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.0] - 2026-09-29
+
+### Added
+- Checkboxes in the preview: task list items show a real checkbox in place of the bullet, like GitHub, and clicking one checks or unchecks that line in your document (Undo works). Exported HTML shows the boxes too, without the clicking.
+- The Task Checkbox button and Format > Toggle Task Checkbox (Cmd-Shift-L) now turn a plain line or a bullet into a task; press again to check it. Before, they only toggled a box that was already there.
+- CMY, a new built-in Standard theme: cyan, magenta, and yellow headings on a fixed dark background. It replaces CMY(K), and if you had CMY(K) selected you move to CMY automatically.
+- The Theme dropdown groups Default, Cream, Parchment, and Gray under a new Basic header.
+- The toolbar's copy button shows a checkmark after it copies.
+
+### Changed
+- Toolbar buttons show a brief press state when clicked.
+- The cursor color field is labeled Cursor Color, and its Customize choice is now called Custom.
+- The block cursor is drawn more solidly so it reads as a block.
+
+### Fixed
+- Turning Blink off had no effect on macOS 15; the cursor now holds steady.
+- With Blink off, the block cursor could shrink to a thin line.
+- The pointer showed a text cursor over the auto-hiding toolbar instead of the arrow.
+- Choosing Custom for the cursor color did nothing because the color picker never appeared.
+- File names such as SKILL.md and README.md turned into web links in the preview.
+
 ## [2.3.0] - 2026-07-27
 
 ### Added
