@@ -692,6 +692,24 @@ final class ClickableTextView: NSTextView {
         return scrollView
     }
 
+    /// The auto-hidden toolbar floats over the top of the editor, but the text
+    /// view's own tracking area still covers that strip and would show the
+    /// I-beam there. Wherever another view sits on top, show the arrow instead.
+    override func mouseMoved(with event: NSEvent) {
+        if isCovered(at: event) { NSCursor.arrow.set() } else { super.mouseMoved(with: event) }
+    }
+
+    override func cursorUpdate(with event: NSEvent) {
+        if isCovered(at: event) { NSCursor.arrow.set() } else { super.cursorUpdate(with: event) }
+    }
+
+    private func isCovered(at event: NSEvent) -> Bool {
+        // hitTest takes superview coordinates; the content view's superview
+        // is the window frame, whose coordinates are the window's.
+        guard let hit = window?.contentView?.hitTest(event.locationInWindow) else { return false }
+        return !hit.isDescendant(of: self)
+    }
+
     override func mouseDown(with event: NSEvent) {
         guard let highlighter, let ts = textStorage else {
             super.mouseDown(with: event)
