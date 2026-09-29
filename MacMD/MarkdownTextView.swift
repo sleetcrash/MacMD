@@ -606,16 +606,17 @@ final class ClickableTextView: NSTextView {
         invalidateCaretLine()
     }
 
-    /// Make the WHOLE widened caret blink. AppKit's blink machinery never
-    /// routes the hide through `drawInsertionPoint`; it just redisplays the
-    /// THIN default caret rect, so a block/underline caret only flickered in
-    /// its inner strip. When a thin display pass clips the recorded caret
-    /// rect, widen the repaint to the full rect: the widened pass then either
-    /// hides the whole caret (off phase) or redraws it whole (on phase). The
-    /// widened pass is itself wider than the threshold, so this cannot recurse.
+    /// Keep the widened caret whole. AppKit's blink machinery (and a blink-off
+    /// restart, or the window becoming key) never routes through a full
+    /// repaint; it just redisplays the THIN default caret rect, so a
+    /// block/underline caret flickered or shrank to its inner strip. When a
+    /// thin display pass clips the recorded caret rect, widen the repaint to
+    /// the full rect: the widened pass then either hides the whole caret (off
+    /// phase) or redraws it whole (on phase). The widened pass is itself wider
+    /// than the threshold, so this cannot recurse.
     override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
-        if Theme.cursorBlink, Theme.cursorStyle != .bar,
+        if Theme.cursorStyle != .bar,
            let last = lastDrawnCaretRect,
            dirtyRect.width <= 4,
            dirtyRect.intersects(last),
