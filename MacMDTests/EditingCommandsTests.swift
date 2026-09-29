@@ -103,6 +103,53 @@ final class EditingCommandsTests: XCTestCase {
                        .continue(newPrefix: "\(Int.max). "))
     }
 
+    // MARK: - Task insert
+
+    func testTaskInsertPrefixesPlainLineAndKeepsCaretInText() {
+        let edit = EditingCommands.taskInsert(in: "hello", selection: NSRange(location: 2, length: 0))
+        XCTAssertEqual(edit, EditingCommands.TextEdit(range: NSRange(location: 0, length: 0),
+                                                      replacement: "- [ ] ",
+                                                      selectionAfter: NSRange(location: 8, length: 0)))
+    }
+
+    func testTaskInsertGoesAfterBulletMarker() {
+        let edit = EditingCommands.taskInsert(in: "* item", selection: NSRange(location: 6, length: 0))
+        XCTAssertEqual(edit?.range, NSRange(location: 2, length: 0))
+        XCTAssertEqual(edit?.replacement, "[ ] ")
+        XCTAssertEqual(edit?.selectionAfter, NSRange(location: 10, length: 0))
+    }
+
+    func testTaskInsertKeepsIndentAndMovesCaretOutOfIt() {
+        let edit = EditingCommands.taskInsert(in: "  nested", selection: NSRange(location: 0, length: 0))
+        XCTAssertEqual(edit?.range, NSRange(location: 2, length: 0))
+        XCTAssertEqual(edit?.replacement, "- [ ] ")
+        XCTAssertEqual(edit?.selectionAfter, NSRange(location: 8, length: 0))
+    }
+
+    func testTaskInsertTargetsCaretLineOnly() {
+        let edit = EditingCommands.taskInsert(in: "first\nsecond", selection: NSRange(location: 8, length: 0))
+        XCTAssertEqual(edit?.range, NSRange(location: 6, length: 0))
+        XCTAssertEqual(edit?.selectionAfter, NSRange(location: 14, length: 0))
+    }
+
+    func testTaskInsertOnBlankLine() {
+        let edit = EditingCommands.taskInsert(in: "a\n", selection: NSRange(location: 2, length: 0))
+        XCTAssertEqual(edit?.range, NSRange(location: 2, length: 0))
+        XCTAssertEqual(edit?.replacement, "- [ ] ")
+        XCTAssertEqual(edit?.selectionAfter, NSRange(location: 8, length: 0))
+    }
+
+    func testTaskInsertShiftsSelection() {
+        let edit = EditingCommands.taskInsert(in: "hello world", selection: NSRange(location: 6, length: 5))
+        XCTAssertEqual(edit?.selectionAfter, NSRange(location: 12, length: 5))
+    }
+
+    func testTaskInsertDeclinesOrderedItemsAndExistingTasks() {
+        XCTAssertNil(EditingCommands.taskInsert(in: "1. step", selection: NSRange(location: 0, length: 0)))
+        XCTAssertNil(EditingCommands.taskInsert(in: "2) step", selection: NSRange(location: 0, length: 0)))
+        XCTAssertNil(EditingCommands.taskInsert(in: "- [x] done", selection: NSRange(location: 0, length: 0)))
+    }
+
     // MARK: - List continuation: task items continue unchecked
 
     func testTaskContinuationStartsUnchecked() {

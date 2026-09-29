@@ -725,19 +725,22 @@ final class ClickableTextView: NSTextView {
         toggleCheckbox(at: bracket)
     }
 
-    /// Toggles the task checkbox on the line holding the insertion point.
-    /// Wired to a Format-menu command so the checkboxes are reachable from the
-    /// keyboard and VoiceOver, not just by clicking.
+    /// Toggles the task checkbox on the line holding the insertion point, or
+    /// makes that line a task item when it has none. Wired to the Format menu
+    /// and the toolbar so checkboxes are reachable from the keyboard and
+    /// VoiceOver, not just by clicking.
     @objc func toggleTaskCheckbox(_ sender: Any?) {
         guard let highlighter, let ts = textStorage else { return }
         let caret = min(selectedRange().location, ts.length)
         let line = (ts.string as NSString).lineRange(for: NSRange(location: caret, length: 0))
         let ranges = highlighter.taskCheckboxRanges(in: ts)
-        guard let bracket = ranges.first(where: { NSLocationInRange($0.location, line) }) else {
+        if let bracket = ranges.first(where: { NSLocationInRange($0.location, line) }) {
+            toggleCheckbox(at: bracket)
+        } else if let edit = EditingCommands.taskInsert(in: ts.string as NSString, selection: selectedRange()) {
+            applyTextEdit(edit)
+        } else {
             NSSound.beep()
-            return
         }
-        toggleCheckbox(at: bracket)
     }
 
     private func toggleCheckbox(at bracket: NSRange) {
