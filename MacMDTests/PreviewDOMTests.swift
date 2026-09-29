@@ -109,6 +109,14 @@ final class PreviewDOMTests: XCTestCase {
         XCTAssertEqual(ordered, 0, "ordered items stay text: the editor only toggles bullet tasks")
     }
 
+    func testNoBoxWhereTheEditorCouldNotToggleIt() async {
+        let h = PreviewHarness()
+        await h.load()
+        await h.render("> - [ ] quoted\n\n- \\[ ] escaped\n\n- &#91;x] entity\n\n-\n  [ ] late")
+        let boxes = (await h.eval("document.querySelectorAll('input.task-checkbox').length") as? NSNumber)?.intValue
+        XCTAssertEqual(boxes, 0, "blockquoted, escaped, and next-line boxes stay text, matching the editor")
+    }
+
     func testTaskLinesCountFrontMatterAndNesting() async {
         let h = PreviewHarness()
         await h.load()

@@ -30,20 +30,27 @@ md.core.ruler.push("macmd_source_line", function (state) {
   });
 });
 
-// GitHub-style task items, bullets only: the editor recognizes and toggles
-// bullet tasks only, so an ordered "1. [ ]" stays text. The checkbox takes the
-// bullet's place and carries its 1-based source line, so a click can flip the
-// matching box in the document.
-md.core.ruler.push("macmd_task_list", function (state) {
+// GitHub-style task items, recognized exactly where the editor toggles them:
+// a bullet (an ordered "1. [ ]" stays text) outside any blockquote, with the
+// box on the marker's own line. The checkbox takes the bullet's place and
+// carries its 1-based source line, so a click can flip the matching box in
+// the document. Runs before text_join, so an escaped "\[" or an entity
+// (text_special) never counts as a box.
+md.core.ruler.before("text_join", "macmd_task_list", function (state) {
   var tokens = state.tokens;
   var lists = [];
+  var quotes = 0;
   for (var i = 0; i < tokens.length; i++) {
     var t = tokens[i];
+    if (t.type === "blockquote_open") { quotes++; continue; }
+    if (t.type === "blockquote_close") { quotes--; continue; }
     if (t.type === "bullet_list_open" || t.type === "ordered_list_open") { lists.push(t.type); continue; }
     if (t.type === "bullet_list_close" || t.type === "ordered_list_close") { lists.pop(); continue; }
-    if (t.type !== "list_item_open" || !t.map || lists[lists.length - 1] !== "bullet_list_open") { continue; }
+    if (t.type !== "list_item_open" || !t.map || quotes > 0 || lists[lists.length - 1] !== "bullet_list_open") { continue; }
+    var para = tokens[i + 1];
     var inline = tokens[i + 2];
-    if (tokens[i + 1].type !== "paragraph_open" || !inline || inline.type !== "inline" || !inline.children.length) { continue; }
+    if (para.type !== "paragraph_open" || !para.map || para.map[0] !== t.map[0]) { continue; }
+    if (!inline || inline.type !== "inline" || !inline.children.length) { continue; }
     var first = inline.children[0];
     var mark = first.type === "text" && /^\[([ xX])\](?=\s|$)/.exec(first.content);
     if (!mark) { continue; }
