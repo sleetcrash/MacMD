@@ -105,6 +105,8 @@ struct EditorToolbarStrip: View {
     /// across DocumentGroup windows in MacMD), so the right-click menu's
     /// checkmark stays truthful in every open window.
     @State private var autoHide = ToolbarAutoHidePref.isOn
+    @State private var copyCount = 0
+    @State private var copied = false
 
     var body: some View {
         HStack(spacing: 2) {
@@ -119,7 +121,7 @@ struct EditorToolbarStrip: View {
                         .frame(width: 24, height: 20)
                         .contentShape(Rectangle())
                 }
-                .buttonStyle(.borderless)
+                .buttonStyle(ToolbarButtonStyle())
                 .disabled(!formatEnabled)
                 .help(item.label)
             }
@@ -135,18 +137,28 @@ struct EditorToolbarStrip: View {
                     .frame(width: 24, height: 20)
                     .contentShape(Rectangle())
             }
-            .buttonStyle(.borderless)
+            .buttonStyle(ToolbarButtonStyle())
             .help("Customize theme and appearance")
             Button {
                 onCopy()
+                copyCount += 1
             } label: {
-                Image(systemName: "doc.on.doc")
+                Image(systemName: copied ? "checkmark" : "doc.on.doc")
                     .font(.system(size: 11))
                     .frame(width: 24, height: 20)
                     .contentShape(Rectangle())
+                    .contentTransition(.symbolEffect(.replace))
             }
-            .buttonStyle(.borderless)
-            .help("Copy the document text")
+            .buttonStyle(ToolbarButtonStyle())
+            .help(copied ? "Copied" : "Copy the document text")
+            // A silent copy reads as a dead button: confirm with a brief
+            // checkmark. Each click restarts the timer (a new task id).
+            .task(id: copyCount) {
+                guard copyCount > 0 else { return }
+                copied = true
+                try? await Task.sleep(for: .seconds(1.2))
+                if !Task.isCancelled { copied = false }
+            }
             layoutPicker
                 .padding(.leading, 4)
         }
@@ -220,7 +232,7 @@ struct EditorToolbarStrip: View {
                     .frame(width: 18, height: 20)
                     .contentShape(Rectangle())
             }
-            .buttonStyle(.borderless)
+            .buttonStyle(ToolbarButtonStyle())
             .help("Decrease font size")
             Text("\(Int(theme.fontSize))")
                 .font(.system(size: 11))
@@ -233,10 +245,36 @@ struct EditorToolbarStrip: View {
                     .frame(width: 18, height: 20)
                     .contentShape(Rectangle())
             }
-            .buttonStyle(.borderless)
+            .buttonStyle(ToolbarButtonStyle())
             .help("Increase font size")
         }
         .padding(.leading, 6)
+    }
+}
+
+/// The toolbar's icon buttons: a faint rounded fill and a slight shrink while
+/// held, so a click visibly lands even when its edit is off screen.
+struct ToolbarButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        Pressable(configuration: configuration)
+    }
+
+    /// A custom style drops the borderless style's disabled dimming; this
+    /// view reads the enabled state back from the environment to restore it.
+    private struct Pressable: View {
+        let configuration: Configuration
+        @Environment(\.isEnabled) private var isEnabled
+
+        var body: some View {
+            configuration.label
+                .opacity(isEnabled ? 1 : 0.4)
+                .background(
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(.primary.opacity(configuration.isPressed ? 0.14 : 0))
+                )
+                .scaleEffect(configuration.isPressed ? 0.9 : 1)
+                .animation(.easeOut(duration: 0.08), value: configuration.isPressed)
+        }
     }
 }
 

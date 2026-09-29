@@ -312,7 +312,7 @@ struct SettingsView: View {
                     CursorControl(styleRaw: $wcCursorStyleRaw)
                         .frame(width: wideWidth, height: rowHeight)
                 }
-                LabeledField(label: "Color") {
+                LabeledField(label: "Cursor Color") {
                     cursorColorBox.frame(width: segWidth, height: rowHeight)
                 }
             }
@@ -465,7 +465,7 @@ struct SettingsView: View {
     private var cursorColorBox: some View {
         Button { toggle(.cursorColor) } label: {
             HStack(spacing: 0) {
-                Text(wcCursorColorHex == nil ? "Default" : "Customize")
+                Text(wcCursorColorHex == nil ? "Default" : "Custom")
                     .font(.system(size: 11))
                     .lineLimit(1)
                 Spacer(minLength: 8)
@@ -537,13 +537,14 @@ struct SettingsView: View {
                 rows.append(DropdownItem(id: "hdr.custom", kind: .header("Custom")))
                 rows.append(contentsOf: customs.map { themeRow($0, editable: true) })
             }
-            // (3) Default, then (4) the Cream/Parchment/Gray tints (its siblings).
+            // (3) Basic header + Default and the Cream/Parchment/Gray tints.
+            rows.append(DropdownItem(id: "hdr.basic", kind: .header("Basic")))
             rows.append(themeRow(Palette.defaultTheme, editable: false))
             rows.append(contentsOf: Palette.tintThemes.map { themeRow($0, editable: false) })
-            // (5) Standard header + presets.
+            // (4) Standard header + presets.
             rows.append(DropdownItem(id: "hdr.standard", kind: .header("Standard")))
             rows.append(contentsOf: ColorTheming.standardPresets.map { themeRow($0, editable: false) })
-            // (6) Unified header + presets.
+            // (5) Unified header + presets.
             rows.append(DropdownItem(id: "hdr.unified", kind: .header("Unified")))
             rows.append(contentsOf: ColorTheming.unifiedPresets.map { themeRow($0, editable: false) })
             return rows
@@ -567,7 +568,7 @@ struct SettingsView: View {
                 DropdownItem(id: "cursor.custom",
                              kind: .backgroundCustom(picked),
                              selected: wcCursorColorHex != nil,
-                             action: { pickCursorColorCustom() },
+                             action: { openCursorColorPicker() },
                              onEdit: picked == nil ? nil : { openCursorColorPicker() }),
             ]
         }
@@ -603,13 +604,8 @@ struct SettingsView: View {
         openMenu = nil
     }
 
-    /// The cursor's Customize row: open the panel when no color is picked yet
-    /// (the first pick selects it); with one, the pencil reopens the panel.
-    private func pickCursorColorCustom() {
-        openMenu = nil
-        if wcCursorColorHex == nil { cursorColorPickerActivation += 1 }
-    }
-
+    /// The cursor's Custom row and its pencil: open the color panel (the
+    /// first pick selects Customize).
     private func openCursorColorPicker() {
         openMenu = nil
         cursorColorPickerActivation += 1
@@ -683,7 +679,7 @@ struct DropdownItem: Identifiable {
         case fontSample(FontFamily) // family name rendered in its own face
         case backgroundSwatch(NSColor)   // a single-swatch Default row (cursor color)
         case backgroundPair(name: String, pair: ColorPair)  // Default/preset: light | dark pair
-        case backgroundCustom(NSColor?)  // Background's Custom row: the picked color, or nil = blank "+"
+        case backgroundCustom(NSColor?)  // the cursor color's Custom row: the picked color, or nil = blank "+"
         case backgroundSaved(hex: String, color: NSColor)  // a library swatch, removable
     }
     let id: String
@@ -1104,7 +1100,7 @@ private struct DropdownRow: View {
         .contentShape(Rectangle())
     }
 
-    /// The Cursor Color dropdown's Customize row: the picked color's swatch
+    /// The Cursor Color dropdown's Custom row: the picked color's swatch
     /// right-aligned like the theme rows (an empty swatch before one is
     /// picked), and the trailing icon slot holding plus (nothing picked yet)
     /// or the pencil that reopens the color panel. Mirrors paletteRow's
@@ -1113,7 +1109,7 @@ private struct DropdownRow: View {
         HStack(spacing: 0) {
             Button { item.action?() } label: {
                 HStack(spacing: 0) {
-                    Text("Customize").font(.system(size: 11)).lineLimit(1)
+                    Text("Custom").font(.system(size: 11)).lineLimit(1)
                     Spacer(minLength: 8)
                     if let color {
                         Swatch(color: Color(nsColor: color))
@@ -1125,7 +1121,7 @@ private struct DropdownRow: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Custom background")
+            .accessibilityLabel("Custom cursor color")
             .accessibilityAddTraits(item.selected ? .isSelected : [])
 
             ZStack(alignment: .trailing) {
@@ -1135,7 +1131,7 @@ private struct DropdownRow: View {
                         Image(systemName: "pencil").font(.system(size: 10))
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("Edit custom background color")
+                    .accessibilityLabel("Edit custom cursor color")
                 } else {
                     Image(systemName: "plus").font(.system(size: 10))
                 }
@@ -1432,8 +1428,8 @@ struct SizeControl: View {
 /// hex working copy (the Cursor Color picker mounts one), reusing the
 /// CustomThemeEditor bridge pattern (the panel reports picks
 /// through a real NSColorWell). Unlike that one it is never clicked directly:
-/// it activates programmatically when `activation` bumps (picking Custom with
-/// no color, or the pencil), and it opts out of hit-testing entirely so it can
+/// it activates programmatically when `activation` bumps (the Custom row or
+/// its pencil), and it opts out of hit-testing entirely so it can
 /// never swallow clicks meant for the controls.
 private struct SettingsColorWell: NSViewRepresentable {
     @Binding var hex: String?
@@ -1459,7 +1455,10 @@ private struct SettingsColorWell: NSViewRepresentable {
         if context.coordinator.lastActivation != activation {
             context.coordinator.lastActivation = activation
             well.color = hex.flatMap { NSColor(hex: $0) } ?? initialColor
+            // Activating only makes the well the panel's target; it never
+            // shows the panel, so front it explicitly.
             well.activate(true)
+            NSColorPanel.shared.makeKeyAndOrderFront(nil)
         }
     }
 

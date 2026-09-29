@@ -546,10 +546,11 @@ final class ClickableTextView: NSTextView {
     private var lastDrawnCaretRect: NSRect?
 
     /// Draw the caret per `Theme.cursorStyle` by widening / repositioning the
-    /// rect and calling super. Block uses reduced alpha so the glyph under it
+    /// rect and calling super. Block uses partial alpha so the glyph under it
     /// stays readable. The accent color is supplied by AppKit (set as
-    /// `insertionPointColor`). Blink-off is handled by `CaretBlink` (the blink
-    /// timer never fires), so an off pass here is always a real erase.
+    /// `insertionPointColor`). Blink-off is handled by `CaretBlink` (it keeps
+    /// restarting the blink timer before its off phase), so an off pass here
+    /// is always a real erase.
     override func drawInsertionPoint(in rect: NSRect, color: NSColor, turnedOn flag: Bool) {
         var caretRect = rect
         var caretColor = color
@@ -559,7 +560,7 @@ final class ClickableTextView: NSTextView {
         case .block:
             caretRect.size.width = CursorGeometry.blockWidth(glyphWidth: glyphWidthAtCaret(),
                                                              fallback: spaceAdvance())
-            caretColor = color.withAlphaComponent(0.5)
+            caretColor = color.withAlphaComponent(0.7)
         case .underline:
             caretRect = CursorGeometry.underlineRect(caret: rect,
                                                      glyphWidth: glyphWidthAtCaret(),
@@ -605,16 +606,17 @@ final class ClickableTextView: NSTextView {
         invalidateCaretLine()
     }
 
-    /// Make the WHOLE widened caret blink. AppKit's blink machinery never
-    /// routes the hide through `drawInsertionPoint`; it just redisplays the
-    /// THIN default caret rect, so a block/underline caret only flickered in
-    /// its inner strip. When a thin display pass clips the recorded caret
-    /// rect, widen the repaint to the full rect: the widened pass then either
-    /// hides the whole caret (off phase) or redraws it whole (on phase). The
-    /// widened pass is itself wider than the threshold, so this cannot recurse.
+    /// Keep the widened caret whole. AppKit's blink machinery (and a blink-off
+    /// restart, or the window becoming key) never routes through a full
+    /// repaint; it just redisplays the THIN default caret rect, so a
+    /// block/underline caret flickered or shrank to its inner strip. When a
+    /// thin display pass clips the recorded caret rect, widen the repaint to
+    /// the full rect: the widened pass then either hides the whole caret (off
+    /// phase) or redraws it whole (on phase). The widened pass is itself wider
+    /// than the threshold, so this cannot recurse.
     override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
-        if Theme.cursorBlink, Theme.cursorStyle != .bar,
+        if Theme.cursorStyle != .bar,
            let last = lastDrawnCaretRect,
            dirtyRect.width <= 4,
            dirtyRect.intersects(last),
@@ -669,8 +671,8 @@ final class ClickableTextView: NSTextView {
         (" " as NSString).size(withAttributes: [.font: Theme.editorFont]).width
     }
 
-    /// Force the caret to redraw after a style/blink change. Re-registers the
-    /// blink periods first, then restarts the caret timer so it picks them up.
+    /// Force the caret to redraw after a style/blink change. Starts or stops
+    /// the blink-off steady timer first, then restarts the caret timer.
     func refreshCaret() {
         CaretBlink.apply(Theme.cursorBlink)
         needsDisplay = true
@@ -690,6 +692,24 @@ final class ClickableTextView: NSTextView {
         scrollView.documentView = textView
         scrollView.hasVerticalScroller = true
         return scrollView
+    }
+
+    /// The auto-hidden toolbar floats over the top of the editor, but the text
+    /// view's own tracking area still covers that strip and would show the
+    /// I-beam there. Wherever another view sits on top, show the arrow instead.
+    override func mouseMoved(with event: NSEvent) {
+        if isCovered(at: event) { NSCursor.arrow.set() } else { super.mouseMoved(with: event) }
+    }
+
+    override func cursorUpdate(with event: NSEvent) {
+        if isCovered(at: event) { NSCursor.arrow.set() } else { super.cursorUpdate(with: event) }
+    }
+
+    private func isCovered(at event: NSEvent) -> Bool {
+        // hitTest takes superview coordinates; the content view's superview
+        // is the window frame, whose coordinates are the window's.
+        guard let hit = window?.contentView?.hitTest(event.locationInWindow) else { return false }
+        return !hit.isDescendant(of: self)
     }
 
     override func mouseDown(with event: NSEvent) {
@@ -725,19 +745,22 @@ final class ClickableTextView: NSTextView {
         toggleCheckbox(at: bracket)
     }
 
-    /// Toggles the task checkbox on the line holding the insertion point.
-    /// Wired to a Format-menu command so the checkboxes are reachable from the
-    /// keyboard and VoiceOver, not just by clicking.
+    /// Toggles the task checkbox on the line holding the insertion point, or
+    /// makes that line a task item when it has none. Wired to the Format menu
+    /// and the toolbar so checkboxes are reachable from the keyboard and
+    /// VoiceOver, not just by clicking.
     @objc func toggleTaskCheckbox(_ sender: Any?) {
         guard let highlighter, let ts = textStorage else { return }
         let caret = min(selectedRange().location, ts.length)
         let line = (ts.string as NSString).lineRange(for: NSRange(location: caret, length: 0))
         let ranges = highlighter.taskCheckboxRanges(in: ts)
-        guard let bracket = ranges.first(where: { NSLocationInRange($0.location, line) }) else {
+        if let bracket = ranges.first(where: { NSLocationInRange($0.location, line) }) {
+            toggleCheckbox(at: bracket)
+        } else if let edit = EditingCommands.taskInsert(in: ts.string as NSString, selection: selectedRange()) {
+            applyTextEdit(edit)
+        } else {
             NSSound.beep()
-            return
         }
-        toggleCheckbox(at: bracket)
     }
 
     private func toggleCheckbox(at bracket: NSRange) {
@@ -745,12 +768,23 @@ final class ClickableTextView: NSTextView {
         let innerRange = NSRange(location: bracket.location + 1, length: 1)
         guard NSMaxRange(innerRange) <= ts.length else { return }
         let current = (ts.string as NSString).substring(with: innerRange)
-        let replacement = (current == " ") ? "x" : " "
+        replaceKeepingSelection(innerRange, with: current == " " ? "x" : " ")
+    }
 
+    /// Flips the bullet task on a 1-based source line: a preview checkbox click.
+    func toggleTask(atLine line: Int) {
+        guard let ts = textStorage,
+              let toggle = EditingCommands.taskToggle(in: ts.string as NSString, line: line) else { return }
+        replaceKeepingSelection(toggle.range, with: toggle.replacement)
+    }
+
+    /// An undo-aware one-spot edit that leaves the caret where it was.
+    private func replaceKeepingSelection(_ range: NSRange, with replacement: String) {
+        guard let ts = textStorage else { return }
         let priorSelection = selectedRange()
-        guard shouldChangeText(in: innerRange, replacementString: replacement) else { return }
+        guard shouldChangeText(in: range, replacementString: replacement) else { return }
         ts.beginEditing()
-        ts.replaceCharacters(in: innerRange, with: replacement)
+        ts.replaceCharacters(in: range, with: replacement)
         ts.endEditing()
         didChangeText()
         setSelectedRange(priorSelection)

@@ -98,6 +98,65 @@ enum EditingCommands {
         )
     }
 
+    /// Make the caret's line a task item: a bullet gains `[ ] ` after its
+    /// marker, any other line gains `- [ ] ` after its indent, and the
+    /// selection moves with its text. Returns nil for an existing task (the
+    /// toggle's job) and for an ordered item, since the task highlighter only
+    /// recognizes bullet tasks and could never toggle the result.
+    static func taskInsert(in text: NSString, selection: NSRange) -> TextEdit? {
+        let lineRange = text.lineRange(for: NSRange(location: selection.location, length: 0))
+        let line = text.substring(with: lineRange)
+        let full = NSRange(location: 0, length: (line as NSString).length)
+
+        let excluded = try! NSRegularExpression(pattern: "^[ \\t]*([0-9]+[.)]|[-*+][ \\t]+\\[[ xX]\\])[ \\t]")
+        guard excluded.firstMatch(in: line, range: full) == nil else { return nil }
+
+        let insertion: String
+        let prefixLength: Int
+        let bullet = try! NSRegularExpression(pattern: "^[ \\t]*[-*+][ \\t]+")
+        if let m = bullet.firstMatch(in: line, range: full) {
+            insertion = "[ ] "
+            prefixLength = m.range.length
+        } else {
+            insertion = "- [ ] "
+            prefixLength = line.prefix(while: { $0 == " " || $0 == "\t" }).utf16.count
+        }
+
+        let at = lineRange.location + prefixLength
+        let shift = (insertion as NSString).length
+        let start = max(selection.location, at) + shift
+        let end = max(NSMaxRange(selection), at) + shift
+        return TextEdit(
+            range: NSRange(location: at, length: 0),
+            replacement: insertion,
+            selectionAfter: NSRange(location: start, length: end - start)
+        )
+    }
+
+    /// The one-character edit that flips the bullet task's box on 1-based
+    /// `line` (`[ ]` to `[x]` and back), or nil when that line is not a bullet
+    /// task. Lines are counted the way the preview's markdown-it counts them
+    /// (LF, CRLF, or a lone CR), so a preview checkbox's line lands here.
+    static func taskToggle(in text: NSString, line: Int) -> (range: NSRange, replacement: String)? {
+        guard line >= 1 else { return nil }
+        var current = 1, lineStart = 0, i = 0
+        while current < line, i < text.length {
+            let c = text.character(at: i)
+            i += 1
+            if c == 0x0A || (c == 0x0D && (i == text.length || text.character(at: i) != 0x0A)) {
+                current += 1
+                lineStart = i
+            }
+        }
+        guard current == line else { return nil }
+        let task = try! NSRegularExpression(pattern: "[ \\t]*[-*+][ \\t]+\\[([ xX])\\](?=[ \\t\\r\\n]|$)")
+        guard let m = task.firstMatch(in: text as String, options: .anchored,
+                                      range: NSRange(location: lineStart, length: text.length - lineStart))
+        else { return nil }
+        let mark = m.range(at: 1)
+        return (mark, text.substring(with: mark) == " " ? "x" : " ")
+    }
+
     /// Decide what Return should do on a list line. Regexes are compiled per
     /// call: Return is human-paced, so the cost is negligible, and a local
     /// `let` keeps this type free of non-Sendable shared state under Swift 6
