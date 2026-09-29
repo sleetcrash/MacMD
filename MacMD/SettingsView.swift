@@ -312,7 +312,7 @@ struct SettingsView: View {
                     CursorControl(styleRaw: $wcCursorStyleRaw)
                         .frame(width: wideWidth, height: rowHeight)
                 }
-                LabeledField(label: "Color") {
+                LabeledField(label: "Cursor Color") {
                     cursorColorBox.frame(width: segWidth, height: rowHeight)
                 }
             }
@@ -537,13 +537,14 @@ struct SettingsView: View {
                 rows.append(DropdownItem(id: "hdr.custom", kind: .header("Custom")))
                 rows.append(contentsOf: customs.map { themeRow($0, editable: true) })
             }
-            // (3) Default, then (4) the Cream/Parchment/Gray tints (its siblings).
+            // (3) Basic header + Default and the Cream/Parchment/Gray tints.
+            rows.append(DropdownItem(id: "hdr.basic", kind: .header("Basic")))
             rows.append(themeRow(Palette.defaultTheme, editable: false))
             rows.append(contentsOf: Palette.tintThemes.map { themeRow($0, editable: false) })
-            // (5) Standard header + presets.
+            // (4) Standard header + presets.
             rows.append(DropdownItem(id: "hdr.standard", kind: .header("Standard")))
             rows.append(contentsOf: ColorTheming.standardPresets.map { themeRow($0, editable: false) })
-            // (6) Unified header + presets.
+            // (5) Unified header + presets.
             rows.append(DropdownItem(id: "hdr.unified", kind: .header("Unified")))
             rows.append(contentsOf: ColorTheming.unifiedPresets.map { themeRow($0, editable: false) })
             return rows
