@@ -94,6 +94,15 @@ final class PreviewDOMTests: XCTestCase {
         XCTAssertEqual(brCount, 1, "a single newline inside a paragraph renders as a visible line break")
     }
 
+    func testFileNamesStayTextWhileRealLinksAutolink() async {
+        let h = PreviewHarness()
+        await h.load()
+        await h.render("See SKILL.md and README.md, www.github.com, https://example.com, and me@example.com.")
+        let hrefs = await h.eval("JSON.stringify(Array.from(document.querySelectorAll('a')).map(function (a) { return a.getAttribute('href'); }))") as? String
+        XCTAssertEqual(hrefs, #"["http://www.github.com","https://example.com","mailto:me@example.com"]"#,
+                       "a .md file name is not a web address; www., https, and email links still autolink")
+    }
+
     func testBulletTasksRenderAsCheckboxesInPlaceOfTheBullet() async {
         let h = PreviewHarness()
         await h.load()
