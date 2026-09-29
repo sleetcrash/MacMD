@@ -1,94 +1,126 @@
 # MacMD
-
-A fast, native Markdown editor for macOS with live syntax highlighting, a rendered preview, and Mermaid diagrams. Free and open source, MIT licensed, and a download smaller than 3 MB with zero telemetry.
-
-Built for the Markdown files developers actually live in: `README.md`, `CLAUDE.md`, `AGENTS.md`, agent and skill configs, notes, and docs.
+This is MacMD. I created it as a free, open-source Markdown editor for Mac.
 
 **[Download the latest release](../../releases/latest)** (macOS 14 or later)
 
-![MacMD editing a CLAUDE.md file, with the live preview rendering a Mermaid flowchart and three-color headings](docs/screenshot.png)
+![The MacMD editor with a short sample document: color-coded headings and body text](docs/screenshots/macmd-sample-screenshot.png)
 
-## Live preview
+## Features
+Here are some things you can do with MacMD.
 
-Every document window carries a three-segment layout control in its titlebar: editor only, split, or preview only (View → Show Preview, Cmd-Shift-P, toggles the pane too). The rendered view updates as you type and the two panes scroll together, in both directions. It renders tables, strikethrough, and autolinked URLs, mirrors your editor theme, fonts, and background in light and dark, loads images from the document's folder, and opens links in your browser. Front matter renders as a metadata card with theme-colored keys instead of pretending to be a heading.
+- Essential formatting
+- Live preview toggle
+- Mermaid diagrams
+- Agentic AI tool templates
+- Customizable themes
 
-Documents open editor-only. Like the formatting toggle, the layout applies to every open window at once. A one-click copy button next to the layout control puts the whole document on the clipboard.
+### Essential Formatting
+The essential word processor features are here, too. Nothing fancy.
 
-## Mermaid diagrams
+- Font, font size
+- **Bold** [`Cmd-B`], *italics* [`Cmd-I`], ~~strikethrough~~ [`Cmd-Shift-X`]
+- `Inline code` and fenced code blocks
+- [Hyperlinks](https://github.com/sleetcrash/MacMD) [`Cmd-K`]
+- Checkboxes [`Cmd-Shift-L`]
+	- [x] projects
+	- [x] task lists
+	- [ ] groceries idk
+- Word count, read-time estimate, numbered lines. These and more can be toggled on/off in the **`View`** menu.
+- Spelling and grammar check can be toggled in **`Edit → Spelling and Grammar`**.
+- Word count, spelling check, and toolbar settings can also be found in **`MacMD → Settings → Editing`**.
 
-Fenced `mermaid` code blocks render as real diagrams in the preview and in exports, as in the screenshot above. Twelve diagram types ship: flowchart, sequence, class, state, entity relationship, gantt, pie, mindmap, git graph, journey, timeline, and quadrant. Rendering happens locally in a locked-down sandbox: document content cannot run script, and nothing touches the network.
+### Live Preview Toggle
+Mouse over the top of the doc and a toolbar will appear. On the far right side, there are three view options. From left to right:
 
-## Export to HTML and PDF
+- **Edit View (Default)**: The default is this view, the standard single-pane view where you edit the doc.
+- **Split View**: Split View lets you see a live preview of the formatting as you type, with the Edit Pane on the left and the Preview Pane on the right.
+- **Preview View**: The last view lets you see the file in its formatted form. This is a good way to review before sharing or saving. The Preview Pane is view-only (except checkboxes, which you can tick right there), so just switch to one of the other views to make changes.
 
-File → Export to HTML (Cmd-Shift-E) writes a single self-contained file. Styling is inlined and matches your theme, images from the document folder are embedded, and Mermaid diagrams are baked in as SVG. Remote image references are stripped, so the exported file loads nothing from the network when someone opens it.
-
-File → Export to PDF writes a single-page PDF of the rendered document with the theme background running edge to edge, no printer margins, through the same offline pipeline.
-
-## The editor
-
-![The MacMD editor with a unified red theme, showing highlighted headings, code, task lists, and a blockquote](docs/editor.png)
-
-Everything stays plain text; the editor styles it live and never rewrites it:
-
-- Headings, bold, italic, strikethrough, inline code, fenced code blocks (backtick and tilde), links, ordered and unordered lists, blockquotes, horizontal rules, and YAML/TOML front matter
-- Task lists with clickable checkboxes (or Cmd-Shift-L on the current line)
-- Return continues lists and keeps ordered-list numbering going
-- Line numbers down the left edge (View → Show Line Numbers), in styled and plain modes alike; Cmd-/ still flips every window between styled Markdown and plain source
-- A format toolbar under the titlebar with one-click formatting, the editor font and size, and a Settings shortcut, hideable from Settings → Editing
-- Templates: File → New from Template starts a prefilled `SKILL.md`, agent, `CLAUDE.md`, or `AGENTS.md`
-- Find and Replace, Print, spell check with optional grammar, and an optional word-count tab with reading time
-- Format commands that wrap or unwrap the selection: bold (Cmd-B), italic (Cmd-I), strikethrough (Cmd-Shift-X), inline code, link (Cmd-K)
-
-## Themes
+***"This formatting is excessive!"***: If you prefer the no-frills experience, you can remove all formatting by switching to the **Classic View**: turn off **`View → Show Formatting`** [`Cmd-/`]. Formatting and theme remain viewable in the Preview Pane. Remember, the Preview Pane can be hidden by changing back to the default single-pane **Edit View**.
 
 <p>
-  <img src="docs/settings.png" width="49%" alt="The Settings window: Appearance tab with mode, background, theme, scheme, font, and cursor controls plus a live preview" />
-  <img src="docs/themes.png" width="49%" alt="The theme dropdown open, showing six preset palettes with light and dark swatches plus Custom+" />
+  <img src="docs/screenshots/macmd-edit-view-single-pane-screenshot.png" width="49%" alt="Edit View: the single-pane editor with styled Markdown" />
+  <img src="docs/screenshots/macmd-split-view-live-preview-screenshot.png" width="49%" alt="Split View: the Markdown source on the left and the live preview on the right" />
+  <img src="docs/screenshots/macmd-preview-view-screenshot.png" width="49%" alt="Preview View: the formatted document on its own" />
+  <img src="docs/screenshots/macmd-classic-view-screenshot.png" width="49%" alt="Classic View: plain Markdown source with formatting turned off" />
 </p>
 
-Settings (Cmd-,) covers Light, Dark, or System mode, the editor background (any custom color, with text that adjusts to stay readable), the body font (eight families) and size, and the cursor style (bar, block, or underline, blink optional), all with a live preview in the window.
+### Mermaid Diagrams
+Fenced Mermaid code blocks render as real diagrams in the preview and in exports. Twelve diagram types are possible:
 
-Heading color is a scheme choice: Default (no color), Unified (one color for every level, eight presets), or Standard (three colors for H1/H2/H3, six preset palettes). The hero screenshot above is Standard with the CMY(K) palette.
+1. flowchart
+2. sequence
+3. class
+4. state
+5. entity relationship
+6. Gantt
+7. pie
+8. mindmap
+9. git graph
+10. journey
+11. timeline
+12. quadrant
 
-<img src="docs/theme-builder.png" width="45%" alt="The Custom Theme builder with separate H1, H2, and H3 colors for light and dark" />
+See [mermaid-diagrams-example.md](docs/mermaid-diagrams-example.md) for examples of each.
 
-Custom+ opens the theme builder: pick your own colors, separately for light and dark or for a single side used everywhere, name the palette, and it saves into the theme list. Custom editor backgrounds save into their own list the same way.
+![Mermaid source on the left rendering as a flowchart and a sequence diagram in the preview on the right](docs/screenshots/mermaid-charts-screenshot.png)
 
-## Plain text you can trust
+### Agentic AI Tool Templates
+Built-in templates for your AI/agentic tools, including SKILL.md, agent-name.md, CLAUDE.md, and AGENTS.md, can be found in **`File → New from Template`**.
 
-What you save is what you typed: UTF-8, no smart quotes, no dash substitution, no autocorrect, and paste always comes in plain. The two exceptions are old text-editor conventions, a single trailing newline added on save if missing and a leading BOM stripped on read. A file that is not valid UTF-8 is refused with an error instead of silently corrupted. Files over 8 MiB open unstyled so typing stays fast; over 64 MiB they are refused.
+These are ready for you or your AI of choice to edit and build from. SKILL.md and agent-name.md come with the YAML front matter Claude Code reads to decide when to use them.
 
-## Privacy and security
+<img src="docs/screenshots/skillmd-template-screenshot.png" width="70%" alt="A new SKILL.md from the template, with YAML front matter and starter sections" />
 
-MacMD makes no network connections: no update checks, no crash reporting, no analytics. The preview and export render fully offline from a bundled engine, inside a web view with a strict content security policy, all network access denied, and no script execution from document content. The binary is code-signed with the hardened runtime enabled.
+### Customizable Themes
+Customize MacMD to your liking with pre-built and customizable themes that go beyond light and dark mode. Customization lives in **`MacMD → Settings → Appearance`** or [`Cmd-,`].
 
-The app is not sandboxed (the App Sandbox broke saving to external drives; BBEdit, Sublime Text, and VS Code make the same call). It only touches files you open or save through the standard panels. Verify the entitlements yourself:
+- Change the colors of your headings with a selection of pre-built themes (personally created by me).
+- Create your personalized experience by choosing colors you prefer. Compatible with the dynamic light/dark mode automatic settings.
+- Customize the background and cursor for a fully unique setup.
 
-    codesign -dv --entitlements - /Applications/MacMD.app
+Is this level of customization necessary? Yes. If you said "no," you can choose from the basic themes, keep the default, or toggle to the Classic View.
 
-Security reports: see [SECURITY.md](SECURITY.md).
+<p>
+  <img src="docs/screenshots/appearance-settings-screenshot.png" width="36%" alt="The Settings window: theme, mode, font, size, cursor style, cursor color, and blink, with a live preview" />
+  <img src="docs/screenshots/theme-builder-screenshot.png" width="48%" alt="The Theme Builder with heading and background colors for light and dark, next to Settings and the color picker" />
+</p>
+
+## Exporting & Saving
+
+**Export to HTML and PDF**
+
+**`File → Export to HTML`** [`Cmd-Shift-E`]: Export the formatted preview as an HTML file, including all embedded diagrams and other elements.
+
+**`File → Export to PDF`**: Export the formatted preview as a PDF.
+
+**`File → Save`** [`Cmd-S`]: Save your `.md` file as plain Markdown. The preview is rebuilt from that text, so there is nothing extra to save. Want a copy? Hold [`Option`] with the **`File`** menu open and **`Duplicate`** becomes **`Save As`**.
+
+## Privacy
+
+MacMD is fully offline. It makes no network connections: no update checks, no crash reporting, no analytics. The preview and export render fully offline from a bundled engine, inside a web view with a strict content security policy, all network access denied, and no script execution from document content. The binary is code-signed with the hardened runtime enabled.
+
+**Security Reports**: See [SECURITY.md](SECURITY.md).
 
 ## Install
 
-Grab the DMG from the [latest release](../../releases/latest) and drag MacMD to Applications. It is signed but not notarized, so approve it once on first launch: on macOS 15 or newer, System Settings → Privacy & Security → Open Anyway; on macOS 14, right-click the app → Open.
+Grab the DMG from the [latest release](../../releases/latest) and drag MacMD to Applications. It is signed but not notarized, so approve it once on first launch: on macOS 15 or later, go to **`System Settings → Privacy & Security`** and click **`Open Anyway`**; on macOS 14, right-click the app and choose **`Open`**.
 
-MacMD opens `.md`, `.markdown`, `.mdown`, and `.mkd`. Uninstalling is dragging it to the Trash; the only leftover is a small preferences file in `~/Library/Preferences`.
+MacMD opens `.md`, `.markdown`, `.mdown`, and `.mkd`. To uninstall, drag it to the Trash. It leaves behind only its preferences file and small WebKit and cache folders under `~/Library`.
 
 ## Building
 
-Requires Xcode 16 or newer. Open `MacMD.xcodeproj` and hit Cmd-R, or:
+Requires Xcode 16 or later. Open `MacMD.xcodeproj` and hit [`Cmd-R`], or:
 
-    xcodebuild -project MacMD.xcodeproj -scheme MacMD -configuration Release -destination 'platform=macOS' build
+```sh
+xcodebuild -project MacMD.xcodeproj -scheme MacMD -configuration Release -destination 'platform=macOS' build
+```
 
-Run the tests the same way with `xcodebuild test`. The suite (385 tests) pins every highlighting rule, the file-handling guarantees, the render pipeline, and a hostile-input security gate. Project layout and house rules are in [CONTRIBUTING.md](CONTRIBUTING.md).
+Run the tests the same way with `xcodebuild test`. Project layout and house rules are in [CONTRIBUTING.md](CONTRIBUTING.md).
 
-## For AI agents
+## For AI Agents
 
-The repo ships a ready-to-use skill at [`skills/macmd/SKILL.md`](skills/macmd/SKILL.md): the app's capability map, every `defaults` configuration key, and the full menu map, so an agent can open, configure, and verify MacMD without spelunking. Copy the `macmd` folder into `~/.claude/skills/` (or your agent's skill directory).
-
-## Roadmap
-
-An outline pane and a file browser are in development for 2.1. Multi-cursor editing is not planned.
+The repo ships a ready-to-use skill at [`skills/macmd/SKILL.md`](skills/macmd/SKILL.md): the app's capability map, every `defaults` configuration key, and the full menu map, so an agent can open, configure, and verify MacMD on its own. Copy the `macmd` folder into `~/.claude/skills/` (or your agent's skill directory).
 
 ## License
 

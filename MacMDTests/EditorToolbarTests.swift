@@ -36,6 +36,25 @@ final class EditorToolbarTests: XCTestCase {
         XCTAssertFalse(ToolbarPref.isOn)
     }
 
+    /// The auto-hidden toolbar floats over the editor, whose tracking area
+    /// still covers that strip: the editor must hand back the arrow there.
+    func testEditorShowsArrowWhereAnotherViewCoversIt() {
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 400, height: 300),
+                              styleMask: [.titled], backing: .buffered, defer: false)
+        let content = NSView(frame: NSRect(x: 0, y: 0, width: 400, height: 300))
+        window.contentView = content
+        let editor = ClickableTextView(frame: content.bounds)
+        content.addSubview(editor)
+        content.addSubview(NSView(frame: NSRect(x: 0, y: 270, width: 400, height: 30)))
+
+        NSCursor.iBeam.set()
+        let overCover = NSEvent.mouseEvent(with: .mouseMoved, location: NSPoint(x: 100, y: 285),
+                                           modifierFlags: [], timestamp: 0, windowNumber: window.windowNumber,
+                                           context: nil, eventNumber: 0, clickCount: 0, pressure: 0)!
+        editor.mouseMoved(with: overCover)
+        XCTAssertEqual(NSCursor.current, NSCursor.arrow)
+    }
+
     /// The toolbar reuses the SAME editor actions the Format menu drives, so
     /// each expected string matches outputs already proven in
     /// EditingCommandsTests / TaskListInteractionTests.

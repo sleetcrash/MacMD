@@ -24,6 +24,10 @@ p, ul, ol, blockquote, pre, table, hr { margin: 0 0 1em; }
 ul, ol { padding-left: 1.6em; }
 li + li { margin-top: 0.2em; }
 
+/* GitHub-style task items: the checkbox sits where the bullet was. */
+.task-list-item { list-style: none; }
+.task-checkbox { margin: 0 0.4em 0 -1.4em; vertical-align: -0.1em; }
+
 img { max-width: 100%; height: auto; }
 
 code { padding: 0.15em 0.35em; border-radius: 4px; }

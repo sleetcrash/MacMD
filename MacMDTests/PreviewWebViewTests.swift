@@ -24,6 +24,25 @@ final class PreviewWebViewTests: XCTestCase {
         XCTAssertNotNil(bridge.scrollPreviewToLine, "attach installs the editor-drives-preview closure")
     }
 
+    func testShellMessagesRouteByNameAndRejectBadLines() {
+        var toggled: [Int] = []
+        var scrolled: [Int] = []
+        let bridge = ScrollSyncBridge()
+        bridge.scrollEditorToLine = { scrolled.append($0) }
+        let preview = PreviewWebView(text: "", theme: ThemeController(), syncBridge: bridge,
+                                     documentDirectory: nil, onToggleTask: { toggled.append($0) })
+        let coordinator = preview.makeCoordinator()
+        preview.applyState(to: coordinator)
+
+        coordinator.receive(name: PreviewWebView.taskToggleMessageName, body: NSNumber(value: 3))
+        coordinator.receive(name: PreviewWebView.taskToggleMessageName, body: "3")
+        coordinator.receive(name: PreviewWebView.taskToggleMessageName, body: NSNumber(value: 0))
+        coordinator.receive(name: PreviewWebView.scrollMessageName, body: NSNumber(value: 7))
+
+        XCTAssertEqual(toggled, [3], "only a positive line number reaches the toggle")
+        XCTAssertEqual(scrolled, [7], "scroll messages still drive the editor")
+    }
+
     func testThemeCSSReachesDOM() async {
         let h = PreviewHarness()
         await h.load()

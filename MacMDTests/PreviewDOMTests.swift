@@ -7,12 +7,14 @@ import WebKit
 /// render JS (source-line stamping, image routing, theme + appearance hooks) is
 /// pinned at the unit level rather than only in the live app smoke test.
 @MainActor
-final class PreviewHarness: NSObject, WKNavigationDelegate {
+final class PreviewHarness: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
     let handler: MarkdownSchemeHandler
     let webView: WKWebView
+    /// Bodies the shell posted on the recorded message channels, in order.
+    private(set) var messages: [(name: String, body: Any)] = []
     private var loaded: CheckedContinuation<Void, Never>?
 
-    override init() {
+    init(recording messageNames: [String] = []) {
         let h = MarkdownSchemeHandler()
         let config = WKWebViewConfiguration()
         config.websiteDataStore = .nonPersistent()
@@ -21,6 +23,12 @@ final class PreviewHarness: NSObject, WKNavigationDelegate {
         webView = WKWebView(frame: CGRect(x: 0, y: 0, width: 480, height: 640), configuration: config)
         super.init()
         webView.navigationDelegate = self
+        for name in messageNames { webView.configuration.userContentController.add(self, name: name) }
+    }
+
+    func userContentController(_ userContentController: WKUserContentController,
+                               didReceive message: WKScriptMessage) {
+        messages.append((message.name, message.body))
     }
 
     func load() async {
@@ -84,6 +92,58 @@ final class PreviewDOMTests: XCTestCase {
         await h.render("line one\nline two")
         let brCount = (await h.eval("document.querySelectorAll('p br').length") as? NSNumber)?.intValue
         XCTAssertEqual(brCount, 1, "a single newline inside a paragraph renders as a visible line break")
+    }
+
+    func testBulletTasksRenderAsCheckboxesInPlaceOfTheBullet() async {
+        let h = PreviewHarness()
+        await h.load()
+        await h.render("- [ ] open\n- [x] done\n- plain\n\n1. [ ] ordered")
+        let boxes = await h.eval("JSON.stringify(Array.from(document.querySelectorAll('input.task-checkbox'))"
+            + ".map(function (b) { return [b.getAttribute('data-task-line'), b.checked]; }))") as? String
+        XCTAssertEqual(boxes, #"[["1",false],["2",true]]"#, "each bullet task gets a box carrying its source line")
+        let bullet = await h.eval("getComputedStyle(document.querySelector('li.task-list-item')).listStyleType") as? String
+        XCTAssertEqual(bullet, "none", "the checkbox takes the bullet's place")
+        let text = await h.eval("document.querySelector('li.task-list-item').textContent") as? String
+        XCTAssertEqual(text, "open", "the [ ] marker is consumed, not shown as text")
+        let ordered = (await h.eval("document.querySelectorAll('ol input').length") as? NSNumber)?.intValue
+        XCTAssertEqual(ordered, 0, "ordered items stay text: the editor only toggles bullet tasks")
+    }
+
+    func testNoBoxWhereTheEditorCouldNotToggleIt() async {
+        let h = PreviewHarness()
+        await h.load()
+        await h.render("> - [ ] quoted\n\n- \\[ ] escaped\n\n- &#91;x] entity\n\n-\n  [ ] late")
+        let boxes = (await h.eval("document.querySelectorAll('input.task-checkbox').length") as? NSNumber)?.intValue
+        XCTAssertEqual(boxes, 0, "blockquoted, escaped, and next-line boxes stay text, matching the editor")
+    }
+
+    func testTaskLinesCountFrontMatterAndNesting() async {
+        let h = PreviewHarness()
+        await h.load()
+        await h.render("---\ntitle: x\n---\n- parent\n\t- [ ] child")
+        let line = await h.eval("document.querySelector('input.task-checkbox').getAttribute('data-task-line')") as? String
+        XCTAssertEqual(line, "5", "a nested task under front matter maps to its full-document line")
+    }
+
+    func testCheckboxClickPostsItsSourceLine() async {
+        let h = PreviewHarness(recording: [PreviewWebView.taskToggleMessageName])
+        await h.load()
+        await h.render("intro\n\n- [ ] first\n- [ ] second")
+        await h.eval("document.querySelectorAll('input.task-checkbox')[1].click()")
+        for _ in 0..<40 where h.messages.isEmpty { try? await Task.sleep(nanoseconds: 25_000_000) }
+        XCTAssertEqual(h.messages.map(\.name), [PreviewWebView.taskToggleMessageName])
+        XCTAssertEqual((h.messages.first?.body as? NSNumber)?.intValue, 4)
+    }
+
+    func testExportedCheckboxesAreStatic() async throws {
+        let h = PreviewHarness()
+        await h.load()
+        let html = try await h.webView.callAsyncJavaScript("return await window.renderForExport(md)",
+                                                           arguments: ["md": "- [x] done"],
+                                                           contentWorld: .page) as? String
+        XCTAssertEqual(html?.contains("disabled"), true, "an exported box cannot be toggled")
+        XCTAssertEqual(html?.contains("data-task-line"), false, "no editor wiring leaks into the export")
+        XCTAssertEqual(html?.contains("checked"), true)
     }
 
     func testSourceLinesAndScrollToLine() async {

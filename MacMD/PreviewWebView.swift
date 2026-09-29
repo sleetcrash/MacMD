@@ -37,10 +37,14 @@ struct PreviewWebView: NSViewRepresentable {
     /// nothing to sync (tests, preview-only layout).
     var syncBridge: ScrollSyncBridge?
     var documentDirectory: URL?
+    /// Flips the task box on a 1-based source line (a preview checkbox click).
+    var onToggleTask: ((Int) -> Void)?
 
     static let ruleListID = "macmd-preview-block-network"
     /// The JS-to-Swift message channel carrying the preview's top visible line.
     static let scrollMessageName = "macmdScroll"
+    /// The JS-to-Swift message channel carrying a clicked checkbox's source line.
+    static let taskToggleMessageName = "macmdTaskToggle"
 
     // MARK: - Pure seams (unit tested)
 
@@ -76,6 +80,7 @@ struct PreviewWebView: NSViewRepresentable {
         coordinator.handler.documentDirectory = documentDirectory
         coordinator.text = text
         coordinator.theme = theme
+        coordinator.onToggleTask = onToggleTask
         coordinator.attachBridge(syncBridge)
     }
 
@@ -91,8 +96,9 @@ struct PreviewWebView: NSViewRepresentable {
 
         // Weakly proxied: the user content controller retains its handlers, so a
         // direct add(coordinator) would cycle coordinator <-> webView.
-        config.userContentController.add(WeakScriptMessageHandler(coordinator),
-                                         name: Self.scrollMessageName)
+        for name in [Self.scrollMessageName, Self.taskToggleMessageName] {
+            config.userContentController.add(WeakScriptMessageHandler(coordinator), name: name)
+        }
 
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = coordinator
@@ -138,6 +144,7 @@ struct PreviewWebView: NSViewRepresentable {
         // Desired state, written by updateNSView / makeNSView.
         var text = ""
         var theme: ThemeController?
+        var onToggleTask: ((Int) -> Void)?
         private(set) var syncBridge: ScrollSyncBridge?
 
         // Last-pushed state, so each render only sends what changed.
@@ -157,13 +164,22 @@ struct PreviewWebView: NSViewRepresentable {
             }
         }
 
-        /// The preview's own scroll position (its top visible source line),
-        /// posted from the shell's scroll listener.
+        /// The shell's messages, each a 1-based source line: the preview's top
+        /// visible line (scroll listener) or a clicked checkbox's line.
         func userContentController(_ userContentController: WKUserContentController,
                                    didReceive message: WKScriptMessage) {
-            guard message.name == PreviewWebView.scrollMessageName,
-                  let line = message.body as? NSNumber else { return }
-            syncBridge?.previewScrolled(toTopLine: line.intValue)
+            receive(name: message.name, body: message.body)
+        }
+
+        /// Routes one shell message by name. Split out so the routing can be
+        /// unit tested without constructing a WKScriptMessage.
+        func receive(name: String, body: Any) {
+            guard let line = (body as? NSNumber)?.intValue, line >= 1 else { return }
+            switch name {
+            case PreviewWebView.scrollMessageName: syncBridge?.previewScrolled(toTopLine: line)
+            case PreviewWebView.taskToggleMessageName: onToggleTask?(line)
+            default: break
+            }
         }
 
         /// Reconcile the desired state into the live DOM (theme CSS, appearance
