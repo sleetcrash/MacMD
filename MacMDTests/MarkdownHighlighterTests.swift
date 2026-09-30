@@ -255,8 +255,8 @@ final class MarkdownHighlighterTests: XCTestCase {
     func testEditorFontSizeRebuildsHeadingFonts() {
         Theme.setEditorFontSize(20)
         XCTAssertEqual(Theme.editorFont.pointSize, 20)
-        XCTAssertEqual(Theme.headingFont(level: 6).pointSize, 21, "level 6 bumps the base by one point")
-        XCTAssertEqual(Theme.headingFont(level: 1).pointSize, 26, "level 1 bumps the base by six points")
+        XCTAssertEqual(Theme.headingFont(level: 6).pointSize, 20, "level 6 sits at body size")
+        XCTAssertEqual(Theme.headingFont(level: 1).pointSize, 35, "level 1 is 1.75x the body size")
         Theme.setEditorFontSize(FontSize.standard)
     }
 

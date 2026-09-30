@@ -41,7 +41,12 @@ final class ThemeFontTests: XCTestCase {
     func testHeadingSizesScaleWithLevel() {
         Theme.setEditorFontSize(14)
         Theme.setEditorFontFamily(.default)
-        XCTAssertGreaterThan(Theme.headingFont(level: 1).pointSize, Theme.headingFont(level: 6).pointSize)
+        XCTAssertEqual(Theme.headingFont(level: 1).pointSize, 25)
+        XCTAssertEqual(Theme.headingFont(level: 2).pointSize, 21)
+        XCTAssertEqual(Theme.headingFont(level: 3).pointSize, 18)
+        XCTAssertEqual(Theme.headingFont(level: 4).pointSize, 15)
+        XCTAssertEqual(Theme.headingFont(level: 5).pointSize, 14)
+        XCTAssertEqual(Theme.headingFont(level: 6).pointSize, 14)
     }
 
     func testCodeFontTracksSize() {

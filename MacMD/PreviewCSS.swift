@@ -42,7 +42,7 @@ enum PreviewCSS {
         """
         for level in 1...6 {
             let color = palette?.headingColor(level: level) ?? .labelColor
-            let size = base + CGFloat(7 - level)   // base+(7-level), mirroring Theme.makeHeadingFonts
+            let size = FontSize.headingSize(level: level, base: base)
             css += "html.\(cls) h\(level) { color: \(hex(color, under: appearance)); font-size: \(fmt(size))px; font-weight: bold; }\n"
         }
         // Front matter: muted block; keys follow the theme's H1 color (the editor
