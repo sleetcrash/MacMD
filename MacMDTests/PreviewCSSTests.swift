@@ -70,10 +70,10 @@ final class PreviewCSSTests: XCTestCase {
     }
 
     func testHeadingSizesMirrorEditor() {
-        // base 16 -> H1 = 16+6 = 22, H6 = 16+1 = 17 (Theme.makeHeadingFonts uses base+(7-level)).
+        // base 16 -> H1 = 16 * 1.75 = 28, H6 = 16 (FontSize.headingSize ratio scale).
         let css = PreviewCSS.css(theme: theme(fontSize: 16))
-        XCTAssertTrue(rule(css, selector: "html.aqua h1").contains("font-size: 22px"))
-        XCTAssertTrue(rule(css, selector: "html.aqua h6").contains("font-size: 17px"))
+        XCTAssertTrue(rule(css, selector: "html.aqua h1").contains("font-size: 28px"))
+        XCTAssertTrue(rule(css, selector: "html.aqua h6").contains("font-size: 16px"))
     }
 
     // MARK: - Mermaid palette variables

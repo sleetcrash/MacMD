@@ -2,6 +2,11 @@
 
 All notable changes to MacMD will be documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- Headings now step down in size by level: H1 is 1.75x the body size, H2 1.5x, H3 1.25x, H4 1.1x, and H5 and H6 sit at body size. Before, each level was only one point smaller than the last, so H1, H2, and H3 looked the same size. The editor and the preview use the same scale.
+
 ## [2.4.0] - 2026-09-29
 
 ### Added

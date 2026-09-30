@@ -45,10 +45,7 @@ enum Theme {
     }
 
     private static func makeHeadingFonts(base: CGFloat, family: FontFamily) -> [NSFont] {
-        (1...6).map { level in
-            let bump = CGFloat(7 - level)
-            return family.boldFont(size: base + bump)
-        }
+        (1...6).map { family.boldFont(size: FontSize.headingSize(level: $0, base: base)) }
     }
 
     // MARK: - Active theming (single source of truth for the highlighter)

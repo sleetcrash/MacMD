@@ -277,6 +277,16 @@ enum FontSize {
     static func clamp(_ size: CGFloat) -> CGFloat {
         min(maximum, max(minimum, size.rounded()))
     }
+
+    /// Heading point size for `level` at a body size of `base`, shared by the
+    /// editor, the preview CSS, and the theme swatch so all three agree.
+    /// Ratio scale (H1 1.75x down to H5/H6 at body size) rather than a fixed
+    /// bump: a one-point step per level is too small to read as a hierarchy.
+    static func headingSize(level: Int, base: CGFloat) -> CGFloat {
+        let scale: [CGFloat] = [1.75, 1.5, 1.25, 1.1, 1, 1]
+        let clamped = max(1, min(6, level))
+        return (base * scale[clamped - 1]).rounded()
+    }
 }
 
 /// Resolves the document editor regardless of which pane holds first responder.
