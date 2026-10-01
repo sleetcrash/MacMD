@@ -29,15 +29,13 @@ final class MarkdownHighlighter: NSObject, @preconcurrency NSTextStorageDelegate
         let frontMatterChanged = frontMatter != lastFrontMatter
         lastFrontMatter = frontMatter
 
-        let headings: [MarkdownParser.HeadingLine] = Theme.activeColoring == .off
-            ? []
-            : MarkdownParser.headingLines(in: nsString, fullRange: total)
+        let headings = MarkdownParser.headingLines(in: nsString, fullRange: total,
+                                                   excluding: MarkdownRules.excluded(codeSpans, frontMatter))
         let headingsChanged = headings != lastHeadingLines
         lastHeadingLines = headings
-        let sectionMap = MarkdownRules.sectionMap(from: headings, excluding: codeSpans)
 
         if fencesChanged || headingsChanged || frontMatterChanged {
-            MarkdownRules.applyHighlighting(to: textStorage, in: total, fencedSpans: codeSpans, frontMatter: frontMatter, sectionMap: sectionMap)
+            MarkdownRules.applyHighlighting(to: textStorage, in: total, fencedSpans: codeSpans, frontMatter: frontMatter, headings: headings)
             return
         }
 
@@ -49,7 +47,7 @@ final class MarkdownHighlighter: NSObject, @preconcurrency NSTextStorageDelegate
             targetRange = paragraph
         }
 
-        MarkdownRules.applyHighlighting(to: textStorage, in: targetRange, fencedSpans: codeSpans, frontMatter: frontMatter, sectionMap: sectionMap)
+        MarkdownRules.applyHighlighting(to: textStorage, in: targetRange, fencedSpans: codeSpans, frontMatter: frontMatter, headings: headings)
     }
 
     func rehighlightAll(_ textStorage: NSTextStorage) {
@@ -61,12 +59,10 @@ final class MarkdownHighlighter: NSObject, @preconcurrency NSTextStorageDelegate
         let spans = MarkdownParser.spansFromFences(fenceLines, fullRange: full)
         let frontMatter = MarkdownParser.frontMatterSpan(in: nsString, fullRange: full)
         lastFrontMatter = frontMatter
-        let headings: [MarkdownParser.HeadingLine] = Theme.activeColoring == .off
-            ? []
-            : MarkdownParser.headingLines(in: nsString, fullRange: full)
+        let headings = MarkdownParser.headingLines(in: nsString, fullRange: full,
+                                                   excluding: MarkdownRules.excluded(spans, frontMatter))
         lastHeadingLines = headings
-        let sectionMap = MarkdownRules.sectionMap(from: headings, excluding: spans)
-        MarkdownRules.applyHighlighting(to: textStorage, in: full, fencedSpans: spans, frontMatter: frontMatter, sectionMap: sectionMap)
+        MarkdownRules.applyHighlighting(to: textStorage, in: full, fencedSpans: spans, frontMatter: frontMatter, headings: headings)
     }
 
     /// Strip all styling back to base attributes, for Plain (formatting-off)
@@ -107,9 +103,8 @@ private enum MarkdownRules {
         }
     }
 
-    static func sectionMap(from headings: [MarkdownParser.HeadingLine], excluding fencedSpans: [NSRange]) -> SectionMap {
-        let usable = headings.filter { !MarkdownParser.intersectsAny($0.range, ranges: fencedSpans) }
-        return SectionMap(headings: usable.map { (location: $0.range.location, level: $0.level) })
+    static func excluded(_ fencedSpans: [NSRange], _ frontMatter: NSRange?) -> [NSRange] {
+        frontMatter.map { fencedSpans + [$0] } ?? fencedSpans
     }
 
     static let inlineRules: [Rule] = [
@@ -127,13 +122,6 @@ private enum MarkdownRules {
                     ts.addAttribute(.foregroundColor, value: Theme.mutedColor, range: body)
                 }
             }
-        },
-        Rule(regex: MarkdownParser.headingPattern) { ts, m, _ in
-            let full = m.range
-            let hashes = m.range(at: 1)
-            let level = min(6, max(1, hashes.length))
-            ts.addAttribute(.font, value: Theme.headingFont(level: level), range: full)
-            ts.addAttribute(.foregroundColor, value: Theme.headingColor(level: level), range: full)
         },
         Rule(regex: r("\\*\\*(?!\\s)(?:[^*\\n]|\\*(?!\\*))+(?<!\\s)\\*\\*")) { ts, m, _ in
             addFontTrait(.bold, to: ts, in: m.range)
@@ -201,8 +189,9 @@ private enum MarkdownRules {
         }
     }
 
-    static func applyHighlighting(to ts: NSTextStorage, in range: NSRange, fencedSpans: [NSRange], frontMatter: NSRange?, sectionMap: SectionMap) {
+    static func applyHighlighting(to ts: NSTextStorage, in range: NSRange, fencedSpans: [NSRange], frontMatter: NSRange?, headings: [MarkdownParser.HeadingLine]) {
         guard range.length > 0 else { return }
+        let sectionMap = SectionMap(headings: headings.map { (location: $0.range.location, level: $0.level) })
 
         ts.removeAttribute(.font, range: range)
         ts.removeAttribute(.foregroundColor, range: range)
@@ -241,13 +230,28 @@ private enum MarkdownRules {
             }
         }
 
-        let excluded = frontMatter.map { fencedSpans + [$0] } ?? fencedSpans
+        // Heading fonts go on before the inline rules so bold and italic runs
+        // inside a heading compose onto the heading font.
+        let visible = headings.filter { NSIntersectionRange($0.range, range).length > 0 }
+        for heading in visible {
+            ts.addAttribute(.font, value: Theme.headingFont(level: heading.level), range: heading.range)
+            ts.addAttribute(.foregroundColor, value: Theme.headingColor(level: heading.level), range: heading.range)
+        }
+
+        let excluded = excluded(fencedSpans, frontMatter)
         for rule in inlineRules {
             rule.regex.enumerateMatches(in: source, options: [], range: range) { match, _, _ in
                 guard let m = match else { return }
                 if MarkdownParser.intersectsAny(m.range, ranges: excluded) { return }
                 rule.apply(ts, m, sectionMap)
             }
+        }
+
+        // A setext underline is heading markup, like the `#` run: it takes the
+        // heading color over the thematic-break rule's muted one, at body size.
+        for heading in visible {
+            guard let underline = heading.underline else { continue }
+            ts.addAttribute(.foregroundColor, value: Theme.headingColor(level: heading.level), range: underline)
         }
     }
 
