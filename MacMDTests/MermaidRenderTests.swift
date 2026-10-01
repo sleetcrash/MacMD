@@ -156,6 +156,115 @@ final class MermaidRenderTests: XCTestCase {
         XCTAssertEqual(svgCount, 3, "all three diagrams survive the overlap")
     }
 
+    // MARK: - Dark-theme colors
+
+    private static let darkThemeCSS = "html.darkAqua { --mmd-bg: #101014; --mmd-text: #eeeeee; --mmd-surface: #26262c; --mmd-line: #8a8a95; --mmd-series-1: #3ec6ff; --mmd-series-2: #ff4fb2; --mmd-series-3: #eccb00; }"
+
+    private func loadDarkTheme() async -> PreviewHarness {
+        let h = PreviewHarness()
+        await h.load()
+        await h.eval("window.setThemeCSS('\(Self.darkThemeCSS)')")
+        await h.eval("window.setAppearance('darkAqua')")
+        return h
+    }
+
+    /// The computed `property` of every element matching `selector` inside the
+    /// rendered diagrams, as mermaid's own stylesheet resolves it (`rgb(r, g, b)`).
+    private func computedColors(_ h: PreviewHarness, _ selector: String, property: String = "fill") async -> [String] {
+        let js = "Array.prototype.map.call(document.querySelectorAll('.mermaid-diagram \(selector)'), function (el) { return getComputedStyle(el).\(property); })"
+        return (await h.eval(js) as? [String] ?? []).filter { $0 != "none" }
+    }
+
+    private func channels(_ color: String) -> [Double] {
+        if color.hasPrefix("#") {
+            let hex = color.dropFirst()
+            return stride(from: 0, to: 6, by: 2).map {
+                Double(Int(hex[hex.index(hex.startIndex, offsetBy: $0)..<hex.index(hex.startIndex, offsetBy: $0 + 2)], radix: 16) ?? 0)
+            }
+        }
+        return color.components(separatedBy: CharacterSet(charactersIn: "(), ")).compactMap(Double.init)
+    }
+
+    /// WCAG contrast ratio between two colors (`rgb(...)` or `#rrggbb`).
+    private func contrast(_ a: String, _ b: String) -> Double {
+        func luminance(_ c: [Double]) -> Double {
+            let lin = c.prefix(3).map { ch -> Double in
+                let s = ch / 255
+                return s <= 0.03928 ? s / 12.92 : pow((s + 0.055) / 1.055, 2.4)
+            }
+            return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2]
+        }
+        let la = luminance(channels(a)), lb = luminance(channels(b))
+        return (max(la, lb) + 0.05) / (min(la, lb) + 0.05)
+    }
+
+    private func maxChannelDistance(_ a: String, _ b: String) -> Double {
+        zip(channels(a).prefix(3), channels(b).prefix(3)).map { abs($0 - $1) }.max() ?? 255
+    }
+
+    func testErAttributeRowsReadOnADarkTheme() async {
+        let h = await loadDarkTheme()
+        await h.renderAndWait("```mermaid\nerDiagram\n    AUTHOR {\n        string name\n        string handle\n        int posts\n    }\n```\n")
+
+        let dark = await h.eval("window.__mermaidConfig.themeVariables.darkMode") as? NSNumber
+        XCTAssertEqual(dark?.boolValue, true, "the base theme is told the page is dark")
+
+        let fills = await computedColors(h, ".node rect, .node path")
+        XCTAssertFalse(fills.isEmpty, "the entity box and its attribute rows have fills")
+        for fill in fills {
+            XCTAssertGreaterThanOrEqual(contrast(fill, "#eeeeee"), 3, "row fill \(fill) must carry the body text")
+        }
+    }
+
+    func testSequenceAutonumbersReadOnTheirDiscs() async {
+        let h = await loadDarkTheme()
+        await h.renderAndWait("```mermaid\nsequenceDiagram\n    autonumber\n    A->>B: hi\n    B-->>A: hello\n```\n")
+
+        let digits = await computedColors(h, "text.sequenceNumber")
+        XCTAssertFalse(digits.isEmpty, "autonumber digits are drawn")
+        for digit in digits {
+            XCTAssertGreaterThanOrEqual(contrast(digit, "#8a8a95"), 3, "digit color \(digit) must read on the line-colored disc")
+        }
+    }
+
+    func testGitBranchesTakeTheSeriesColorsOnADarkTheme() async {
+        let h = await loadDarkTheme()
+        await h.renderAndWait("```mermaid\ngitGraph\n    commit\n    branch feature\n    checkout feature\n    commit\n    checkout main\n    merge feature\n```\n")
+
+        // The commit-to-commit connectors (the dashed guide lines are `.branch`).
+        let strokes = Set(await computedColors(h, "path.arrow", property: "stroke"))
+        XCTAssertEqual(strokes.count, 2, "main and feature connectors are drawn in two colors: \(strokes)")
+        for stroke in strokes {
+            let onSeries = min(maxChannelDistance(stroke, "#3ec6ff"), maxChannelDistance(stroke, "#ff4fb2"))
+            XCTAssertLessThanOrEqual(onSeries, 3, "a connector takes a series color as published, not a darkened shade: \(stroke)")
+        }
+
+        let labels = await computedColors(h, ".branchLabel text")
+        XCTAssertEqual(labels.count, 2, "both branch labels are drawn")
+        for label in labels {
+            XCTAssertLessThanOrEqual(maxChannelDistance(label, "#101014"), 3, "a label on a series-colored tag takes the background color: \(label)")
+        }
+    }
+
+    func testGanttFollowsTheContentColumnWidth() async {
+        let h = PreviewHarness()   // 480pt wide: a 424px content column after the body padding
+        await h.load()
+        await h.renderAndWait("```mermaid\ngantt\n    dateFormat YYYY-MM-DD\n    section A\n    Task :a1, 2026-10-01, 5d\n```\n")
+        let widthJS = "parseFloat(document.querySelector('.mermaid-diagram svg').getAttribute('viewBox').split(' ')[2])"
+        let narrow = (await h.eval(widthJS) as? NSNumber)?.doubleValue ?? 0
+        XCTAssertEqual(narrow, 424, accuracy: 1)
+
+        // A wider pane re-lays the gantt out to the (760px max) column.
+        h.webView.frame = CGRect(x: 0, y: 0, width: 900, height: 640)
+        var wide = narrow
+        for _ in 0..<120 {
+            wide = (await h.eval(widthJS) as? NSNumber)?.doubleValue ?? 0
+            if wide != narrow { break }
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
+        XCTAssertEqual(wide, 760, accuracy: 1, "the gantt re-rendered at the new column width")
+    }
+
     func testDuplicateDiagramsGetDistinctIds() async {
         let h = PreviewHarness()
         await h.load()
