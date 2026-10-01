@@ -32,6 +32,14 @@ final class HTMLExporterTests: XCTestCase {
         XCTAssertFalse(html.contains("<script"), "the export carries no script")
     }
 
+    func testExportedGanttIsLaidOutToTheColumnWidth() async {
+        // The export web view has no frame, so mermaid would read a 0px container.
+        let html = await HTMLExporter.makeSelfContainedHTML(markdown: "```mermaid\ngantt\n    dateFormat YYYY-MM-DD\n    section A\n    Task :a1, 2026-10-01, 5d\n```\n",
+                                                            theme: ThemeController())
+        let viewBox = html.range(of: #"viewBox="0 0 (\d+)"#, options: .regularExpression).map { String(html[$0]) } ?? ""
+        XCTAssertEqual(viewBox, "viewBox=\"0 0 760", "the gantt is laid out to the 760px preview column")
+    }
+
     func testStripsExternalImageReferences() async {
         // A hostile remote image must not survive as a live reference (a tracking
         // beacon that fetches when the exported file is opened elsewhere).

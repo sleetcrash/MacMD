@@ -6,6 +6,11 @@ All notable changes to MacMD will be documented in this file. The format is base
 
 ### Changed
 - Headings now step down in size by level: H1 is 1.75x the body size, H2 1.5x, H3 1.25x, H4 1.1x, and H5 and H6 sit at body size. Before, each level was only one point smaller than the last, so H1, H2, and H3 looked the same size. The editor and the preview use the same scale.
+- Setext headings (a line of text with `===` or `---` directly under it) are styled as H1 and H2 in the editor, matching the preview. Before, the editor showed them as plain text.
+
+### Fixed
+- On dark themes, entity relationship diagrams drew every other attribute row white with white text, sequence diagram step numbers were invisible, git graph branch lines and labels were black, and the mindmap root was black. Diagrams now tell Mermaid the page is dark, git branches take the theme's heading colors like pie slices do, and labels on a colored branch take the background color.
+- Gantt charts drew at the width the preview had when the document first rendered (about half the pane) and kept it. They now fill the preview column and re-lay out when the window is resized. Exported HTML laid gantt charts out at zero width.
 
 ## [2.4.0] - 2026-09-29
 

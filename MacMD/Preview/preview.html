@@ -143,20 +143,24 @@ var mermaidReady = false;
 // theme through CSS the way text does. PreviewCSS publishes the palette as custom
 // properties (--mmd-*) and this maps them onto mermaid's own variable names: node
 // and actor fills take the flattened code-block surface, every label takes the
-// body color, and multi-color series (pie slices) cycle the theme's heading
-// colors. Section labels sit ON a saturated slice, so they take the background
-// color for contrast instead of the body color.
+// body color, and multi-color series (pie slices, git branches) cycle the theme's
+// heading colors. Labels that sit ON a saturated slice or branch take the
+// background color for contrast instead of the body color. `darkMode` tells the
+// base theme which way to derive whatever is not set here; without it a dark
+// page got light-page derivations (white ER rows, black git lines).
 function mermaidThemeVariables() {
   var s = getComputedStyle(document.documentElement);
   function v(name, fallback) {
     var value = (s.getPropertyValue(name) || "").trim();
     return value === "" ? fallback : value;
   }
+  var dark = document.documentElement.classList.contains("darkAqua");
   var bg = v("--mmd-bg", "#1e1e1e");
   var text = v("--mmd-text", "#ffffff");
   var surface = v("--mmd-surface", "#2c2c2c");
   var line = v("--mmd-line", "#808080");
   var vars = {
+    darkMode: dark,
     background: bg,
     primaryColor: surface, primaryTextColor: text, primaryBorderColor: line,
     secondaryColor: surface, secondaryTextColor: text, secondaryBorderColor: line,
@@ -173,14 +177,33 @@ function mermaidThemeVariables() {
     pieStrokeColor: line, pieOuterStrokeColor: line,
     // Mermaid dims slices to 0.7 by default, which would leave a slice a shade
     // off the heading color it came from and off its own legend swatch.
-    pieOpacity: "1"
+    pieOpacity: "1",
+    // ER attribute rows alternate between the node fill and the page.
+    rowOdd: surface, rowEven: bg,
+    attributeBackgroundColorOdd: surface, attributeBackgroundColorEven: bg,
+    // Sequence autonumber digits sit on a disc filled with the line color.
+    sequenceNumberColor: bg,
+    scaleLabelColor: text
   };
   for (var i = 1; i <= 12; i++) {
     vars["pie" + i] = v("--mmd-series-" + i, surface);
     if (i <= 4) { vars["cScale" + (i - 1)] = vars["pie" + i]; }
+    if (i <= 8) {
+      vars["git" + (i - 1)] = vars["pie" + i];
+      vars["gitBranchLabel" + (i - 1)] = bg;
+    }
   }
   return vars;
 }
+
+// A gantt lays itself out to a pixel width mermaid reads from its container at
+// render time: 0 in the headless export view, and the first-paint width in the
+// preview, which the SVG then keeps. The config pins it to the content column
+// instead, and a resize re-renders the width-bound diagrams.
+function mermaidContentWidth() {
+  return document.getElementById("content").clientWidth || 760;
+}
+var mermaidLayoutWidth = 0;
 
 function ensureMermaid() {
   if (!mermaidReady && window.mermaid) {
@@ -189,38 +212,46 @@ function ensureMermaid() {
     // graphic to the page body, outside #content, where it survives later
     // renders and stacks up at the bottom of the preview. Suppressed, the render
     // still throws and the fence stays a code block (see renderMermaid).
+    mermaidLayoutWidth = mermaidContentWidth();
     var config = { startOnLoad: false, securityLevel: "strict", theme: "base",
                    suppressErrorRendering: true,
-                   themeVariables: mermaidThemeVariables() };
+                   themeVariables: mermaidThemeVariables(),
+                   gantt: { useWidth: mermaidLayoutWidth } };
     window.mermaid.initialize(config);
     window.__mermaidConfig = config;
     mermaidReady = true;
   }
 }
 
+// Re-init from the current custom properties and content width, then re-render
+// each given diagram from the source kept on its wrapper, refreshing its cache
+// entry. Ids stay unique per pass so mermaid's SVG defs never collide.
+var mermaidRenderPass = 0;
+
+async function rerenderDiagrams(wrappers) {
+  mermaidReady = false;
+  ensureMermaid();
+  mermaidRenderPass++;
+  for (var i = 0; i < wrappers.length; i++) {
+    var wrapper = wrappers[i];
+    if (!wrapper._mmdSource) continue;
+    try {
+      var out = await window.mermaid.render("mmd-t" + mermaidRenderPass + "-" + i, wrapper._mmdSource);
+      wrapper.innerHTML = out.svg;
+      mermaidCache[wrapper._mmdCacheKey] = out.svg;
+    } catch (e) { /* keep the previous SVG if the re-render fails */ }
+  }
+}
+
 // A theme or appearance change moves every baked-in diagram color, so the cache
-// and the initialized config are both stale: re-init from the new custom
-// properties and re-render each diagram from the source kept on its wrapper.
-// Ids stay unique per pass so mermaid's SVG defs never collide across re-themes.
-var mermaidThemePass = 0;
+// and the initialized config are both stale.
 var mermaidRefreshPending = false;
 
 async function refreshMermaidTheme() {
   mermaidReady = false;
   mermaidCache = {};
   var wrappers = document.querySelectorAll(".mermaid-diagram");
-  if (wrappers.length > 0 && window.mermaid) {
-    ensureMermaid();
-    mermaidThemePass++;
-    for (var i = 0; i < wrappers.length; i++) {
-      var source = wrappers[i]._mmdSource;
-      if (!source) continue;
-      try {
-        var out = await window.mermaid.render("mmd-t" + mermaidThemePass + "-" + i, source);
-        wrappers[i].innerHTML = out.svg;
-      } catch (e) { /* keep the previous SVG if the re-theme fails */ }
-    }
-  }
+  if (wrappers.length > 0 && window.mermaid) { await rerenderDiagrams(wrappers); }
   window.__mermaidThemePass = (window.__mermaidThemePass || 0) + 1;
 }
 
@@ -229,6 +260,27 @@ function scheduleMermaidRefresh() {
   mermaidRefreshPending = true;
   // Coalesce: Swift pushes theme CSS and the appearance class back to back.
   setTimeout(function () { mermaidRefreshPending = false; refreshMermaidTheme(); }, 0);
+}
+
+var mermaidResizeTimer = null;
+window.addEventListener("resize", function () {
+  clearTimeout(mermaidResizeTimer);
+  mermaidResizeTimer = setTimeout(function () {
+    if (!window.mermaid || mermaidContentWidth() === mermaidLayoutWidth) return;
+    // The pinned width is stale even with no gantt on the page: the next
+    // render re-inits so a gantt typed later lays out to the new width.
+    mermaidReady = false;
+    var bound = document.querySelectorAll(".mermaid-diagram[data-mermaid-width-bound]");
+    if (bound.length > 0) { rerenderDiagrams(bound); }
+  }, 150);
+});
+
+// Diagram front matter, init directives, and comments may precede the keyword.
+function isWidthBound(source) {
+  var body = source.replace(/^\s*---[\s\S]*?\n---[ \t]*\n/, "")
+                   .replace(/%%\{[\s\S]*?\}%%/g, "")
+                   .replace(/^\s*%%.*$/gm, "");
+  return /^\s*gantt\b/.test(body);
 }
 
 // FNV-1a hash of the diagram source, so an unchanged diagram skips re-render.
@@ -264,6 +316,8 @@ async function renderMermaid(container) {
     // from the DOM. A JS property, not an attribute, so the source never has to
     // survive HTML escaping.
     wrapper._mmdSource = source;
+    wrapper._mmdCacheKey = cacheKey;
+    if (isWidthBound(source)) { wrapper.setAttribute("data-mermaid-width-bound", ""); }
     // Keep the source-line anchor the <pre> carried, so scroll sync stays
     // precise around rendered diagrams.
     var srcLine = pre && pre.getAttribute && pre.getAttribute("data-source-line");

@@ -45,6 +45,23 @@ final class MarkdownParserTests: XCTestCase {
         XCTAssertFalse(headings.contains { $0.title.contains("not a heading") })
     }
 
+    func testHeadingLinesIncludeSetextWithUnderlineRanges() {
+        let text = "Two\n===\n# One\nThree\n---\n" as NSString
+        let lines = MarkdownParser.headingLines(in: text, fullRange: NSRange(location: 0, length: text.length))
+
+        XCTAssertEqual(lines.map(\.level), [1, 1, 2])
+        XCTAssertEqual(lines.map(\.range), [
+            NSRange(location: 0, length: 3),    // "Two"
+            NSRange(location: 8, length: 5),    // "# One"
+            NSRange(location: 14, length: 5),   // "Three"
+        ])
+        XCTAssertEqual(lines.map(\.underline), [
+            NSRange(location: 4, length: 3),    // "==="
+            nil,
+            NSRange(location: 20, length: 3),   // "---"
+        ])
+    }
+
     func testHeadingsExcludeFrontMatterAndNonParagraphSetext() {
         // A front-matter field above the closing `---` must NOT become a phantom H2.
         let withFrontMatter = MarkdownParser.headings(in: "---\ntitle: x\n---\n# Real\nTwo\n===\n")

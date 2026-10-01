@@ -47,6 +47,70 @@ final class MarkdownHighlighterTests: XCTestCase {
         }
     }
 
+    // MARK: - Setext headings
+
+    func testSetextTitleLinesTakeHeadingFontAndColor() {
+        let storage = headingColorTest("Intro\n===\nSection\n---\nbody", coloring: .standard, paletteId: "std.rgb")
+        XCTAssertEqual(font(at: 0, in: storage), Theme.headingFont(level: 1))
+        XCTAssertEqual(color(at: 0, in: storage)?.resolvedHexLight, "#C13F50")
+        let h2 = "Intro\n===\n".count
+        XCTAssertEqual(font(at: h2, in: storage), Theme.headingFont(level: 2))
+        XCTAssertEqual(color(at: h2, in: storage)?.resolvedHexLight, "#2E8049")
+        // The underline is heading markup: heading color, body size.
+        let underline = "Intro\n".count
+        XCTAssertEqual(color(at: underline, in: storage)?.resolvedHexLight, "#C13F50")
+        XCTAssertEqual(font(at: underline, in: storage), Theme.editorFont)
+        let body = "Intro\n===\nSection\n---\n".count
+        XCTAssertEqual(font(at: body, in: storage), Theme.editorFont)
+    }
+
+    func testDashRunAfterBlankLineStaysAHorizontalRule() {
+        let storage = highlight("Paragraph\n\n---\n")
+        XCTAssertEqual(font(at: 0, in: storage), Theme.editorFont)
+        let rule = "Paragraph\n\n".count
+        XCTAssertEqual(color(at: rule, in: storage), Theme.mutedColor)
+    }
+
+    func testSetextInsideFenceOrFrontMatterIsNotAHeading() {
+        let fenced = highlight("```\nText\n---\n```\n")
+        XCTAssertEqual(font(at: "```\n".count, in: fenced), Theme.codeFont)
+        let fronted = highlight("---\ntitle: x\n---\nbody")
+        XCTAssertEqual(font(at: "---\n".count, in: fronted), Theme.editorFont)
+    }
+
+    func testSetextHeadingGovernsMarkerColorsBelow() {
+        let storage = headingColorTest("Section\n---\n- item", coloring: .standard, paletteId: "std.rgb")
+        let bullet = "Section\n---\n".count
+        XCTAssertEqual(color(at: bullet, in: storage)?.resolvedHexLight, "#2E8049")
+    }
+
+    func testEditingTheUnderlineKeepsItsHeadingColor() {
+        Theme.setActiveTheme(coloring: .standard, palette: ColorTheming.preset(id: "std.rgb"))
+        let storage = NSTextStorage(string: "Intro\n===\nbody")
+        let highlighter = MarkdownHighlighter()
+        storage.delegate = highlighter
+        highlighter.rehighlightAll(storage)
+        // Lengthening the underline keeps the heading set the same shape, so only
+        // the underline's own paragraph is restyled; it must stay heading-colored.
+        storage.beginEditing()
+        storage.replaceCharacters(in: NSRange(location: 9, length: 0), with: "=")
+        storage.endEditing()
+        XCTAssertEqual(color(at: 6, in: storage)?.resolvedHexLight, "#C13F50")
+        XCTAssertEqual(font(at: 0, in: storage), Theme.headingFont(level: 1))
+    }
+
+    func testTypingASetextUnderlineRestylesTheTitle() {
+        let storage = NSTextStorage(string: "Title\n")
+        let highlighter = MarkdownHighlighter()
+        storage.delegate = highlighter
+        highlighter.rehighlightAll(storage)
+        XCTAssertEqual(font(at: 0, in: storage), Theme.editorFont)
+        storage.beginEditing()
+        storage.replaceCharacters(in: NSRange(location: 6, length: 0), with: "===")
+        storage.endEditing()
+        XCTAssertEqual(font(at: 0, in: storage), Theme.headingFont(level: 1))
+    }
+
     // MARK: - Emphasis
 
     func testBoldDoubleStar() {
