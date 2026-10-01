@@ -2,7 +2,7 @@
 
 All notable changes to MacMD will be documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.4.2] - 2026-10-01
 
 ### Fixed
 - On dark themes, finished gantt tasks (`:done`) drew as a light grey bar with white text. Done bars now show as outlined bars in the page color, and the gantt grid lines take the theme's line color instead of light grey.
