@@ -276,6 +276,18 @@ final class MermaidRenderTests: XCTestCase {
         XCTAssertEqual(width, 760, accuracy: 1, "a gantt rendered after the resize lays out to the new column, not the first-paint width")
     }
 
+    func testGanttDoneTaskLabelReadsOnItsBarOnADarkTheme() async {
+        let h = await loadDarkTheme()
+        await h.renderAndWait("```mermaid\ngantt\n    dateFormat YYYY-MM-DD\n    section A\n    Finished :done, a1, 2026-10-01, 30d\n```\n")
+
+        let bars = await computedColors(h, "rect.done0")
+        let labels = await computedColors(h, "text.doneText0")
+        XCTAssertEqual(bars.count, 1, "the done task bar is drawn")
+        XCTAssertEqual(labels.count, 1, "the done task label is drawn")
+        guard let bar = bars.first, let label = labels.first else { return }
+        XCTAssertGreaterThanOrEqual(contrast(label, bar), 3, "label \(label) must read on the done bar \(bar)")
+    }
+
     func testDuplicateDiagramsGetDistinctIds() async {
         let h = PreviewHarness()
         await h.load()

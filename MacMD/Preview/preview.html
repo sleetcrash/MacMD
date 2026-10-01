@@ -183,6 +183,10 @@ function mermaidThemeVariables() {
     attributeBackgroundColorOdd: surface, attributeBackgroundColorEven: bg,
     // Sequence autonumber digits sit on a disc filled with the line color.
     sequenceNumberColor: bg,
+    // Mermaid hardcodes the gantt done bar and grid to lightgrey, which on a
+    // dark page put body-colored labels on a light bar: done bars read as
+    // hollow (page fill, line border) and the grid takes the line color.
+    doneTaskBkgColor: bg, doneTaskBorderColor: line, gridColor: line,
     scaleLabelColor: text
   };
   for (var i = 1; i <= 12; i++) {
