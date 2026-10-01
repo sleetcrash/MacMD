@@ -140,11 +140,16 @@ enum MarkdownParser {
             let titleRange = lineRanges[i]
             let underlineRange = lineRanges[i + 1]
             guard titleRange.length > 0, underlineRange.length > 0 else { continue }
-            let underline = nsString.substring(with: underlineRange).trimmingCharacters(in: .whitespaces)
+            // Runs on every line of the document per keystroke: reject on the
+            // first non-blank character before touching any substring.
             let level: Int
-            if isUnderlineRun(underline, "=") { level = 1 }
-            else if isUnderlineRun(underline, "-") { level = 2 }
-            else { continue }
+            switch firstNonBlank(in: nsString, range: underlineRange) {
+            case UInt16(UInt8(ascii: "=")): level = 1
+            case UInt16(UInt8(ascii: "-")): level = 2
+            default: continue
+            }
+            let underline = nsString.substring(with: underlineRange).trimmingCharacters(in: .whitespaces)
+            guard isUnderlineRun(underline, level == 1 ? "=" : "-") else { continue }
             guard !intersectsAny(titleRange, ranges: excluded),
                   !intersectsAny(underlineRange, ranges: excluded),
                   isSetextTitle(nsString.substring(with: titleRange).trimmingCharacters(in: .whitespaces))
@@ -182,6 +187,14 @@ enum MarkdownParser {
             idx = le
         }
         return ranges
+    }
+
+    private static func firstNonBlank(in nsString: NSString, range: NSRange) -> unichar? {
+        for i in range.location..<NSMaxRange(range) {
+            let c = nsString.character(at: i)
+            if c != UInt16(UInt8(ascii: " ")) && c != UInt16(UInt8(ascii: "\t")) { return c }
+        }
+        return nil
     }
 
     private static func isUnderlineRun(_ trimmed: String, _ ch: Character) -> Bool {

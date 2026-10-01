@@ -84,6 +84,21 @@ final class MarkdownHighlighterTests: XCTestCase {
         XCTAssertEqual(color(at: bullet, in: storage)?.resolvedHexLight, "#2E8049")
     }
 
+    func testEditingTheUnderlineKeepsItsHeadingColor() {
+        Theme.setActiveTheme(coloring: .standard, palette: ColorTheming.preset(id: "std.rgb"))
+        let storage = NSTextStorage(string: "Intro\n===\nbody")
+        let highlighter = MarkdownHighlighter()
+        storage.delegate = highlighter
+        highlighter.rehighlightAll(storage)
+        // Lengthening the underline keeps the heading set the same shape, so only
+        // the underline's own paragraph is restyled; it must stay heading-colored.
+        storage.beginEditing()
+        storage.replaceCharacters(in: NSRange(location: 9, length: 0), with: "=")
+        storage.endEditing()
+        XCTAssertEqual(color(at: 6, in: storage)?.resolvedHexLight, "#C13F50")
+        XCTAssertEqual(font(at: 0, in: storage), Theme.headingFont(level: 1))
+    }
+
     func testTypingASetextUnderlineRestylesTheTitle() {
         let storage = NSTextStorage(string: "Title\n")
         let highlighter = MarkdownHighlighter()

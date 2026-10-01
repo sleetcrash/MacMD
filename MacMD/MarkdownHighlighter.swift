@@ -6,8 +6,20 @@ final class MarkdownHighlighter: NSObject, @preconcurrency NSTextStorageDelegate
     var isSuppressed = false
     var isDisabled = false
     private var lastFenceLines: [MarkdownParser.FenceLine] = []
-    private var lastHeadingLines: [MarkdownParser.HeadingLine] = []
+    private var lastHeadingShape: [HeadingShape] = []
     private var lastFrontMatter: NSRange?
+
+    /// What a heading contributes beyond its own line: its level feeds the
+    /// section map and its kind decides the underline pass. Ranges are left
+    /// out, since typing above a heading shifts them without changing either.
+    private struct HeadingShape: Equatable {
+        let level: Int
+        let isSetext: Bool
+    }
+
+    private func shape(of headings: [MarkdownParser.HeadingLine]) -> [HeadingShape] {
+        headings.map { HeadingShape(level: $0.level, isSetext: $0.underline != nil) }
+    }
 
     func textStorage(_ textStorage: NSTextStorage,
                      didProcessEditing editedMask: NSTextStorageEditActions,
@@ -31,8 +43,9 @@ final class MarkdownHighlighter: NSObject, @preconcurrency NSTextStorageDelegate
 
         let headings = MarkdownParser.headingLines(in: nsString, fullRange: total,
                                                    excluding: MarkdownRules.excluded(codeSpans, frontMatter))
-        let headingsChanged = headings != lastHeadingLines
-        lastHeadingLines = headings
+        let headingShape = shape(of: headings)
+        let headingsChanged = headingShape != lastHeadingShape
+        lastHeadingShape = headingShape
 
         if fencesChanged || headingsChanged || frontMatterChanged {
             MarkdownRules.applyHighlighting(to: textStorage, in: total, fencedSpans: codeSpans, frontMatter: frontMatter, headings: headings)
@@ -61,7 +74,7 @@ final class MarkdownHighlighter: NSObject, @preconcurrency NSTextStorageDelegate
         lastFrontMatter = frontMatter
         let headings = MarkdownParser.headingLines(in: nsString, fullRange: full,
                                                    excluding: MarkdownRules.excluded(spans, frontMatter))
-        lastHeadingLines = headings
+        lastHeadingShape = shape(of: headings)
         MarkdownRules.applyHighlighting(to: textStorage, in: full, fencedSpans: spans, frontMatter: frontMatter, headings: headings)
     }
 
@@ -231,8 +244,12 @@ private enum MarkdownRules {
         }
 
         // Heading fonts go on before the inline rules so bold and italic runs
-        // inside a heading compose onto the heading font.
-        let visible = headings.filter { NSIntersectionRange($0.range, range).length > 0 }
+        // inside a heading compose onto the heading font. A heading is in play
+        // when its title or its underline falls in the range being restyled.
+        let visible = headings.filter { heading in
+            NSIntersectionRange(heading.range, range).length > 0
+                || (heading.underline.map { NSIntersectionRange($0, range).length > 0 } ?? false)
+        }
         for heading in visible {
             ts.addAttribute(.font, value: Theme.headingFont(level: heading.level), range: heading.range)
             ts.addAttribute(.foregroundColor, value: Theme.headingColor(level: heading.level), range: heading.range)
