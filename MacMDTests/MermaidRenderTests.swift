@@ -265,6 +265,17 @@ final class MermaidRenderTests: XCTestCase {
         XCTAssertEqual(wide, 760, accuracy: 1, "the gantt re-rendered at the new column width")
     }
 
+    func testGanttTypedAfterAResizeTakesTheNewWidth() async {
+        let h = PreviewHarness()
+        await h.load()
+        await h.renderAndWait("```mermaid\nflowchart TD; A-->B\n```\n")   // pins the width at 424 with no gantt on the page
+        h.webView.frame = CGRect(x: 0, y: 0, width: 900, height: 640)
+        try? await Task.sleep(nanoseconds: 600_000_000)   // past the resize debounce
+        await h.renderAndWait("```mermaid\ngantt\n    dateFormat YYYY-MM-DD\n    section A\n    Task :a1, 2026-10-01, 5d\n```\n")
+        let width = (await h.eval("parseFloat(document.querySelector('.mermaid-diagram svg').getAttribute('viewBox').split(' ')[2])") as? NSNumber)?.doubleValue ?? 0
+        XCTAssertEqual(width, 760, accuracy: 1, "a gantt rendered after the resize lays out to the new column, not the first-paint width")
+    }
+
     func testDuplicateDiagramsGetDistinctIds() async {
         let h = PreviewHarness()
         await h.load()

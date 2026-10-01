@@ -266,15 +266,21 @@ var mermaidResizeTimer = null;
 window.addEventListener("resize", function () {
   clearTimeout(mermaidResizeTimer);
   mermaidResizeTimer = setTimeout(function () {
+    if (!window.mermaid || mermaidContentWidth() === mermaidLayoutWidth) return;
+    // The pinned width is stale even with no gantt on the page: the next
+    // render re-inits so a gantt typed later lays out to the new width.
+    mermaidReady = false;
     var bound = document.querySelectorAll(".mermaid-diagram[data-mermaid-width-bound]");
-    if (bound.length > 0 && window.mermaid && mermaidContentWidth() !== mermaidLayoutWidth) {
-      rerenderDiagrams(bound);
-    }
+    if (bound.length > 0) { rerenderDiagrams(bound); }
   }, 150);
 });
 
+// Diagram front matter, init directives, and comments may precede the keyword.
 function isWidthBound(source) {
-  return /^\s*gantt\b/.test(source.replace(/^\s*%%.*$/gm, ""));
+  var body = source.replace(/^\s*---[\s\S]*?\n---[ \t]*\n/, "")
+                   .replace(/%%\{[\s\S]*?\}%%/g, "")
+                   .replace(/^\s*%%.*$/gm, "");
+  return /^\s*gantt\b/.test(body);
 }
 
 // FNV-1a hash of the diagram source, so an unchanged diagram skips re-render.
